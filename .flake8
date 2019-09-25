@@ -1,0 +1,8 @@
+[flake8]
+exclude =
+    .git
+    .hypothesis
+    .tox
+    __pycache__
+    .pytest_cache
+    dist
