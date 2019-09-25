@@ -1,0 +1,24 @@
+{
+  "@context": "http://iiif.io/api/image/2/context.json",
+  "@id": "https://images.cudl.lib.cam.ac.uk/iiif/MS-ADD-00269-000-01075",
+  "protocol": "http://iiif.io/api/image",
+  "profile": [
+    "http://iiif.io/api/image/2/level0.json"
+  ],
+  "width": 6365,
+  "height": 9841,
+  "tiles": [
+    {
+      "scaleFactors": [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        64
+      ],
+      "width": 256
+    }
+  ]
+}
