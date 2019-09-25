@@ -1,0 +1,20 @@
+image: python:3.7.4
+pipelines:
+  default:
+    - parallel:
+        - step:
+            name: Unit test
+            script:
+              - pip install poetry
+              - poetry install
+              - poetry run pytest test_tilediiif
+        - step:
+            name: Integration test
+            script:
+              - pip install tox
+              - tox
+        - step:
+            name: Lint
+            script:
+              - pip install flake8
+              - flake8
