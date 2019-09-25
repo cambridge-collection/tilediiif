@@ -8,13 +8,19 @@ pipelines:
               - pip install poetry
               - poetry install
               - poetry run pytest test_tilediiif
+            caches:
+              - pip
         - step:
             name: Integration test
             script:
               - pip install tox
               - tox
+            caches:
+              - pip
         - step:
             name: Lint
             script:
               - pip install flake8
               - flake8
+            caches:
+              - pip
