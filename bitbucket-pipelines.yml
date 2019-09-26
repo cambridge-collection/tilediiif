@@ -7,7 +7,7 @@ pipelines:
             script:
               - pip install poetry
               - poetry install
-              - poetry run pytest --junitxml=test-results/unit-test-results.xml test_tilediiif
+              - poetry run pytest --junitxml=test-results/unit-test-results.xml tilediiif test_tilediiif
             caches:
               - pip
         - step:
