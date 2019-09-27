@@ -19,6 +19,12 @@ import docopt
 from tilediiif.dzi import DZIError, parse_dzi_file
 from .version import __version__
 
+# math.log2(2**49) == math.log2(2**49 + 1) so anything above 2**49 won't work
+# with the current implementation. Could use decimals instead of float, but I
+# don't think this limit is going to constrain anyone any time soon. :)
+MAX_IMAGE_DIMENSION = 2**49
+MAX_IMAGE_DIMENSION_DESC = '2**49'
+
 
 def info_json_from_dzi(dzi_data):
     try:
@@ -47,10 +53,12 @@ def iiif_image_metadata_with_pow2_tiles(*, width, height, tile_size):
     :param tile_size: The width and height of the (square) tiles
     :return: The iiif:Image metadata as a dict
     """
-    if width < 1:
-        raise ValueError(f'width is < 1: {width}')
-    if height < 1:
-        raise ValueError(f'height is < 1: {height}')
+    if not 1 <= width <= MAX_IMAGE_DIMENSION:
+        raise ValueError(f'\
+width must be >= 1 and <= {MAX_IMAGE_DIMENSION_DESC}: {width}')
+    if not 1 <= height <= MAX_IMAGE_DIMENSION:
+        raise ValueError(f'\
+height must be >= 1 and <= {MAX_IMAGE_DIMENSION_DESC}: {height}')
     if tile_size < 1:
         raise ValueError(f'tile_size is < 1: {tile_size}')
 

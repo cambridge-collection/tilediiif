@@ -1,23 +1,30 @@
 import math
 
 import pytest
-from hypothesis import given, assume
+from hypothesis import given, assume, example
 from hypothesis.strategies import integers
 
-from tilediiif.infojson import (iiif_image_metadata_with_pow2_tiles)
+from tilediiif.infojson import (
+    iiif_image_metadata_with_pow2_tiles, MAX_IMAGE_DIMENSION)
+
+
+image_dimensions = integers(min_value=1, max_value=MAX_IMAGE_DIMENSION)
 
 
 @given(width=integers(), height=integers(), tile_size=integers())
+@example(MAX_IMAGE_DIMENSION + 1, 1000, 100)
+@example(1000, MAX_IMAGE_DIMENSION + 1, 100)
 def test_iiif_image_metadata_with_pow2_tiles_fails_with_values_under_one(
         width, height, tile_size):
-    assume(any(n < 1 for n in [width, height, tile_size]))
+    assume(any(n < 1 for n in [width, height, tile_size]) or
+           any(n > MAX_IMAGE_DIMENSION for n in [width, height]))
     with pytest.raises(ValueError):
         iiif_image_metadata_with_pow2_tiles(
             width=width, height=height, tile_size=tile_size)
 
 
-@given(width=integers(min_value=1),
-       height=integers(min_value=1),
+@given(width=image_dimensions,
+       height=image_dimensions,
        tile_size=integers(min_value=1))
 def test_iiif_image_metadata_with_pow2_tiles(width, height, tile_size):
     meta = iiif_image_metadata_with_pow2_tiles(

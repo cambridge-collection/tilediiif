@@ -5,6 +5,7 @@ import pytest
 from hypothesis import given, assume
 from hypothesis.strategies import integers
 
+from test_tilediiif.test_infojson import image_dimensions
 from tilediiif.tilelayout import get_layer_tiles
 
 ints_over_zero = integers(min_value=1)
@@ -20,7 +21,8 @@ def test_get_layer_tiles_argument_validation(width, height, tile_size,
                              scale_factor=scale_factor))
 
 
-@given(width=ints_over_zero, height=ints_over_zero, tile_size=ints_over_zero,
+@given(width=image_dimensions, height=image_dimensions,
+       tile_size=ints_over_zero,
        scale_factor=integers(min_value=1, max_value=2**18))
 def test_get_layer_tiles(width, height, tile_size, scale_factor):
     src_tile_size = (tile_size * scale_factor)
