@@ -1,4 +1,11 @@
+import math
 import xml.etree.ElementTree as ET
+import re
+
+from tilediiif.validation import (
+    require_positive_non_zero_int, require_positive_int)
+
+file_extension = re.compile(r'^[a-zA-Z0-9]+$')
 
 
 class DZIError(ValueError):
@@ -51,3 +58,36 @@ def _get_attrib_as_int(el, name, err_cls=ValueError):
         return int(value)
     except ValueError:
         raise err_cls(f'{el.tag}@{name} is not an integer: {value}')
+
+
+def get_dzi_tile_path(dzi_files_path, dzi_meta, tile):
+    width, height = dzi_meta['width'], dzi_meta['height']
+    scale_factor = tile['scale_factor']
+    require_positive_non_zero_int(**{"dzi_meta['width']": width,
+                                     "dzi_meta['height']": height,
+                                     "tile['scale_factor']": scale_factor})
+    x, y = tile['index']['x'], tile['index']['y']
+    require_positive_int(**{"tile['index']['x']": x,
+                            "tile['index']['y']": y})
+    format = dzi_meta['format']
+    if type(format) != str and not file_extension.match(format):
+        raise ValueError(f"\
+dzi_meta['format'] does not appear to be a file extension: {format!r}")
+
+    power = int(math.log2(scale_factor))
+    if 2**power != scale_factor:
+        raise ValueError(f"\
+tile['scale_factor'] must be a power of 2, got: {scale_factor}")
+
+    max_level = math.ceil(math.log2(max(width, height)))
+    level = max_level - power
+
+    if level < 0:
+        raise ValueError(f'\
+scale factor implies a DZI layer below zero: \
+max(width, height) = {max(width, height)} \
+which implies 1:1 level = {max_level}; \
+scale_factor = {scale_factor} which is layer {power} \
+implying level={level}')
+
+    return dzi_files_path / f'{level}' / f'{x}_{y}.{format}'

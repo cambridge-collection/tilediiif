@@ -1,11 +1,24 @@
 import math
 
+import pytest
+
 from hypothesis import given, assume
 from hypothesis.strategies import integers
 
 from tilediiif.tilelayout import get_layer_tiles
 
 ints_over_zero = integers(min_value=1)
+
+@given(width=integers(), height=integers(), tile_size=integers(),
+       scale_factor=integers())
+def test_get_layer_tiles_argument_validation(width, height, tile_size,
+                                             scale_factor):
+    assume(any(n < 1 for n in [width, height, tile_size, scale_factor]))
+
+    with pytest.raises(ValueError):
+        next(get_layer_tiles(width=width, height=height, tile_size=tile_size,
+                             scale_factor=scale_factor))
+
 
 @given(width=ints_over_zero, height=ints_over_zero, tile_size=ints_over_zero,
        scale_factor=integers(min_value=1, max_value=2**18))
@@ -30,7 +43,9 @@ def test_get_layer_tiles(width, height, tile_size, scale_factor):
     assert set(tile['index']['y'] for tile in tiles) == set(range(tiles_y))
 
     for tile in tiles:
-        assert set(tile.keys()) == {'index', 'src', 'dst'}
+        assert set(tile.keys()) == {'scale_factor', 'index', 'src', 'dst'}
+
+        assert tile['scale_factor'] == scale_factor
 
         is_last_x = tile['index']['x'] == tiles_x - 1
         is_last_y = tile['index']['y'] == tiles_y - 1

@@ -29,11 +29,7 @@ Options:
 """
 import math
 
-
-def _require_positive_non_zero_int(**kwargs):
-    for name, value in kwargs.items():
-        if int(value) != value or value < 1:
-            raise ValueError(f'{name} must be an int >=1; got: {value!r}')
+from tilediiif.validation import require_positive_non_zero_int
 
 
 def get_layer_tiles(*, width, height, tile_size, scale_factor):
@@ -49,15 +45,19 @@ def get_layer_tiles(*, width, height, tile_size, scale_factor):
         >>> pprint(list(tiles))
         [{'dst': {'height': 250, 'width': 250, 'x': 0, 'y': 0},
           'index': {'x': 0, 'y': 0},
+          'scale_factor': 2,
           'src': {'height': 500, 'width': 500, 'x': 0, 'y': 0}},
          {'dst': {'height': 250, 'width': 250, 'x': 250, 'y': 0},
           'index': {'x': 1, 'y': 0},
+          'scale_factor': 2,
           'src': {'height': 500, 'width': 500, 'x': 500, 'y': 0}},
          {'dst': {'height': 50, 'width': 250, 'x': 0, 'y': 250},
           'index': {'x': 0, 'y': 1},
+          'scale_factor': 2,
           'src': {'height': 100, 'width': 500, 'x': 0, 'y': 500}},
          {'dst': {'height': 50, 'width': 250, 'x': 250, 'y': 250},
           'index': {'x': 1, 'y': 1},
+          'scale_factor': 2,
           'src': {'height': 100, 'width': 500, 'x': 500, 'y': 500}}]
 
     :param width: The width of the image at 1:1 scale
@@ -66,7 +66,7 @@ def get_layer_tiles(*, width, height, tile_size, scale_factor):
     :param scale_factor: The factor to reduce the 1:1 size by
     :return: an iterable producing tile objects.
     """
-    _require_positive_non_zero_int(
+    require_positive_non_zero_int(
         width=width, height=height, tile_size=tile_size,
         scale_factor=scale_factor)
 
@@ -91,6 +91,7 @@ def get_layer_tiles(*, width, height, tile_size, scale_factor):
                 src_tile_height = trailing_y
 
             yield {
+                'scale_factor': scale_factor,
                 'index': {'x': x, 'y': y},
                 'src': {'x': x * tile_src_area, 'y': y * tile_src_area,
                         'width': src_tile_width, 'height': src_tile_height},
