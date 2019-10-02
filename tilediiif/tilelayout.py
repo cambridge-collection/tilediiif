@@ -28,6 +28,9 @@ Options:
 
 """
 import math
+import re
+from functools import partial
+from typing import Dict
 
 from tilediiif.validation import require_positive_non_zero_int
 
@@ -99,3 +102,61 @@ def get_layer_tiles(*, width, height, tile_size, scale_factor):
                         'width': math.ceil(src_tile_width / scale_factor),
                         'height': math.ceil(src_tile_height / scale_factor)}
             }
+
+
+template_chunk = re.compile(r'({(?![\w.]+}))|{([\w.]+)}|((?:\\{|[^{])+)')
+
+
+def render_placeholder(name, bindings):
+    value = bindings.get(name)
+    if not isinstance(value, str):
+        raise ValueError(f'\
+No value for {name!r} exists in bound values: {bindings}')
+    return value
+
+
+def render_literal(value, _):
+    return value
+
+
+class Template:
+    def __init__(self, chunks, var_names):
+        self.chunks = tuple(chunks)
+        self.var_names = frozenset(var_names)
+
+    def render(self, bindings: Dict[str, str]):
+        if bindings.keys() < self.var_names:
+            missing = ', '.join(f'{v!r}'
+                                for v in self.var_names - bindings.keys())
+            raise ValueError(f'\
+Variables for placeholders {missing} \
+are missing from bound values: {bindings}')
+
+        return ''.join(c(bindings) for c in self.chunks)
+
+
+def parse_template(template):
+    offset = 0
+    chunks = []
+    var_names = set()
+    while offset < len(template):
+        # The regex should never fail to match
+        match = template_chunk.match(template[offset:])
+        assert match
+        offset += match.end()
+        invalid, placeholder, literal = match.groups()
+
+        if invalid:
+            raise ValueError(f'''\
+Invalid placeholder at offset {offset}:
+    {template}
+    {' ' * offset}^''')
+        elif placeholder:
+            var_names.add(placeholder)
+            chunks.append(partial(render_placeholder, placeholder))
+        else:
+            assert literal
+            unescaped = literal.replace(r'\{', '{').replace('\\\\', '\\')
+            chunks.append(partial(render_literal, unescaped))
+
+    return Template(chunks, var_names)
