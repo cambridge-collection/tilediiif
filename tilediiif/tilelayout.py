@@ -31,6 +31,7 @@ import math
 import re
 from functools import partial, reduce
 from typing import Dict
+from pathlib import Path
 
 from tilediiif.validation import require_positive_non_zero_int
 
@@ -177,3 +178,41 @@ Invalid {thing} at offset {offset}:
               partial(render_literal, value) for (type, value) in segments)
     var_names = (value for (type, value) in segments if type == 'placeholder')
     return Template(chunks, var_names)
+
+
+def get_template_bindings(tile, *, format='jpg', rotation=0,
+                          quality='default'):
+    """Generate a bindings dict for an image tile"""
+
+    return {
+        'region.x': str(tile['src']['x']),
+        'region.y': str(tile['src']['y']),
+        'region.w': str(tile['src']['width']),
+        'region.h': str(tile['src']['height']),
+        'region': (f"{tile['src']['x']},{tile['src']['y']},"
+                   f"{tile['src']['width']},{tile['src']['height']}"),
+        'size': f'''{tile['dst']['width']},{tile['dst']['height']}''',
+        'size.w': str(tile['dst']['width']),
+        'size.h': str(tile['dst']['height']),
+        'rotation': str(rotation),
+        'quality': str(quality),
+        'format': str(format)
+    }
+
+
+class InvalidPath(ValueError):
+    pass
+
+
+def get_templated_dest_path(template: Template, tile, *,
+                            bindings_for_tile=get_template_bindings) -> Path:
+    path = Path(template.render(bindings_for_tile(tile)))
+
+    if not path.parts:
+        raise InvalidPath(f'generated path is empty')
+    if path.is_absolute():
+        raise InvalidPath(f'generated path is not relative: {path}')
+    if '..' in path.parts:
+        raise InvalidPath(f'generated path contains a ".." segment: {path}')
+
+    return path

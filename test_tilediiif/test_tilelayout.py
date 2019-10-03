@@ -1,12 +1,16 @@
 import math
+from functools import partial
+from pathlib import Path
 
 import pytest
-from hypothesis import given, assume, example
+from hypothesis import given, assume, settings, example
 from hypothesis.strategies import (
     builds, one_of, from_regex, text, composite, integers)
 
 from test_tilediiif.test_infojson import image_dimensions
-from tilediiif.tilelayout import get_layer_tiles, parse_template, Template
+from tilediiif.tilelayout import (
+    get_layer_tiles, parse_template, Template, get_template_bindings,
+    get_templated_dest_path, InvalidPath)
 
 ints_over_zero = integers(min_value=1)
 
@@ -171,3 +175,85 @@ def test_render_template(populated_template):
         for seg in populated_template['segments'])
 
     assert compiled.render(bindings) == expected
+
+
+@composite
+def tiles(draw, xs=integers(min_value=0), ys=integers(min_value=0),
+          scale_factors=integers(min_value=1),
+          tile_widths=integers(min_value=1),
+          tile_heights=integers(min_value=1)):
+    x = draw(xs)
+    y = draw(ys)
+    tile_width = draw(tile_widths)
+    tile_height = draw(tile_heights)
+    scale_factor = draw(scale_factors)
+
+    return {
+        'scale_factor': scale_factor,
+        'index': {'x': x, 'y': y},
+        'src': {'x': x * tile_width * scale_factor,
+                'y': y * tile_height * scale_factor,
+                'width': tile_width * scale_factor,
+                'height': tile_height * scale_factor},
+        'dst': {'x': x * tile_width, 'y': y * tile_height,
+                'width': tile_width, 'height': tile_height}
+    }
+
+
+@given(tiles())
+def test_test_get_template_bindings_defaults(tile):
+    bindings = get_template_bindings(tile)
+
+    assert bindings['format'] == 'jpg'
+    assert bindings['rotation'] == '0'
+    assert bindings['quality'] == 'default'
+
+
+@given(tile=tiles(), format=text(), quality=text(),
+       rotation=integers(min_value=0, max_value=359))
+def test_get_template_bindings(tile, format, quality, rotation):
+    bindings = get_template_bindings(tile, format=format, quality=quality,
+                                     rotation=rotation)
+
+    assert all(isinstance(v, str) for v in bindings.keys())
+    assert all(isinstance(v, str) for v in bindings.values())
+
+    assert bindings['region.x'] == str(tile['src']['x'])
+    assert bindings['region.y'] == str(tile['src']['y'])
+    assert bindings['region.w'] == str(tile['src']['width'])
+    assert bindings['region.h'] == str(tile['src']['height'])
+    assert bindings['region'] == ','.join(
+        str(tile['src'][p]) for p in ['x', 'y', 'width', 'height'])
+    assert bindings['size.w'] == str(tile['dst']['width'])
+    assert bindings['size.h'] == str(tile['dst']['height'])
+    assert (bindings['size'] ==
+            f"{tile['dst']['width']},{tile['dst']['height']}")
+    assert bindings['format'] == format
+    assert bindings['quality'] == quality
+    assert bindings['rotation'] == str(rotation)
+
+
+@pytest.mark.parametrize('template, msg', [
+    ['/foo', 'generated path is not relative: /foo'],
+    ['foo/../bar', 'generated path contains a ".." segment: foo/../bar'],
+    ['../foo/bar', 'generated path contains a ".." segment: ../foo/bar'],
+    ['', 'generated path is empty'],
+])
+@settings(max_examples=1)
+@given(tile=tiles())
+def test_get_templated_dest_path_rejects_invalid_paths(template, msg, tile):
+    with pytest.raises(InvalidPath) as excinfo:
+        assert get_templated_dest_path(parse_template(template), tile)
+
+    assert str(excinfo.value) == msg
+
+
+def test_get_templated_dest_path():
+    tile = dict(dst=dict(x=100, y=100, width=50, height=50),
+                src=dict(x=200, y=200, width=100, height=100))
+    path = get_templated_dest_path(
+        parse_template('foo/{size}-{region}.{format}'), tile,
+        bindings_for_tile=partial(get_template_bindings, format='png'))
+
+    assert isinstance(path, Path)
+    assert str(path) == 'foo/50,50-200,200,100,100.png'
