@@ -2,11 +2,12 @@ import math
 from pathlib import Path
 
 import pytest
-from hypothesis import given, assume
+from hypothesis import assume, given
 from hypothesis.strategies import (
-    builds, fixed_dictionaries, integers, sampled_from, characters, text)
+    builds, characters, fixed_dictionaries,
+    integers, sampled_from, text)
 
-from tilediiif.dzi import parse_dzi_file, get_dzi_tile_path
+from tilediiif.dzi import get_dzi_tile_path, parse_dzi_file
 from tilediiif.tilelayout import get_layer_tiles
 
 

@@ -1,12 +1,11 @@
 import math
 
 import pytest
-from hypothesis import given, assume, example
+from hypothesis import assume, example, given
 from hypothesis.strategies import integers
 
 from tilediiif.infojson import (
     iiif_image_metadata_with_pow2_tiles, MAX_IMAGE_DIMENSION)
-
 
 image_dimensions = integers(min_value=1, max_value=MAX_IMAGE_DIMENSION)
 

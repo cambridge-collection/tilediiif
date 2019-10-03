@@ -1,9 +1,9 @@
 import math
-import xml.etree.ElementTree as ET
 import re
+import xml.etree.ElementTree as ET
 
 from tilediiif.validation import (
-    require_positive_non_zero_int, require_positive_int)
+    require_positive_int, require_positive_non_zero_int)
 
 file_extension = re.compile(r'^[a-zA-Z0-9]+$')
 

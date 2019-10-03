@@ -14,6 +14,7 @@ hypothesis = "^4.36"
 toml = "^0.10.0"
 tox = "^3.14"
 flake8 = "^3.7"
+flake8-import-order = "^0.18.1"
 
 [tool.poetry.scripts]
 infojson = 'tilediiif.infojson:main'

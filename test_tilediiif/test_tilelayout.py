@@ -1,17 +1,20 @@
 import math
+from collections import abc
 from functools import partial
 from pathlib import Path
-from collections import abc
 
 import pytest
-from hypothesis import given, assume, settings, example
+from hypothesis import assume, example, given, settings
 from hypothesis.strategies import (
-    builds, one_of, from_regex, text, composite, integers)
+    builds, composite, from_regex, integers,
+    one_of, text)
 
 from test_tilediiif.test_infojson import image_dimensions
 from tilediiif.tilelayout import (
-    get_layer_tiles, parse_template, Template, get_template_bindings,
-    get_templated_dest_path, InvalidPath, create_file_methods)
+    create_file_methods, get_layer_tiles,
+    get_template_bindings,
+    get_templated_dest_path, InvalidPath,
+    parse_template, Template)
 
 ints_over_zero = integers(min_value=1)
 

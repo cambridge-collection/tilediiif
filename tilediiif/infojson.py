@@ -17,7 +17,7 @@ import sys
 import docopt
 
 from tilediiif.dzi import DZIError, parse_dzi_file
-from .version import __version__
+from tilediiif.version import __version__
 
 # math.log2(2**49) == math.log2(2**49 + 1) so anything above 2**49 won't work
 # with the current implementation. Could use decimals instead of float, but I
