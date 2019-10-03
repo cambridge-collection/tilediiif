@@ -1,20 +1,30 @@
+import json
 import math
-from collections import abc
+from collections import abc, Counter
 from functools import partial
-from pathlib import Path
+from pathlib import Path, PurePath
+from tempfile import TemporaryDirectory
+from unittest.mock import call, MagicMock, Mock, patch
 
 import pytest
 from hypothesis import assume, example, given, settings
+from hypothesis._strategies import lists
 from hypothesis.strategies import (
-    builds, composite, from_regex, integers,
-    one_of, text)
+    builds, composite, from_regex, integers, one_of, sampled_from, text)
 
+from test_tilediiif import test_dzi
+from test_tilediiif.test_dzi import dzi_metadata
 from test_tilediiif.test_infojson import image_dimensions
+from tilediiif.dzi import get_dzi_tile_path
+from tilediiif.infojson import iiif_image_metadata_with_pow2_tiles
 from tilediiif.tilelayout import (
-    create_file_methods, get_layer_tiles,
-    get_template_bindings,
-    get_templated_dest_path, InvalidPath,
-    parse_template, Template)
+    _ensure_dir_exists, create_dzi_tile_layout, create_file_methods,
+    create_tile_layout, DEFAULT_FILE_METHOD, get_layer_tiles,
+    get_template_bindings, get_templated_dest_path, InvalidPath,
+    parse_template, run, Template, DEFAULT_FILE_PATH_TEMPLATE)
+
+dzi_ms_add_path = test_dzi.dzi_ms_add_path
+dzi_ms_add_meta = test_dzi.dzi_ms_add_meta
 
 ints_over_zero = integers(min_value=1)
 
@@ -309,3 +319,218 @@ def test_create_file_copy(src_path: Path, src_content: str, dst_path: Path,
     dst_path.write_text(src_content + ' changed')
     src_has_changed = src_path.read_text() != src_content
     assert src_has_changed == src_affected_by_dst
+
+
+def test_ensure_dir_exists_creates_same_dir_once_with_multiple_calls():
+    mock_path = MagicMock()
+    _ensure_dir_exists(mock_path)
+    _ensure_dir_exists(mock_path)
+    mock_path.mkdir.assert_called_once_with(exist_ok=True)
+
+
+@pytest.yield_fixture()
+def mock_ensure_dir_exists():
+    with patch('tilediiif.tilelayout._ensure_dir_exists') as mock:
+        yield mock
+
+
+@given(tiles=lists(tiles(), max_size=50))
+def test_create_tile_layout(tiles, mock_ensure_dir_exists):
+    def get_tile_path(tile):
+        return PurePath(f'/src/tile-{tiles.index(tile)}/foo/file.jpeg')
+
+    def get_dest_path(tile):
+        return PurePath(f'dest/tile-{tiles.index(tile)}/bar/file.jpg')
+
+    create_file = Mock(spec=[])
+    target_directory = PurePath('target/dir')
+
+    create_tile_layout(tiles=iter(tiles),
+                       get_tile_path=get_tile_path,
+                       get_dest_path=get_dest_path,
+                       create_file=create_file,
+                       target_directory=target_directory)
+
+    assert create_file.mock_calls == [
+        call(get_tile_path(tile),
+             target_directory / get_dest_path(tile)) for tile in tiles
+    ]
+
+    mkdir_calls = mock_ensure_dir_exists.mock_calls
+    for tile in tiles:
+        for dir in (target_directory / get_dest_path(tile)).parents:
+            # dirs under the target get created
+            if target_directory in dir.parents:
+                assert call(dir) in mkdir_calls
+
+                # parent directories are created before children
+                if dir.parent != target_directory:
+                    assert (mkdir_calls.index(call(dir.parent)) <
+                            mkdir_calls.index(call(dir)))
+            else:
+                # the target (and any parents) aren't created
+                assert call(dir) not in mkdir_calls
+
+
+@pytest.mark.parametrize('invalid_dest, msg', [
+    ['abc/../foo',
+     'get_dest_path returned a path with a ".." segment: abc/../foo'],
+    ['/abc', 'get_dest_path returned an absolute path: /abc'],
+    ['', 'get_dest_path returned an empty path'],
+])
+def test_create_tile_layout_rejects_invalid_dest_paths(invalid_dest, msg):
+    with pytest.raises(ValueError) as exc_info:
+        create_tile_layout(tiles=[{}],
+                           get_tile_path=lambda t: PurePath('src'),
+                           get_dest_path=lambda t: PurePath(invalid_dest),
+                           create_file=lambda s, d: None,
+                           target_directory=PurePath('target'))
+
+    assert str(exc_info.value) == msg
+
+
+@pytest.mark.usefixtures('mock_ensure_dir_exists')
+@given(dzi_meta=dzi_metadata(
+    widths=sampled_from([42, 800, 7920]),
+    heights=sampled_from([38, 600, 9800]),
+    tile_sizes=sampled_from([100, 256])
+))
+@settings(max_examples=10, deadline=2000)
+def test_create_dzi_tile_layout(dzi_meta):
+    def get_dest_path(tile):
+        return PurePath(f'dest/tile-{tile_key(tile)}/bar/file.jpg')
+
+    create_file_calls = Counter()
+
+    def create_file(src, dst):
+        create_file_calls[(src, dst)] += 1
+
+    width, height, tile_size = [dzi_meta[p] for p in
+                                ['width', 'height', 'tile_size']]
+    dzi_path = PurePath('/some/where/foo.dzi')
+    target_directory = PurePath('target/dir')
+
+    scale_factors = iiif_image_metadata_with_pow2_tiles(
+        width=width, height=height, tile_size=tile_size
+    )['tiles'][0]['scaleFactors']
+
+    expected_tiles = (
+        tile
+        for scale_factor in scale_factors
+        for tile in get_layer_tiles(
+            width=width, height=height, tile_size=tile_size,
+            scale_factor=scale_factor)
+    )
+
+    with patch('tilediiif.tilelayout.create_tile_layout',
+               new=Mock(wraps=create_tile_layout)) as mock_create_tile_layout:
+        create_dzi_tile_layout(
+            dzi_path=dzi_path, dzi_meta=dzi_meta, get_dest_path=get_dest_path,
+            create_file=create_file, target_directory=target_directory)
+    mock_create_tile_layout.assert_called_once()
+
+    i = -1
+    for i, tile in enumerate(expected_tiles):
+        tile_path = get_dzi_tile_path(
+            tile, dzi_meta=dzi_meta,
+            dzi_files_path=PurePath('/some/where/foo_files'))
+
+        assert (create_file_calls[(PurePath(tile_path),
+                                  target_directory / get_dest_path(tile))] ==
+                1)
+    tile_count = i + 1
+    assert len(create_file_calls) == tile_count
+
+
+def tile_key(tile):
+    return json.dumps(tile, sort_keys=True, indent=None,
+                      separators=(',', ':'))
+
+
+@pytest.yield_fixture()
+def mock_create_dzi_tile_layout():
+    with patch('tilediiif.tilelayout.create_dzi_tile_layout') as mock:
+        yield mock
+
+
+@pytest.fixture
+def dummy_run(mock_create_dzi_tile_layout):
+    def dummy_run(args):
+        run(args)
+        mock_create_dzi_tile_layout.assert_called_once()
+        _, kwargs = mock_create_dzi_tile_layout.call_args
+        return kwargs
+    return dummy_run
+
+
+@pytest.yield_fixture()
+def tidied_tmp_path(tmp_path):
+    with TemporaryDirectory(dir=tmp_path) as path:
+        path = Path(path)
+        path.rmdir()
+        yield path
+
+
+@pytest.fixture
+def dummy_run_with_defaults(dummy_run, tidied_tmp_path, dzi_ms_add_path):
+    def dummy_run_with_defaults(args=None):
+        args = {
+            '<dzi-file>': str(dzi_ms_add_path),
+            '<dest-directory>': str(tidied_tmp_path),
+            **({} if args is None else args)
+        }
+        return dummy_run(args)
+    return dummy_run_with_defaults
+
+
+def test_run_uses_supplied_paths(dummy_run_with_defaults, tidied_tmp_path,
+                                 dzi_ms_add_path, dzi_ms_add_meta):
+    kwargs = dummy_run_with_defaults()
+
+    assert kwargs['dzi_path'] == dzi_ms_add_path
+    assert kwargs['dzi_meta'] == dzi_ms_add_meta
+    assert kwargs['target_directory'] == tidied_tmp_path
+
+
+@pytest.mark.parametrize('args, expected', [
+    [{}, create_file_methods[DEFAULT_FILE_METHOD]],
+    [{'--file-creation-method': 'copy'}, create_file_methods['copy']],
+    [{'--file-creation-method': 'symlink'}, create_file_methods['symlink']],
+    [{'--file-creation-method': 'hardlink'}, create_file_methods['hardlink']]
+])
+def test_run_option_file_creation_method(args, expected,
+                                         dummy_run_with_defaults):
+    kwargs = dummy_run_with_defaults(args)
+    assert kwargs['create_file'] == expected
+
+
+@given(tile=tiles())
+def test_run_option_tile_path_template(subtest, tile):
+    # Need to use the @subtest hack when combining hypothesis with
+    # function-level fixtures.
+    @subtest
+    def test_inner(dummy_run_with_defaults):
+        kwargs = dummy_run_with_defaults({
+            '--tile-path-template': 'foo/{region.x}'
+        })
+        assert (kwargs['get_dest_path'](tile) ==
+                Path(f"foo/{tile['src']['x']}"))
+
+
+@given(tile=tiles())
+def test_run_option_tile_path_template_default(subtest, tile):
+    @subtest
+    def test_inner(dummy_run_with_defaults):
+        kwargs = dummy_run_with_defaults()
+        path = str(kwargs['get_dest_path'](tile))
+        assert (path ==
+                parse_template(DEFAULT_FILE_PATH_TEMPLATE)
+                .render(get_template_bindings(tile)))
+        assert len(path) > 0
+
+
+def test_run_option_allow_existing_dest(dummy_run_with_defaults,
+                                        tidied_tmp_path):
+    tidied_tmp_path.mkdir()
+    kwargs = dummy_run_with_defaults({'--allow-existing-dest': True})
+    assert kwargs['target_directory'] == tidied_tmp_path

@@ -4,8 +4,7 @@ from pathlib import Path
 import pytest
 from hypothesis import assume, given
 from hypothesis.strategies import (
-    builds, characters, fixed_dictionaries,
-    integers, sampled_from, text)
+    builds, characters, composite, integers, sampled_from, text)
 
 from tilediiif.dzi import get_dzi_tile_path, parse_dzi_file
 from tilediiif.tilelayout import get_layer_tiles
@@ -22,10 +21,15 @@ def dzi_ms_add_file(dzi_ms_add_path):
         yield f
 
 
-def test_parse_dzi_file(dzi_ms_add_file):
-    assert parse_dzi_file(dzi_ms_add_file) == dict(
+@pytest.fixture
+def dzi_ms_add_meta():
+    return dict(
         width=6365, height=9841, format='jpg', overlap=1, tile_size=256
     )
+
+
+def test_parse_dzi_file(dzi_ms_add_file, dzi_ms_add_meta):
+    assert parse_dzi_file(dzi_ms_add_file) == dzi_ms_add_meta
 
 
 path_segments = text(alphabet=characters(blacklist_categories=('Cs', ),
@@ -35,16 +39,25 @@ fs_paths = builds(lambda prefix, elements: Path(prefix) / Path(*elements),
                   sampled_from(['/', './']), path_segments)
 
 positive_non_zero_integers = integers(min_value=1)
-dzi_metadata = fixed_dictionaries({
-    'width': sampled_from([43, 800, 1024, 4096, 9631, 100_000]),
-    'height': sampled_from([12, 600, 1024, 4096, 6247, 100_000]),
-    'tile_size': sampled_from([100, 256, 1024]),
-    'format': sampled_from(['jpg', 'png']),
-    'overlap': sampled_from([1, 0])
-})
 
 
-@given(dzi_path=fs_paths, dzi_metadata=dzi_metadata,
+@composite
+def dzi_metadata(draw,
+                 widths=sampled_from([43, 800, 1024, 4096, 9631, 100_000]),
+                 heights=sampled_from([12, 600, 1024, 4096, 6247, 100_000]),
+                 tile_sizes=sampled_from([100, 256, 1024]),
+                 formats=sampled_from(['jpg', 'png']),
+                 overlaps=sampled_from([1, 0])):
+    return {
+        'width': draw(widths),
+        'height': draw(heights),
+        'tile_size': draw(tile_sizes),
+        'format': draw(formats),
+        'overlap': draw(overlaps)
+    }
+
+
+@given(dzi_path=fs_paths, dzi_metadata=dzi_metadata(),
        layer=integers(min_value=0, max_value=15),
        tile_num=integers(min_value=0))
 def test_get_dzi_tile_path(dzi_path, dzi_metadata, layer, tile_num):
@@ -64,7 +77,8 @@ def test_get_dzi_tile_path(dzi_path, dzi_metadata, layer, tile_num):
     tile = tiles[tile_num % len(tiles)]
 
     x, y = [tile['index'][k] for k in ['x', 'y']]
-    path = get_dzi_tile_path(dzi_path, dzi_metadata, tile)
+    path = get_dzi_tile_path(tile, dzi_files_path=dzi_path,
+                             dzi_meta=dzi_metadata)
 
     assert isinstance(path, Path)
     assert path == dzi_path / f'{dzi_level}' / f'{x}_{y}.{format}'

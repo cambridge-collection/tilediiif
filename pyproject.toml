@@ -15,9 +15,12 @@ toml = "^0.10.0"
 tox = "^3.14"
 flake8 = "^3.7"
 flake8-import-order = "^0.18.1"
-
+yappi = "^1.0"
+pytest-subtesthack = "^0.1.1"
+ipython = "^7.8"
 [tool.poetry.scripts]
 infojson = 'tilediiif.infojson:main'
+iiif-tiles = 'tilediiif.tilelayout:main'
 
 [tool.tox]
 legacy_tox_ini = """

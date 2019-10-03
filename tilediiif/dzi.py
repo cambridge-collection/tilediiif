@@ -60,7 +60,7 @@ def _get_attrib_as_int(el, name, err_cls=ValueError):
         raise err_cls(f'{el.tag}@{name} is not an integer: {value}')
 
 
-def get_dzi_tile_path(dzi_files_path, dzi_meta, tile):
+def get_dzi_tile_path(tile, *, dzi_files_path, dzi_meta):
     width, height = dzi_meta['width'], dzi_meta['height']
     scale_factor = tile['scale_factor']
     require_positive_non_zero_int(**{"dzi_meta['width']": width,
