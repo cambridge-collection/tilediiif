@@ -28,10 +28,12 @@ Options:
 
 """
 import math
+import os
 import re
+import shutil
 from functools import partial, reduce
-from typing import Dict
 from pathlib import Path
+from typing import Dict
 
 from tilediiif.validation import require_positive_non_zero_int
 
@@ -216,3 +218,22 @@ def get_templated_dest_path(template: Template, tile, *,
         raise InvalidPath(f'generated path contains a ".." segment: {path}')
 
     return path
+
+
+def create_file_via_copy(src: Path, dest: Path):
+    return shutil.copyfile(str(src), str(dest), follow_symlinks=True)
+
+
+def create_file_via_hardlink(src: Path, dest: Path):
+    os.link(str(src), str(dest))
+
+
+def create_file_via_symlink(src: Path, dest: Path):
+    os.symlink(str(src), str(dest))
+
+
+create_file_methods = {
+    'copy': create_file_via_copy,
+    'hardlink': create_file_via_hardlink,
+    'symlink': create_file_via_symlink
+}

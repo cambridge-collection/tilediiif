@@ -1,6 +1,7 @@
 import math
 from functools import partial
 from pathlib import Path
+from collections import abc
 
 import pytest
 from hypothesis import given, assume, settings, example
@@ -10,7 +11,7 @@ from hypothesis.strategies import (
 from test_tilediiif.test_infojson import image_dimensions
 from tilediiif.tilelayout import (
     get_layer_tiles, parse_template, Template, get_template_bindings,
-    get_templated_dest_path, InvalidPath)
+    get_templated_dest_path, InvalidPath, create_file_methods)
 
 ints_over_zero = integers(min_value=1)
 
@@ -257,3 +258,51 @@ def test_get_templated_dest_path():
 
     assert isinstance(path, Path)
     assert str(path) == 'foo/50,50-200,200,100,100.png'
+
+
+def test_create_file_methods():
+    methods = {'copy', 'hardlink', 'symlink'}
+    assert create_file_methods.keys() == methods
+    for method in methods:
+        assert isinstance(create_file_methods[method], abc.Callable)
+
+
+@pytest.fixture()
+def src_content():
+    return 'content'
+
+
+@pytest.fixture()
+def src_path(tmp_path, src_content):
+    src = tmp_path / 'foo/example'
+    src.parent.mkdir()
+    src.write_text(src_content)
+    return src
+
+
+@pytest.fixture()
+def dst_path(tmp_path):
+    dst = tmp_path / 'bar/example'
+    dst.parent.mkdir()
+    return dst
+
+
+@pytest.mark.parametrize('method, is_symlink, src_affected_by_dst', [
+    ['copy', False, False],
+    ['symlink', True, True],
+    ['hardlink', False, True],
+])
+def test_create_file_copy(src_path: Path, src_content: str, dst_path: Path,
+                          method: str, is_symlink: bool,
+                          src_affected_by_dst: bool):
+    create_file = create_file_methods[method]
+    create_file(src_path, dst_path)
+
+    assert dst_path.read_text() == 'content'
+    assert dst_path.is_file()
+    assert dst_path.is_symlink() == is_symlink
+
+    # Check if src is affected by changes to dst
+    dst_path.write_text(src_content + ' changed')
+    src_has_changed = src_path.read_text() != src_content
+    assert src_has_changed == src_affected_by_dst
