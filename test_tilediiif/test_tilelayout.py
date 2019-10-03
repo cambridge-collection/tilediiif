@@ -1,7 +1,7 @@
 import math
 
 import pytest
-from hypothesis import given, assume
+from hypothesis import given, assume, example
 from hypothesis.strategies import (
     builds, one_of, from_regex, text, composite, integers)
 
@@ -124,12 +124,42 @@ def populated_templates(draw, templates=templates, placeholder_values=text()):
 
 
 @given(templates)
+@example({
+    'segments': [{'type': 'literal', 'raw': '\\', 'value': '\\\\'},
+                 {'type': 'placeholder', 'name': '0', 'value': '{0}'}],
+    'value': '\\\\{0}'
+})
 def test_parse_template(template):
     compiled = parse_template(template['value'])
     assert isinstance(compiled, Template)
     assert len(compiled.chunks) == len(template['segments'])
     assert compiled.var_names == {seg['name'] for seg in template['segments']
                                   if seg['type'] == 'placeholder'}
+
+
+@pytest.mark.parametrize('template, msg', [
+    ['\\x', '''\
+Invalid escape sequence at offset 0:
+    \\x
+    ^'''],
+    ['foo\\x', '''\
+Invalid escape sequence at offset 3:
+    foo\\x
+       ^'''],
+    ['abc{', '''\
+Invalid placeholder at offset 3:
+    abc{
+       ^'''],
+    ['abc{foo$bar}', '''\
+Invalid placeholder at offset 3:
+    abc{foo$bar}
+       ^'''],
+])
+def test_parse_template_rejects_invalid_templates(template, msg):
+    with pytest.raises(ValueError) as exc_info:
+        parse_template(template)
+
+    assert msg == str(exc_info.value)
 
 
 @given(populated_templates())

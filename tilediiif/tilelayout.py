@@ -29,7 +29,7 @@ Options:
 """
 import math
 import re
-from functools import partial
+from functools import partial, reduce
 from typing import Dict
 
 from tilediiif.validation import require_positive_non_zero_int
@@ -104,7 +104,18 @@ def get_layer_tiles(*, width, height, tile_size, scale_factor):
             }
 
 
-template_chunk = re.compile(r'({(?![\w.]+}))|{([\w.]+)}|((?:\\{|[^{])+)')
+template_chunk = re.compile(r'''
+# Placeholders with invalid contents or not terminated
+(?P<invalid_placeholder>{(?![\w.]+}))|
+# Valid placeholders
+{(?P<placeholder>[\w.]+)}|
+# Escape sequences
+(?P<escape>\\[{\\])|
+# Invalid escape sequences
+(?P<invalid_escape>\\.)|
+# Unescaped literal text
+(?P<unescaped>[^{\\]+)
+''', re.VERBOSE)
 
 
 def render_placeholder(name, bindings):
@@ -136,27 +147,33 @@ are missing from bound values: {bindings}')
 
 
 def parse_template(template):
-    offset = 0
-    chunks = []
-    var_names = set()
-    while offset < len(template):
-        # The regex should never fail to match
-        match = template_chunk.match(template[offset:])
-        assert match
-        offset += match.end()
-        invalid, placeholder, literal = match.groups()
+    def append_segment(segments, offset=None, invalid_placeholder=None,
+                       placeholder=None, escape=None, invalid_escape=None,
+                       unescaped=None):
+        assert sum(bool(x) for x in [invalid_placeholder, placeholder, escape,
+                                     invalid_escape, unescaped]) == 1
 
-        if invalid:
+        if invalid_placeholder or invalid_escape:
+            thing = 'placeholder' if invalid_placeholder else 'escape sequence'
             raise ValueError(f'''\
-Invalid placeholder at offset {offset}:
+Invalid {thing} at offset {offset}:
     {template}
     {' ' * offset}^''')
         elif placeholder:
-            var_names.add(placeholder)
-            chunks.append(partial(render_placeholder, placeholder))
-        else:
-            assert literal
-            unescaped = literal.replace(r'\{', '{').replace('\\\\', '\\')
-            chunks.append(partial(render_literal, unescaped))
+            return segments + (('placeholder', placeholder),)
 
+        literal = unescaped if unescaped else escape[1]
+        # Merge consecutive literals
+        if segments and segments[-1][0] == 'literal':
+            return segments[:-1] + (('literal', segments[-1][1] + literal),)
+        return segments + (('literal', literal),)
+
+    segments = reduce(
+        lambda segments, match: append_segment(segments, offset=match.start(),
+                                               **match.groupdict()),
+        template_chunk.finditer(template), ())
+
+    chunks = (partial(render_placeholder, value) if type == 'placeholder' else
+              partial(render_literal, value) for (type, value) in segments)
+    var_names = (value for (type, value) in segments if type == 'placeholder')
     return Template(chunks, var_names)
