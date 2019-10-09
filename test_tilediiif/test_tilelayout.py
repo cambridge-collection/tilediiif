@@ -91,7 +91,7 @@ def test_get_layer_tiles(width, height, tile_size, scale_factor):
             if is_last_y and has_trailing_y else tile_size)
 
 
-placeholder_names = from_regex(r'\A[\w.]+\Z')
+placeholder_names = from_regex(r'\A[\w.-]+\Z')
 placeholder_segments = builds(
     lambda name: {'type': 'placeholder', 'name': name, 'value': f'{{{name}}}'},
     placeholder_names)

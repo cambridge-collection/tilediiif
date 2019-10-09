@@ -159,9 +159,9 @@ def get_layer_tiles(*, width, height, tile_size, scale_factor):
 
 template_chunk = re.compile(r'''
 # Placeholders with invalid contents or not terminated
-(?P<invalid_placeholder>{(?![\w.]+}))|
+(?P<invalid_placeholder>{(?![\w.-]+}))|
 # Valid placeholders
-{(?P<placeholder>[\w.]+)}|
+{(?P<placeholder>[\w.-]+)}|
 # Escape sequences
 (?P<escape>\\[{\\])|
 # Invalid escape sequences
