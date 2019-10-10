@@ -157,6 +157,10 @@ def get_layer_tiles(*, width, height, tile_size, scale_factor):
             }
 
 
+class TemplateError(ValueError):
+    pass
+
+
 template_chunk = re.compile(r'''
 # Placeholders with invalid contents or not terminated
 (?P<invalid_placeholder>{(?![\w.-]+}))|
@@ -174,7 +178,7 @@ template_chunk = re.compile(r'''
 def render_placeholder(name, bindings):
     value = bindings.get(name)
     if not isinstance(value, str):
-        raise ValueError(f'\
+        raise TemplateError(f'\
 No value for {name!r} exists in bound values: {bindings}')
     return value
 
@@ -192,7 +196,7 @@ class Template:
         if bindings.keys() < self.var_names:
             missing = ', '.join(f'{v!r}'
                                 for v in self.var_names - bindings.keys())
-            raise ValueError(f'\
+            raise TemplateError(f'\
 Variables for placeholders {missing} \
 are missing from bound values: {bindings}')
 
@@ -208,7 +212,7 @@ def parse_template(template):
 
         if invalid_placeholder or invalid_escape:
             thing = 'placeholder' if invalid_placeholder else 'escape sequence'
-            raise ValueError(f'''\
+            raise TemplateError(f'''\
 Invalid {thing} at offset {offset}:
     {template}
     {' ' * offset}^''')

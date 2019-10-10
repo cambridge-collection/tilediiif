@@ -19,9 +19,9 @@ from tilediiif.dzi import get_dzi_tile_path
 from tilediiif.infojson import iiif_image_metadata_with_pow2_tiles
 from tilediiif.tilelayout import (
     _ensure_dir_exists, create_dzi_tile_layout, create_file_methods,
-    create_tile_layout, DEFAULT_FILE_METHOD, get_layer_tiles,
-    get_template_bindings, get_templated_dest_path, InvalidPath,
-    parse_template, run, Template, DEFAULT_FILE_PATH_TEMPLATE)
+    create_tile_layout, DEFAULT_FILE_METHOD, DEFAULT_FILE_PATH_TEMPLATE,
+    get_layer_tiles, get_template_bindings, get_templated_dest_path,
+    InvalidPath, parse_template, run, Template)
 
 dzi_ms_add_path = test_dzi.dzi_ms_add_path
 dzi_ms_add_meta = test_dzi.dzi_ms_add_meta

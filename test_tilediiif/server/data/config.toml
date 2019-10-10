@@ -1,0 +1,8 @@
+[tilediiif.server]
+file-transmission = "indirect"
+data-path = "/var/my-images"
+image-path-template = "foo-{identifier-shard}/{identifier}/{image-shard}/{region}-{size}-{rotation}-{quality}.{format}"
+info-json-path-template = "foo-{identifier-shard}/{identifier}/info.json"
+
+[tilediiif.server.indirect-file-transmission]
+sendfile-header-name = "X-File"

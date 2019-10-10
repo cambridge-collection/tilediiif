@@ -6,7 +6,7 @@ pipelines:
             name: Unit test
             script:
               - pip install poetry
-              - poetry install
+              - poetry install --extras server
               - poetry run pytest --junitxml=test-results/unit-test-results.xml tilediiif test_tilediiif
             caches:
               - pip

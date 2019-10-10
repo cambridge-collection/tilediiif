@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "definitions": {
+    "server-config": {
+      "type": "object",
+      "properties": {
+        "data-path": { "type": "string" },
+        "file-transmission": {
+          "enum": [
+            "direct",
+            "indirect"
+          ]
+        },
+        "image-path-template": { "type": "string" },
+        "info-json-path-template": { "type": "string" },
+        "indirect-file-transmission": {
+          "$ref": "#/definitions/indirect-file-transmission"
+        }
+      },
+      "additionalProperties": false
+    },
+    "indirect-file-transmission": {
+      "type": "object",
+      "properties": {
+        "sendfile-header-name": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "tilediiif": {
+      "type": "object",
+      "properties": {
+        "server": {"$ref": "#/definitions/server-config"}
+      },
+      "required": ["server"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["tilediiif"],
+  "additionalProperties": false
+}
