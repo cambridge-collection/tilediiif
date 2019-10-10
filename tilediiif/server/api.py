@@ -4,12 +4,11 @@ from pathlib import Path
 import falcon
 
 from .config import Config, ConfigError, FileTransmissionType
-from .logic import (
-    get_info_json_path_renderer)
+from .logic import (get_image_path_renderer, get_info_json_path_renderer)
 from .resources import (
-    DirectFileTransmitter, IIIFImageMetadataResource,
+    DirectFileTransmitter, IIIFImageMetadataResource, IIIFImageResource,
     IndirectFileTransmitter)
-from .uris import IIIF_IMAGE_INFO, IIIF_IMAGE_INFO_BASE
+from .uris import IIIF_IMAGE, IIIF_IMAGE_INFO, IIIF_IMAGE_INFO_BASE
 from ..tilelayout import TemplateError
 
 CONFIG_PATH_ENVAR = 'TILEDIIIF_SERVER_CONFIG'
@@ -22,6 +21,8 @@ def get_api(config: Config = None):
             config = Config.from_toml_file(config_path)
         else:
             config = Config()
+
+        config = config.merged_with(Config.from_environ())
     api = falcon.API()
 
     return _populate_routes(api, config)
@@ -45,5 +46,15 @@ def _populate_routes(api, config: Config):
         get_info_json_path=get_info_json_path)
     api.add_route(IIIF_IMAGE_INFO, image_metadata)
     api.add_route(IIIF_IMAGE_INFO_BASE, image_metadata, suffix='base')
+
+    try:
+        get_image_path = get_image_path_renderer(base_path,
+                                                 config.image_path_template)
+    except TemplateError as e:
+        raise ConfigError(f'image-path-template is invalid: {e}') from e
+
+    image = IIIFImageResource(transmit_file=transmit_file,
+                              get_image_path=get_image_path)
+    api.add_route(IIIF_IMAGE, image)
 
     return api

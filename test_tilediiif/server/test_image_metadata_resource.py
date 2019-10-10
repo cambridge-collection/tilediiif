@@ -1,42 +1,12 @@
 from pathlib import Path
-import logging
-from unittest.mock import patch
 
 import falcon
 import pytest
 from falcon import testing
 
-from tilediiif.server.api import get_api
 from tilediiif.server.config import Config, FileTransmissionType
 
 TEST_DIR = Path(__file__).parent
-
-
-@pytest.fixture
-def config():
-    return Config()
-
-
-@pytest.fixture
-def client(config):
-    return testing.TestClient(get_api(config))
-
-
-@pytest.fixture
-def logger():
-    return logging.getLogger('tilediiif.server.resources')
-
-
-@pytest.yield_fixture
-def mock_logger_warn(logger):
-    with patch.object(logger, 'warn') as mock:
-        yield mock
-
-
-@pytest.yield_fixture
-def mock_logger_exception(logger):
-    with patch.object(logger, 'exception') as mock:
-        yield mock
 
 
 @pytest.mark.parametrize('url', ['/foo', '/foo/'])
@@ -45,6 +15,7 @@ def test_image_resource_base_redirects_to_info_json(
     result: testing.Result = client.simulate_get(url)
     assert result.status == falcon.HTTP_SEE_OTHER
     assert result.headers['location'] == '/foo/info.json'
+    assert result.headers['Access-Control-Allow-Origin'] == '*'
 
 
 @pytest.mark.parametrize('config, sendfile_header_name, info_json_path', [
@@ -69,6 +40,7 @@ def test_image_info_resource_returns_sendfile_header_to_image(
         client, sendfile_header_name, info_json_path):
     result = client.simulate_get('/foo/info.json')
     assert result.status == falcon.HTTP_OK
+    assert result.headers['Access-Control-Allow-Origin'] == '*'
     assert result.headers[sendfile_header_name] == info_json_path
 
 
@@ -79,6 +51,7 @@ def test_image_info_resource_returns_sendfile_header_to_image(
 def test_direct_transmission_type_responds_with_file_content(client):
     result = client.simulate_get('/foo/info.json')
     assert result.status == falcon.HTTP_OK
+    assert result.headers['Access-Control-Allow-Origin'] == '*'
     assert result.content == b'example content\n'
 
 
@@ -89,6 +62,7 @@ def test_direct_transmission_type_responds_with_file_content(client):
 def test_direct_transmission_type_responds_with_404_for_missing_file(client):
     result = client.simulate_get('/foo/info.json')
     assert result.status == falcon.HTTP_NOT_FOUND
+    assert result.headers['Access-Control-Allow-Origin'] == '*'
 
 
 @pytest.mark.parametrize('config', [
@@ -99,9 +73,10 @@ def test_direct_transmission_type_responds_with_500_for_failed_file_read(
         client, mock_logger_exception):
     result = client.simulate_get('/foo/info.json')
     assert result.status == falcon.HTTP_INTERNAL_SERVER_ERROR
+    assert result.headers['Access-Control-Allow-Origin'] == '*'
     mock_logger_exception.assert_called_once()
     log_args = mock_logger_exception.mock_calls[0][1]
-    assert log_args == ('failed to open file: %s', str(TEST_DIR / 'data'))
+    assert log_args == ('failed to open file: %s', TEST_DIR / 'data')
 
 
 def test_encoded_slashes_in_paths_are_decoded_before_route_matching(client):
@@ -120,15 +95,16 @@ def test_encoded_slashes_in_paths_are_decoded_before_route_matching(client):
     Config(info_json_path_template='.{identifier}/info.json')
 ])
 def test_requests_resolving_to_parent_paths_are_rejected(
-        client, mock_logger_warn):
+        client, mock_logger_warning):
     # This has to be a little contrived because of path slashes being decoded.
     # "." as an identifier becomes ".." when rendered in the template above,
     # which results in the path being rejected.
     result = client.simulate_get('/./info.json')
     assert result.status == falcon.HTTP_BAD_REQUEST
+    assert result.headers['Access-Control-Allow-Origin'] == '*'
 
-    mock_logger_warn.assert_called_once()
-    log_args = mock_logger_warn.mock_calls[0][1]
+    mock_logger_warning.assert_called_once()
+    log_args = mock_logger_warning.mock_calls[0][1]
     assert log_args[0:2] == (
         'rejected info.json request for invalid path; '
         'identifier=%r, cause: %s', '.')
