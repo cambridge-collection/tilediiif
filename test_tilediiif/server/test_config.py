@@ -27,6 +27,18 @@ def config_toml_expected_config():
     )
 
 
+def test_config_creation_from_kwargs(config_toml_expected_config):
+    c = config_toml_expected_config
+    assert c.sendfile_header_name == 'X-File'
+    assert c.data_path == '/var/my-images'
+    assert c.file_transmission == FileTransmissionType.INDIRECT
+    assert c.image_path_template == (
+        'foo-{identifier-shard}/{identifier}/'
+        '{image-shard}/{region}-{size}-{rotation}-{quality}.{format}')
+    assert c.info_json_path_template == (
+        'foo-{identifier-shard}/{identifier}/info.json')
+
+
 def test_config_from_toml_file(config_toml_path, config_toml_expected_config):
     assert (Config.from_toml_file(config_toml_path) ==
             config_toml_expected_config)
