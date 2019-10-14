@@ -155,8 +155,9 @@ class CLIError(Exception):
 
 
 def main(argv=None):
+    args = docopt.docopt(__doc__, argv=argv, version=__version__)
     try:
-        _main(sys.argv if argv is None else argv)
+        run(args)
     except CLIError as e:
         print(f'Error: {e.msg}', file=sys.stderr)
         exit(e.exit_status)
@@ -184,9 +185,7 @@ def validate_id_url(identifier):
         raise ValueError(f'invalid @id URL: {msg}') from e
 
 
-def _main(argv):
-    args = docopt.docopt(__doc__, version=__version__)
-
+def run(args):
     if args['<dzi-file>'] == '-':
         input = sys.stdin.buffer
     else:
