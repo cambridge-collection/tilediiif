@@ -24,8 +24,11 @@ from tilediiif.tilelayout import (
     get_layer_tiles, get_template_bindings, get_templated_dest_path,
     InvalidPath, parse_template, run, Template)
 
+DATA_DIR = Path(__file__).parent / 'data'
+
 dzi_ms_add_path = test_dzi.dzi_ms_add_path
 dzi_ms_add_meta = test_dzi.dzi_ms_add_meta
+
 
 ints_over_zero = integers(min_value=1)
 
@@ -471,6 +474,10 @@ def tidied_tmp_path(tmp_path):
         path.rmdir()
         yield path
 
+        # TemporaryDirectory expects the dir to exist when cleaning up...
+        if not path.exists():
+            path.mkdir()
+
 
 @pytest.fixture
 def dummy_run_with_defaults(dummy_run, tidied_tmp_path, dzi_ms_add_path):
@@ -528,6 +535,25 @@ def test_run_option_tile_path_template_default(subtest, tile):
                 parse_template(DEFAULT_FILE_PATH_TEMPLATE)
                 .render(get_template_bindings(tile)))
         assert len(path) > 0
+
+
+@given(tile=tiles())
+@pytest.mark.parametrize('dzi_file, tile_extension', [
+    [DATA_DIR / 'MS-ADD-00269-000-01075.dzi', 'jpg'],
+    [DATA_DIR / 'MS-ADD-00269-000-01075_with-png-format.dzi', 'png'],
+    # jpeg format is normalised to jpg
+    [DATA_DIR / 'jpeg-format.dzi', 'jpg']
+])
+def test_tiles_use_format_from_dzi(subtest, tile, dzi_file, tile_extension):
+    @subtest
+    def test_inner(dummy_run_with_defaults):
+        kwargs = dummy_run_with_defaults(args={
+            '<dzi-file>': str(dzi_file)
+        })
+        path = str(kwargs['get_dest_path'](tile))
+        assert (path ==
+                parse_template(DEFAULT_FILE_PATH_TEMPLATE)
+                .render(get_template_bindings(tile, format=tile_extension)))
 
 
 def test_run_option_allow_existing_dest(dummy_run_with_defaults,

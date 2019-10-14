@@ -368,6 +368,14 @@ def create_dzi_tile_layout(*, dzi_path, dzi_meta, get_dest_path, create_file,
                        target_directory=target_directory)
 
 
+def normalise_output_format(format):
+    # The default format for IIIF Image level 0 is 'jpg', so we should always
+    # use the jpg extension, not jpeg.
+    if format == 'jpeg':
+        return 'jpg'
+    return format
+
+
 def run(args):
     # Drop None-valued args to make default handling less verbose
     args = {k: v for (k, v) in args.items() if v is not None}
@@ -419,8 +427,9 @@ Possible values are {", ".join(sorted(create_file_methods.keys()))}')
     # Create output paths by rendering the provided template.
     get_dest_path = partial(
         get_templated_dest_path, template,
-        bindings_for_tile=partial(get_template_bindings,
-                                  format=dzi_meta['format']))
+        bindings_for_tile=partial(
+            get_template_bindings,
+            format=normalise_output_format(dzi_meta['format'])))
 
     try:
         dest_dir.mkdir(parents=True, exist_ok=True)
