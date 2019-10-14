@@ -16,7 +16,8 @@ from test_tilediiif import test_dzi
 from test_tilediiif.test_dzi import dzi_metadata
 from test_tilediiif.test_infojson import image_dimensions
 from tilediiif.dzi import get_dzi_tile_path
-from tilediiif.infojson import iiif_image_metadata_with_pow2_tiles
+from tilediiif.infojson import (
+    power2_image_pyramid_scale_factors)
 from tilediiif.tilelayout import (
     _ensure_dir_exists, create_dzi_tile_layout, create_file_methods,
     create_tile_layout, DEFAULT_FILE_METHOD, DEFAULT_FILE_PATH_TEMPLATE,
@@ -410,9 +411,9 @@ def test_create_dzi_tile_layout(dzi_meta):
     dzi_path = PurePath('/some/where/foo.dzi')
     target_directory = PurePath('target/dir')
 
-    scale_factors = iiif_image_metadata_with_pow2_tiles(
+    scale_factors = power2_image_pyramid_scale_factors(
         width=width, height=height, tile_size=tile_size
-    )['tiles'][0]['scaleFactors']
+    )
 
     expected_tiles = (
         tile

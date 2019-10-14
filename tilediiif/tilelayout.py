@@ -10,7 +10,8 @@ from typing import Dict
 from docopt import docopt
 
 from tilediiif.dzi import get_dzi_tile_path, parse_dzi_file
-from tilediiif.infojson import iiif_image_metadata_with_pow2_tiles
+from tilediiif.infojson import (
+    power2_image_pyramid_scale_factors)
 from tilediiif.validation import require_positive_non_zero_int
 from tilediiif.version import __version__
 
@@ -341,23 +342,18 @@ get_dest_path returned an absolute path: {relative_dest_path}')
 
 def create_dzi_tile_layout(*, dzi_path, dzi_meta, get_dest_path, create_file,
                            target_directory):
-    info_json = iiif_image_metadata_with_pow2_tiles(
-        width=dzi_meta['width'], height=dzi_meta['height'],
-        tile_size=dzi_meta['tile_size'])
-
-    # image metadata created from a DZI always has just one set of tiles
-    assert isinstance(info_json.get('tiles'), list)
-    assert len(info_json['tiles']) == 1
-    tile_spec, = info_json['tiles']
-    assert tile_spec['width'] == dzi_meta['tile_size']
-    assert tile_spec.get('height') in (None, dzi_meta['tile_size'])
+    width = dzi_meta['width']
+    height = dzi_meta['height']
+    tile_size = dzi_meta['tile_size']
+    scale_factors = power2_image_pyramid_scale_factors(
+        width=width, height=height, tile_size=tile_size)
 
     all_tiles = (
         tile
-        for scale_factor in tile_spec['scaleFactors']
+        for scale_factor in scale_factors
         for tile in get_layer_tiles(
-            width=info_json['width'], height=info_json['height'],
-            tile_size=tile_spec['width'], scale_factor=scale_factor)
+            width=width, height=height,
+            tile_size=tile_size, scale_factor=scale_factor)
     )
 
     if dzi_path.name[-4:].lower() != '.dzi':
