@@ -6,7 +6,17 @@ exclude =
     __pycache__
     .pytest_cache
     dist
-application-import-names =
-    tilediiif
-    test_tilediiif
-import-order-style = edited
+# black formats to 88 chars length by default
+max-line-length = 88
+ignore =
+    # line length - disable as flake8-bugbear has an equivalent rule, which
+    # defaults to 88 - black's line length.
+    E501
+    # line break before binary operator - black does this intentionally, and
+    # apparently the default is about to change to prefer breaking before...
+    W503
+    # white space before : - black uses ws in slices
+    E203
+    # don't perform function calls in argument defaults - we do this a lot with
+    # hypothesis.
+    B008

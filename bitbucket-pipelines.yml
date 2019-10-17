@@ -20,7 +20,10 @@ pipelines:
         - step:
             name: Lint
             script:
-              - pip install flake8
+              - pip install flake8 black
+              - >
+                black --check tilediiif test_tilediiif integration_test || \
+                  echo "Error: Python code has not been formatted - run 'make format-python'"
               - flake8
             caches:
               - pip
