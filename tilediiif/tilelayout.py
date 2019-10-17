@@ -1,17 +1,19 @@
 import math
 import os
-import re
 import shutil
 import sys
-from functools import lru_cache, partial, reduce
+from functools import partial
 from pathlib import Path
-from typing import Dict
 
 from docopt import docopt
 
 from tilediiif.dzi import get_dzi_tile_path, parse_dzi_file
+from tilediiif.filesystem import (
+    ensure_sub_directories_exist,
+    validate_relative_path)
 from tilediiif.infojson import (
     power2_image_pyramid_scale_factors)
+from tilediiif.templates import parse_template, Template
 from tilediiif.validation import require_positive_non_zero_int
 from tilediiif.version import __version__
 
@@ -158,85 +160,6 @@ def get_layer_tiles(*, width, height, tile_size, scale_factor):
             }
 
 
-class TemplateError(ValueError):
-    pass
-
-
-template_chunk = re.compile(r'''
-# Placeholders with invalid contents or not terminated
-(?P<invalid_placeholder>{(?![\w.-]+}))|
-# Valid placeholders
-{(?P<placeholder>[\w.-]+)}|
-# Escape sequences
-(?P<escape>\\[{\\])|
-# Invalid escape sequences
-(?P<invalid_escape>\\.)|
-# Unescaped literal text
-(?P<unescaped>[^{\\]+)
-''', re.VERBOSE)
-
-
-def render_placeholder(name, bindings):
-    value = bindings.get(name)
-    if not isinstance(value, str):
-        raise TemplateError(f'\
-No value for {name!r} exists in bound values: {bindings}')
-    return value
-
-
-def render_literal(value, _):
-    return value
-
-
-class Template:
-    def __init__(self, chunks, var_names):
-        self.chunks = tuple(chunks)
-        self.var_names = frozenset(var_names)
-
-    def render(self, bindings: Dict[str, str]):
-        if bindings.keys() < self.var_names:
-            missing = ', '.join(f'{v!r}'
-                                for v in self.var_names - bindings.keys())
-            raise TemplateError(f'\
-Variables for placeholders {missing} \
-are missing from bound values: {bindings}')
-
-        return ''.join(c(bindings) for c in self.chunks)
-
-
-def parse_template(template):
-    def append_segment(segments, offset=None, invalid_placeholder=None,
-                       placeholder=None, escape=None, invalid_escape=None,
-                       unescaped=None):
-        assert sum(bool(x) for x in [invalid_placeholder, placeholder, escape,
-                                     invalid_escape, unescaped]) == 1
-
-        if invalid_placeholder or invalid_escape:
-            thing = 'placeholder' if invalid_placeholder else 'escape sequence'
-            raise TemplateError(f'''\
-Invalid {thing} at offset {offset}:
-    {template}
-    {' ' * offset}^''')
-        elif placeholder:
-            return segments + (('placeholder', placeholder),)
-
-        literal = unescaped if unescaped else escape[1]
-        # Merge consecutive literals
-        if segments and segments[-1][0] == 'literal':
-            return segments[:-1] + (('literal', segments[-1][1] + literal),)
-        return segments + (('literal', literal),)
-
-    segments = reduce(
-        lambda segments, match: append_segment(segments, offset=match.start(),
-                                               **match.groupdict()),
-        template_chunk.finditer(template), ())
-
-    chunks = (partial(render_placeholder, value) if type == 'placeholder' else
-              partial(render_literal, value) for (type, value) in segments)
-    var_names = (value for (type, value) in segments if type == 'placeholder')
-    return Template(chunks, var_names)
-
-
 def get_template_bindings(tile, *, format='jpg', rotation=0,
                           quality='default'):
     """Generate a bindings dict for an image tile"""
@@ -294,13 +217,6 @@ create_file_methods = {
 }
 
 
-# assumption: dirs we create are not removed during our runtime, hence
-# memoisation is safe.
-@lru_cache()
-def _ensure_dir_exists(path: Path):
-    path.mkdir(exist_ok=True)
-
-
 def create_tile_layout(*, tiles, get_tile_path, get_dest_path, create_file,
                        target_directory: Path):
     """
@@ -324,19 +240,11 @@ def create_tile_layout(*, tiles, get_tile_path, get_dest_path, create_file,
     for tile in tiles:
         tile_path = get_tile_path(tile)
         relative_dest_path = get_dest_path(tile)
-        if '..' in relative_dest_path.parts:
-            raise ValueError(f'\
-get_dest_path returned a path with a ".." segment: {relative_dest_path}')
-        if not relative_dest_path.parts:
-            raise ValueError(f'get_dest_path returned an empty path')
-        if relative_dest_path.is_absolute():
-            raise ValueError(f'\
-get_dest_path returned an absolute path: {relative_dest_path}')
+        validate_relative_path(
+            relative_dest_path, prefix='get_dest_path returned a path which')
 
-        for dir in reversed(list(relative_dest_path.parents)[:-1]):
-            _ensure_dir_exists(target_directory / dir)
-
-        final_dest_path = target_directory / relative_dest_path
+        final_dest_path = ensure_sub_directories_exist(target_directory,
+                                                       relative_dest_path)
         create_file(tile_path, final_dest_path)
 
 

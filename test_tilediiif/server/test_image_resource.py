@@ -1,12 +1,8 @@
-from unittest.mock import patch
 from pathlib import Path
 
 import falcon
 import pytest
 
-
-# TODO: test req for enlarged size
-# TODO: test responses contain CORS header
 from tilediiif.server.config import Config, FileTransmissionType
 
 DATA_DIR = Path(__file__).parent / 'data'

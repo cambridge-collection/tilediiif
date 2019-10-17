@@ -1,12 +1,17 @@
 import math
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import pytest
 from hypothesis import assume, example, given
 from hypothesis.strategies import integers, none, one_of, sampled_from
 
 from tilediiif.infojson import (
-    iiif_image_metadata_with_pow2_tiles, MAX_IMAGE_DIMENSION,
-    power2_image_pyramid_scale_factors, validate_id_url)
+    _create_templated_file_output_method, CLIError, DEFAULT_DATA_PATH,
+    DEFAULT_ID_BASE_URL, DEFAULT_INDENT, DEFAULT_PATH_TEMPLATE, get_id_url,
+    iiif_image_metadata_with_pow2_tiles, main, MAX_IMAGE_DIMENSION,
+    power2_image_pyramid_scale_factors)
 
 image_dimensions = integers(min_value=1, max_value=MAX_IMAGE_DIMENSION)
 id_urls = sampled_from([
@@ -74,23 +79,83 @@ def test_power2_image_pyramid_scale_factors(width, height, tile_size):
     assert max(width, height) / scale_factors[-1] <= tile_size
 
 
-@pytest.mark.parametrize('url, ok_or_msg', [
-    ['http://foo.example/blah', None],
-    ['https://foo.example/blah', None],
-    ['unknown://foo.example/blah',
-     "invalid @id URL: scheme was required to be one of ['http', 'https'] but "
-     "was 'unknown'"],
-    ['http://foo.example/blah/', 'invalid @id URL: path ends with a /'],
-    ['https:/blah/', 'invalid @id URL: host was required but missing'],
-    ['https://foo.example', 'invalid @id URL: path was required but missing'],
-    ['https://user:pass@foo.example',
-     'invalid @id URL: "https://user:pass@foo.example" contained a password '
-     'when validation forbade it'],
+@pytest.mark.parametrize('base, id, msg', [
+    ['https://example.com/', '', "identifier is not a relative URL path: ''"],
+    ['https://example.com/', 'foo/',
+     "invalid @id URL 'https://example.com/foo/': path ends with a /"],
+    ['foo://example.com/', 'abc',
+     "invalid @id URL 'foo://example.com/abc': scheme was required to be one "
+     "of ['http', 'https'] but was 'foo'"],
+    ['https:/abc/', '123',
+     "invalid @id URL 'https:/abc/123': host was required but missing"],
+    ['https://user:pass@foo.example/', 'abc',
+     "invalid @id URL 'https://user:pass@foo.example/abc': "
+     "\"https://user:pass@foo.example/abc\" contained a password when "
+     "validation forbade it"],
 ])
-def test_validate_id_url(url, ok_or_msg):
-    try:
-        validate_id_url(url)
-        if ok_or_msg is not None:
-            pytest.fail(f'should have raised')
-    except ValueError as e:
-        assert ok_or_msg in str(e)
+def test_get_id_url_rejects_invalid_urls(base, id, msg):
+    with pytest.raises(CLIError) as exc_info:
+        get_id_url(base, id)
+    assert msg in str(exc_info.value)
+
+
+@pytest.yield_fixture
+def mock_run():
+    with patch('tilediiif.infojson.run') as mock_run:
+        yield mock_run
+
+
+@pytest.mark.parametrize('argv, expected_args', [
+    [['--stdout', '/tmp/foo.dzi'], {
+        '--stdout': True,
+        '<dzi-file>': '/tmp/foo.dzi'
+    }],
+    [['--data-path', '/data/path',
+      '--id-base-url', 'http://example.com/foo/',
+      '--id', 'bar',
+      '--path-template', 'example',
+      '--indent', '4',
+      '/tmp/foo.dzi'], {
+        '--data-path': '/data/path',
+        '--id-base-url': 'http://example.com/foo/',
+        '--id': 'bar',
+        '--path-template': 'example',
+        '--indent': '4',
+        '<dzi-file>': '/tmp/foo.dzi'
+    }],
+])
+def test_arg_parsing(argv, expected_args, mock_run):
+    call_args = {
+        'from-dzi': True,
+        '--stdout': False,
+        '--data-path': DEFAULT_DATA_PATH,
+        '--id-base-url': DEFAULT_ID_BASE_URL,
+        '--indent': DEFAULT_INDENT,
+        '--path-template': DEFAULT_PATH_TEMPLATE,
+        '--help': False, '-h': False,
+        '--version': False,
+        **expected_args
+    }
+
+    main(['from-dzi'] + argv)
+    mock_run.assert_called_once()
+    assert mock_run.mock_calls[0][1][0] == call_args
+
+
+@pytest.yield_fixture()
+def tmp_data_path(tmp_path):
+    with TemporaryDirectory(dir=tmp_path) as path:
+        yield Path(path)
+
+
+@pytest.mark.parametrize('path_template, identifier, expected_sub_path', [
+    ['{identifier}/info.json', 'foo', 'foo/info.json'],
+    ['{identifier-shard}/{identifier}/info.json', 'foo',
+     'b1/71/foo/info.json'],
+])
+def test_create_templated_file_output_method(
+        path_template, identifier, expected_sub_path, tmp_data_path):
+    write_output = _create_templated_file_output_method(tmp_data_path,
+                                                        path_template)
+    write_output(b'content', identifier)
+    assert (tmp_data_path / expected_sub_path).read_bytes() == b'content'

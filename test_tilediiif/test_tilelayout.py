@@ -4,13 +4,13 @@ from collections import abc, Counter
 from functools import partial
 from pathlib import Path, PurePath
 from tempfile import TemporaryDirectory
-from unittest.mock import call, MagicMock, Mock, patch
+from unittest.mock import call, Mock, patch
 
 import pytest
-from hypothesis import assume, example, given, settings
+from hypothesis import assume, given, settings
 from hypothesis._strategies import lists
 from hypothesis.strategies import (
-    builds, composite, from_regex, integers, one_of, sampled_from, text)
+    composite, integers, sampled_from, text)
 
 from test_tilediiif import test_dzi
 from test_tilediiif.test_dzi import dzi_metadata
@@ -19,10 +19,10 @@ from tilediiif.dzi import get_dzi_tile_path
 from tilediiif.infojson import (
     power2_image_pyramid_scale_factors)
 from tilediiif.tilelayout import (
-    _ensure_dir_exists, create_dzi_tile_layout, create_file_methods,
+    create_dzi_tile_layout, create_file_methods,
     create_tile_layout, DEFAULT_FILE_METHOD, DEFAULT_FILE_PATH_TEMPLATE,
     get_layer_tiles, get_template_bindings, get_templated_dest_path,
-    InvalidPath, parse_template, run, Template)
+    InvalidPath, parse_template, run)
 
 DATA_DIR = Path(__file__).parent / 'data'
 
@@ -93,106 +93,6 @@ def test_get_layer_tiles(width, height, tile_size, scale_factor):
         assert tile['dst']['height'] == (
             math.ceil((height % src_tile_size) / scale_factor)
             if is_last_y and has_trailing_y else tile_size)
-
-
-placeholder_names = from_regex(r'\A[\w.-]+\Z')
-placeholder_segments = builds(
-    lambda name: {'type': 'placeholder', 'name': name, 'value': f'{{{name}}}'},
-    placeholder_names)
-literal_segments = builds(
-    lambda value: {'type': 'literal', 'raw': value,
-                   'value': value.replace('\\', '\\\\').replace('{', r'\{')},
-    text(min_size=1))
-
-
-@composite
-def template_segments(draw, chunk_count=integers(min_value=0, max_value=100)):
-    """
-    Generates lists of template segments in which two literal segments never
-    occur consecutively.
-    """
-    count = draw(chunk_count)
-    segments = []
-    any_segment = one_of(literal_segments, placeholder_segments)
-    last_was_literal = False
-    for _ in range(count):
-        seg = (draw(placeholder_segments) if last_was_literal else
-               draw(any_segment))
-        last_was_literal = seg['type'] == 'literal'
-        segments.append(seg)
-
-    return segments
-
-
-templates = builds(
-    lambda segments: {'segments': segments,
-                      'value': ''.join(seg['value'] for seg in segments)},
-    template_segments())
-
-
-@composite
-def populated_templates(draw, templates=templates, placeholder_values=text()):
-    template = draw(templates)
-    ordered_placeholders = sorted(
-        {seg['name']: seg for seg in template['segments']
-         if seg['type'] == 'placeholder'}.values(),
-        key=lambda seg: seg['name'])
-
-    return {
-        **template,
-        'bindings': {ph['name']: draw(placeholder_values)
-                     for ph in ordered_placeholders}
-    }
-
-
-@given(templates)
-@example({
-    'segments': [{'type': 'literal', 'raw': '\\', 'value': '\\\\'},
-                 {'type': 'placeholder', 'name': '0', 'value': '{0}'}],
-    'value': '\\\\{0}'
-})
-def test_parse_template(template):
-    compiled = parse_template(template['value'])
-    assert isinstance(compiled, Template)
-    assert len(compiled.chunks) == len(template['segments'])
-    assert compiled.var_names == {seg['name'] for seg in template['segments']
-                                  if seg['type'] == 'placeholder'}
-
-
-@pytest.mark.parametrize('template, msg', [
-    ['\\x', '''\
-Invalid escape sequence at offset 0:
-    \\x
-    ^'''],
-    ['foo\\x', '''\
-Invalid escape sequence at offset 3:
-    foo\\x
-       ^'''],
-    ['abc{', '''\
-Invalid placeholder at offset 3:
-    abc{
-       ^'''],
-    ['abc{foo$bar}', '''\
-Invalid placeholder at offset 3:
-    abc{foo$bar}
-       ^'''],
-])
-def test_parse_template_rejects_invalid_templates(template, msg):
-    with pytest.raises(ValueError) as exc_info:
-        parse_template(template)
-
-    assert msg == str(exc_info.value)
-
-
-@given(populated_templates())
-def test_render_template(populated_template):
-    compiled = parse_template(populated_template['value'])
-    bindings = populated_template['bindings']
-    expected = ''.join(
-        seg['raw'] if seg['type'] == 'literal' else bindings[seg['name']]
-        for seg in populated_template['segments'])
-
-    assert compiled.render(bindings) == expected
 
 
 @composite
@@ -325,62 +225,48 @@ def test_create_file_copy(src_path: Path, src_content: str, dst_path: Path,
     assert src_has_changed == src_affected_by_dst
 
 
-def test_ensure_dir_exists_creates_same_dir_once_with_multiple_calls():
-    mock_path = MagicMock()
-    _ensure_dir_exists(mock_path)
-    _ensure_dir_exists(mock_path)
-    mock_path.mkdir.assert_called_once_with(exist_ok=True)
-
-
 @pytest.yield_fixture()
-def mock_ensure_dir_exists():
-    with patch('tilediiif.tilelayout._ensure_dir_exists') as mock:
+def mock_ensure_sub_directories_exist():
+    with patch('tilediiif.tilelayout.ensure_sub_directories_exist') as mock:
+        mock.side_effect = lambda base, sub: base / sub
         yield mock
 
 
 @given(tiles=lists(tiles(), max_size=50))
-def test_create_tile_layout(tiles, mock_ensure_dir_exists):
-    def get_tile_path(tile):
-        return PurePath(f'/src/tile-{tiles.index(tile)}/foo/file.jpeg')
+def test_create_tile_layout(tiles, subtest):
+    @subtest
+    def _test_inner(mock_ensure_sub_directories_exist):
+        def get_tile_path(tile):
+            return PurePath(f'/src/tile-{tiles.index(tile)}/foo/file.jpeg')
 
-    def get_dest_path(tile):
-        return PurePath(f'dest/tile-{tiles.index(tile)}/bar/file.jpg')
+        def get_dest_path(tile):
+            return PurePath(f'dest/tile-{tiles.index(tile)}/bar/file.jpg')
 
-    create_file = Mock(spec=[])
-    target_directory = PurePath('target/dir')
+        create_file = Mock(spec=[])
+        target_directory = PurePath('target/dir')
 
-    create_tile_layout(tiles=iter(tiles),
-                       get_tile_path=get_tile_path,
-                       get_dest_path=get_dest_path,
-                       create_file=create_file,
-                       target_directory=target_directory)
+        create_tile_layout(tiles=iter(tiles),
+                           get_tile_path=get_tile_path,
+                           get_dest_path=get_dest_path,
+                           create_file=create_file,
+                           target_directory=target_directory)
 
-    assert create_file.mock_calls == [
-        call(get_tile_path(tile),
-             target_directory / get_dest_path(tile)) for tile in tiles
-    ]
+        assert mock_ensure_sub_directories_exist.mock_calls == [
+            call(target_directory, get_dest_path(tile)) for tile in tiles
+        ]
 
-    mkdir_calls = mock_ensure_dir_exists.mock_calls
-    for tile in tiles:
-        for dir in (target_directory / get_dest_path(tile)).parents:
-            # dirs under the target get created
-            if target_directory in dir.parents:
-                assert call(dir) in mkdir_calls
-
-                # parent directories are created before children
-                if dir.parent != target_directory:
-                    assert (mkdir_calls.index(call(dir.parent)) <
-                            mkdir_calls.index(call(dir)))
-            else:
-                # the target (and any parents) aren't created
-                assert call(dir) not in mkdir_calls
+        assert create_file.mock_calls == [
+            call(get_tile_path(tile),
+                 target_directory / get_dest_path(tile)) for tile in tiles
+        ]
 
 
 @pytest.mark.parametrize('invalid_dest, msg', [
     ['abc/../foo',
-     'get_dest_path returned a path with a ".." segment: abc/../foo'],
-    ['/abc', 'get_dest_path returned an absolute path: /abc'],
-    ['', 'get_dest_path returned an empty path'],
+     'get_dest_path returned a path which contains a ".." (parent) segment: '
+     'abc/../foo'],
+    ['/abc', 'get_dest_path returned a path which is not relative: /abc'],
+    ['', 'get_dest_path returned a path which is empty'],
 ])
 def test_create_tile_layout_rejects_invalid_dest_paths(invalid_dest, msg):
     with pytest.raises(ValueError) as exc_info:
@@ -393,7 +279,7 @@ def test_create_tile_layout_rejects_invalid_dest_paths(invalid_dest, msg):
     assert str(exc_info.value) == msg
 
 
-@pytest.mark.usefixtures('mock_ensure_dir_exists')
+@pytest.mark.usefixtures('mock_ensure_sub_directories_exist')
 @given(dzi_meta=dzi_metadata(
     widths=sampled_from([42, 800, 7920]),
     heights=sampled_from([38, 600, 9800]),
