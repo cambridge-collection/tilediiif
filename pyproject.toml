@@ -26,6 +26,7 @@ pytest-subtesthack = "^0.1.1"
 ipython = "^7.8"
 httpie = "^1.0"
 black = {version = "^19.3b0", allows-prereleases = true}
+flake8-bugbear = "^19.8"
 
 [tool.poetry.scripts]
 infojson = 'tilediiif.infojson:main'

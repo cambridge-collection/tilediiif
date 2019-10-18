@@ -228,7 +228,7 @@ def test_use_context_single(names, expected_call):
 def test_shard_prefix_1(key, segment_count):
     hashed = hashlib.blake2b(key.encode("utf-8"), digest_size=segment_count).hexdigest()
     segments = []
-    for i in range(segment_count):
+    for _ in range(segment_count):
         seg, hashed = hashed[:2], hashed[2:]
         segments.append(seg)
 

@@ -386,8 +386,8 @@ def main(argv=None):
     try:
         run(args)
     except CommandError as e:
-        if e.message:
-            print(f"{e.prefix}{e.message}", file=sys.stderr)
+        if e.message:  # noqa: B306
+            print(f"{e.prefix}{e.message}", file=sys.stderr)  # noqa: B306
             sys.exit(e.code)
 
 

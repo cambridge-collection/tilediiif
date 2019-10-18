@@ -382,8 +382,9 @@ def test_create_dzi_tile_layout(dzi_meta):
         )
     mock_create_tile_layout.assert_called_once()
 
-    i = -1
+    tile_count = 0
     for i, tile in enumerate(expected_tiles):
+        tile_count = i + 1
         tile_path = get_dzi_tile_path(
             tile, dzi_meta=dzi_meta, dzi_files_path=PurePath("/some/where/foo_files")
         )
@@ -394,7 +395,6 @@ def test_create_dzi_tile_layout(dzi_meta):
             ]
             == 1
         )
-    tile_count = i + 1
     assert len(create_file_calls) == tile_count
 
 
