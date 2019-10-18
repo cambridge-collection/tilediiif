@@ -25,11 +25,11 @@ def ensure_sub_directories_exist(base_dir: Path, sub_path: Path):
     return base_dir / sub_path
 
 
-def validate_relative_path(path: Path, prefix='path', exc_cls=ValueError):
+def validate_relative_path(path: Path, prefix="path", exc_cls=ValueError):
     if not path.parts:
-        raise exc_cls(f'{prefix} is empty')
-    if '..' in path.parts:
+        raise exc_cls(f"{prefix} is empty")
+    if ".." in path.parts:
         raise exc_cls(f'{prefix} contains a ".." (parent) segment: {path}')
     if path.is_absolute():
-        raise exc_cls(f'{prefix} is not relative: {path}')
+        raise exc_cls(f"{prefix} is not relative: {path}")
     return True

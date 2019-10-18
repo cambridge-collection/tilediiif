@@ -5,7 +5,8 @@ from decimal import Decimal
 from typing import Optional, Union
 
 
-_image_req_region = re.compile(r'''
+_image_req_region = re.compile(
+    r"""
 \A(?:
     # named regions are handled separately
     # Relative percentage coords (can be real numbers)
@@ -16,9 +17,12 @@ _image_req_region = re.compile(r'''
     # Regular pixel coords (only integers)
     (?: (\d{1,10}),(\d{1,10}),(\d{1,10}),(\d{1,10}))
 )\Z
-''', re.VERBOSE)
+""",
+    re.VERBOSE,
+)
 
-_image_req_size = re.compile(r'''
+_image_req_size = re.compile(
+    r"""
 \A(?:
     (?:pct: (\d{1,10}(?:\.\d{0,10})?)) |
 
@@ -26,24 +30,27 @@ _image_req_size = re.compile(r'''
     (?:(!)? (\d{1,10})?,
             (\d{1,10})?)
 )\Z
-''', re.VERBOSE)
+""",
+    re.VERBOSE,
+)
 
-_image_req_rotation = re.compile(r'\A(!)?(\d{1,10}(?:\.\d{0,10})?)\Z')
-_image_req_token = re.compile(r'\A[a-z]{1,10}\Z')
+_image_req_rotation = re.compile(r"\A(!)?(\d{1,10}(?:\.\d{0,10})?)\Z")
+_image_req_token = re.compile(r"\A[a-z]{1,10}\Z")
 
 
 def _format_normalised_decimal(d):
-    formatted = f'{d:.10f}'
-    if '.' in formatted:
-        return formatted.rstrip('0').rstrip('.')
+    formatted = f"{d:.10f}"
+    if "." in formatted:
+        return formatted.rstrip("0").rstrip(".")
     return formatted
 
 
 def _ensure_image_info_not_specified(image_info):
     if image_info is not None:
         raise NotImplementedError(
-            'request canonicalisation with respect to image info metadata is '
-            'not implemented')
+            "request canonicalisation with respect to image info metadata is "
+            "not implemented"
+        )
 
 
 class IIIFRegion:
@@ -61,8 +68,8 @@ class NamedIIIFRegion(IIIFRegion):
         return self.name
 
 
-NamedIIIFRegion.FULL = NamedIIIFRegion('full')
-NamedIIIFRegion.SQUARE = NamedIIIFRegion('square')
+NamedIIIFRegion.FULL = NamedIIIFRegion("full")
+NamedIIIFRegion.SQUARE = NamedIIIFRegion("square")
 
 
 @dataclass(frozen=True)
@@ -74,10 +81,11 @@ class RelativeIIIFRegion(IIIFRegion):
 
     def __str__(self):
         return (
-            f'pct:{_format_normalised_decimal(self.x)},'
-            f'{_format_normalised_decimal(self.y)},'
-            f'{_format_normalised_decimal(self.width)},'
-            f'{_format_normalised_decimal(self.height)}')
+            f"pct:{_format_normalised_decimal(self.x)},"
+            f"{_format_normalised_decimal(self.y)},"
+            f"{_format_normalised_decimal(self.width)},"
+            f"{_format_normalised_decimal(self.height)}"
+        )
 
 
 @dataclass(frozen=True)
@@ -88,7 +96,7 @@ class AbsoluteIIIFRegion(IIIFRegion):
     height: int
 
     def __str__(self):
-        return f'{self.x},{self.y},{self.width},{self.height}'
+        return f"{self.x},{self.y},{self.width},{self.height}"
 
 
 @dataclass(frozen=True)
@@ -103,8 +111,8 @@ class NamedIIIFSize:
         return self
 
 
-NamedIIIFSize.FULL = NamedIIIFSize('full')
-NamedIIIFSize.MAX = NamedIIIFSize('max')
+NamedIIIFSize.FULL = NamedIIIFSize("full")
+NamedIIIFSize.MAX = NamedIIIFSize("max")
 
 
 @dataclass(frozen=True)
@@ -112,7 +120,7 @@ class RelativeIIIFSize:
     proportion: Decimal
 
     def __str__(self):
-        return f'pct:{_format_normalised_decimal(self.proportion)}'
+        return f"pct:{_format_normalised_decimal(self.proportion)}"
 
     def canonical(self, *, image_request, image_info=None):
         _ensure_image_info_not_specified(image_info)
@@ -127,11 +135,13 @@ class IIIFSize:
 
     def __post_init__(self):
         if self.width is None and self.height is None:
-            raise ValueError('no width or height specified')
+            raise ValueError("no width or height specified")
 
     def __str__(self):
-        return (f'{"" if self.width is None else self.width},'
-                f'{"" if self.height is None else self.height}')
+        return (
+            f'{"" if self.width is None else self.width},'
+            f'{"" if self.height is None else self.height}'
+        )
 
     def canonical(self, *, image_request, image_info=None):
         _ensure_image_info_not_specified(image_info)
@@ -166,7 +176,7 @@ class BestFitIIIFSize:
     height: int
 
     def __str__(self):
-        return f'!{self.width},{self.height}'
+        return f"!{self.width},{self.height}"
 
     def canonical(self, *, image_request, image_info=None):
         _ensure_image_info_not_specified(image_info)
@@ -200,50 +210,58 @@ class IIIFImageRequest:
     format: str
 
     def __str__(self):
-        return (f'{self.region}/{self.size}/{self.rotation}/'
-                f'{self.quality}.{self.format}')
+        return (
+            f"{self.region}/{self.size}/{self.rotation}/"
+            f"{self.quality}.{self.format}"
+        )
 
     def canonical(self, *, image_info=None):
         _ensure_image_info_not_specified(image_info)
 
         # Currently we don't have access to info.json meta when canonicalising.
         # As a result, some canonicalisation steps are not possible.
-        region = self.region.canonical(image_request=self,
-                                       image_info=image_info)
-        size = self.size.canonical(image_request=self,
-                                   image_info=image_info)
-        rotation = self.rotation.canonical(image_request=self,
-                                           image_info=image_info)
+        region = self.region.canonical(image_request=self, image_info=image_info)
+        size = self.size.canonical(image_request=self, image_info=image_info)
+        rotation = self.rotation.canonical(image_request=self, image_info=image_info)
         # quality and format are just themselves
 
-        if (region is self.region and size is self.size and
-                rotation is self.rotation):
+        if region is self.region and size is self.size and rotation is self.rotation:
             return self
-        return IIIFImageRequest(region=region, size=size, rotation=rotation,
-                                quality=self.quality, format=self.format)
+        return IIIFImageRequest(
+            region=region,
+            size=size,
+            rotation=rotation,
+            quality=self.quality,
+            format=self.format,
+        )
 
     @classmethod
     def parse_request(cls, request):
-        segments = request.split('/')
+        segments = request.split("/")
         if len(segments) == 4:
             region, size, rotation, name = segments
-            name_parts = name.split('.', maxsplit=1)
+            name_parts = name.split(".", maxsplit=1)
 
             if len(name_parts) == 2:
                 quality, format = name_parts
-                return cls.parse(region=region, size=size, rotation=rotation,
-                                 quality=quality, format=format)
-        raise ValueError(f'invalid request: {request}')
+                return cls.parse(
+                    region=region,
+                    size=size,
+                    rotation=rotation,
+                    quality=quality,
+                    format=format,
+                )
+        raise ValueError(f"invalid request: {request}")
 
     @classmethod
-    def parse(cls, *, region: str, size: str, rotation: str, quality: str,
-              format: str):
+    def parse(cls, *, region: str, size: str, rotation: str, quality: str, format: str):
         return IIIFImageRequest(
             region=cls.parse_region(region),
             size=cls.parse_size(size),
             rotation=cls.parse_rotation(rotation),
             quality=cls.parse_quality(quality),
-            format=cls.parse_format(format))
+            format=cls.parse_format(format),
+        )
 
     @classmethod
     def parse_region(cls, region: str):
@@ -254,19 +272,18 @@ class IIIFImageRequest:
 
         region_match = _image_req_region.match(region)
         if not region_match:
-            raise ValueError(f'invalid region: {region}')
+            raise ValueError(f"invalid region: {region}")
         pct = bool(region_match.group(1))
 
         if pct:
-            x, y, w, h = (Decimal(x)
-                          for x in region_match.groups()[1:5])
+            x, y, w, h = (Decimal(x) for x in region_match.groups()[1:5])
             region_cls = RelativeIIIFRegion
         else:
             x, y, w, h = (int(x) for x in region_match.groups()[5:9])
             region_cls = AbsoluteIIIFRegion
 
         if w == 0 or h == 0:
-            raise ValueError(f'region is empty: {region}')
+            raise ValueError(f"region is empty: {region}")
 
         return region_cls(x, y, w, h)
 
@@ -279,20 +296,19 @@ class IIIFImageRequest:
 
         size_match = _image_req_size.match(size)
         if not size_match:
-            raise ValueError(f'invalid size: {size}')
+            raise ValueError(f"invalid size: {size}")
 
         pct = size_match.group(1)
         if pct:
             return RelativeIIIFSize(Decimal(pct))
 
         is_best_fit = size_match.group(2)
-        w, h = (None if x is None else int(x)
-                for x in size_match.groups()[2:4])
+        w, h = (None if x is None else int(x) for x in size_match.groups()[2:4])
 
         undefined_count = (w is None) + (h is None)
 
         if undefined_count >= (1 if is_best_fit else 2):
-            raise ValueError(f'invalid size: {size}')
+            raise ValueError(f"invalid size: {size}")
 
         if is_best_fit:
             return BestFitIIIFSize(w, h)
@@ -303,7 +319,7 @@ class IIIFImageRequest:
         match = _image_req_rotation.match(rotation)
 
         if not match:
-            raise ValueError(f'invalid rotation: {rotation}')
+            raise ValueError(f"invalid rotation: {rotation}")
 
         is_mirrored = bool(match.group(1))
         degrees = Decimal(match.group(2))
@@ -311,15 +327,15 @@ class IIIFImageRequest:
 
     @classmethod
     def parse_quality(cls, quality: str):
-        cls._validate_token(quality, 'quality')
+        cls._validate_token(quality, "quality")
         return quality
 
     @classmethod
     def parse_format(cls, format: str):
-        cls._validate_token(format, 'format')
+        cls._validate_token(format, "format")
         return format
 
     @staticmethod
     def _validate_token(token: str, name):
         if not _image_req_token.match(token):
-            raise ValueError(f'invalid {name}: {token}')
+            raise ValueError(f"invalid {name}: {token}")

@@ -5,16 +5,19 @@ import falcon
 
 from tilediiif.server.config import Config, ConfigError, FileTransmissionType
 from tilediiif.server.resources import (
-    DirectFileTransmitter, IIIFImageMetadataResource, IIIFImageResource,
-    IndirectFileTransmitter)
-from tilediiif.server.uris import (
-    IIIF_IMAGE, IIIF_IMAGE_INFO,
-    IIIF_IMAGE_INFO_BASE)
+    DirectFileTransmitter,
+    IIIFImageMetadataResource,
+    IIIFImageResource,
+    IndirectFileTransmitter,
+)
+from tilediiif.server.uris import IIIF_IMAGE, IIIF_IMAGE_INFO, IIIF_IMAGE_INFO_BASE
 from tilediiif.templates import (
     get_image_path_renderer,
-    get_info_json_path_renderer, TemplateError)
+    get_info_json_path_renderer,
+    TemplateError,
+)
 
-CONFIG_PATH_ENVAR = 'TILEDIIIF_SERVER_CONFIG'
+CONFIG_PATH_ENVAR = "TILEDIIIF_SERVER_CONFIG"
 
 
 def get_api(config: Config = None):
@@ -40,24 +43,25 @@ def _populate_routes(api, config: Config):
     base_path = Path(config.data_path)
     try:
         get_info_json_path = get_info_json_path_renderer(
-            base_path, config.info_json_path_template)
+            base_path, config.info_json_path_template
+        )
     except TemplateError as e:
-        raise ConfigError(f'info-json-path-template is invalid: {e}') from e
+        raise ConfigError(f"info-json-path-template is invalid: {e}") from e
 
     image_metadata = IIIFImageMetadataResource(
-        transmit_file=transmit_file,
-        get_info_json_path=get_info_json_path)
+        transmit_file=transmit_file, get_info_json_path=get_info_json_path
+    )
     api.add_route(IIIF_IMAGE_INFO, image_metadata)
-    api.add_route(IIIF_IMAGE_INFO_BASE, image_metadata, suffix='base')
+    api.add_route(IIIF_IMAGE_INFO_BASE, image_metadata, suffix="base")
 
     try:
-        get_image_path = get_image_path_renderer(base_path,
-                                                 config.image_path_template)
+        get_image_path = get_image_path_renderer(base_path, config.image_path_template)
     except TemplateError as e:
-        raise ConfigError(f'image-path-template is invalid: {e}') from e
+        raise ConfigError(f"image-path-template is invalid: {e}") from e
 
-    image = IIIFImageResource(transmit_file=transmit_file,
-                              get_image_path=get_image_path)
+    image = IIIFImageResource(
+        transmit_file=transmit_file, get_image_path=get_image_path
+    )
     api.add_route(IIIF_IMAGE, image)
 
     return api

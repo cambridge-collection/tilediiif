@@ -20,16 +20,16 @@ def client(config):
 
 @pytest.fixture
 def logger():
-    return logging.getLogger('tilediiif.server.resources')
+    return logging.getLogger("tilediiif.server.resources")
 
 
 @pytest.yield_fixture
 def mock_logger_warning(logger):
-    with patch.object(logger, 'warning') as mock:
+    with patch.object(logger, "warning") as mock:
         yield mock
 
 
 @pytest.yield_fixture
 def mock_logger_exception(logger):
-    with patch.object(logger, 'exception') as mock:
+    with patch.object(logger, "exception") as mock:
         yield mock

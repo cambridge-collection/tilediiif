@@ -8,21 +8,18 @@ from pathlib import Path
 from docopt import docopt
 
 from tilediiif.dzi import get_dzi_tile_path, parse_dzi_file
-from tilediiif.filesystem import (
-    ensure_sub_directories_exist,
-    validate_relative_path)
-from tilediiif.infojson import (
-    power2_image_pyramid_scale_factors)
+from tilediiif.filesystem import ensure_sub_directories_exist, validate_relative_path
+from tilediiif.infojson import power2_image_pyramid_scale_factors
 from tilediiif.templates import parse_template, Template
 from tilediiif.validation import require_positive_non_zero_int
 from tilediiif.version import __version__
 
-DEFAULT_FILE_METHOD = 'hardlink'
-DEFAULT_FILE_PATH_TEMPLATE = '{region}-{size.w},-{rotation}-{quality}.{format}'
+DEFAULT_FILE_METHOD = "hardlink"
+DEFAULT_FILE_PATH_TEMPLATE = "{region}-{size.w},-{rotation}-{quality}.{format}"
 
 
 def get_usage():
-    file_methods = ', '.join(sorted(create_file_methods.keys()))
+    file_methods = ", ".join(sorted(create_file_methods.keys()))
 
     return f"""\
 Lay out pyramid image tiles to back a static-file IIIF Image server
@@ -126,8 +123,8 @@ def get_layer_tiles(*, width, height, tile_size, scale_factor):
     :return: an iterable producing tile objects.
     """
     require_positive_non_zero_int(
-        width=width, height=height, tile_size=tile_size,
-        scale_factor=scale_factor)
+        width=width, height=height, tile_size=tile_size, scale_factor=scale_factor
+    )
 
     tile_src_area = tile_size * scale_factor
     tiles_x = width // tile_src_area
@@ -150,33 +147,41 @@ def get_layer_tiles(*, width, height, tile_size, scale_factor):
                 src_tile_height = trailing_y
 
             yield {
-                'scale_factor': scale_factor,
-                'index': {'x': x, 'y': y},
-                'src': {'x': x * tile_src_area, 'y': y * tile_src_area,
-                        'width': src_tile_width, 'height': src_tile_height},
-                'dst': {'x': x * tile_size, 'y': y * tile_size,
-                        'width': math.ceil(src_tile_width / scale_factor),
-                        'height': math.ceil(src_tile_height / scale_factor)}
+                "scale_factor": scale_factor,
+                "index": {"x": x, "y": y},
+                "src": {
+                    "x": x * tile_src_area,
+                    "y": y * tile_src_area,
+                    "width": src_tile_width,
+                    "height": src_tile_height,
+                },
+                "dst": {
+                    "x": x * tile_size,
+                    "y": y * tile_size,
+                    "width": math.ceil(src_tile_width / scale_factor),
+                    "height": math.ceil(src_tile_height / scale_factor),
+                },
             }
 
 
-def get_template_bindings(tile, *, format='jpg', rotation=0,
-                          quality='default'):
+def get_template_bindings(tile, *, format="jpg", rotation=0, quality="default"):
     """Generate a bindings dict for an image tile"""
 
     return {
-        'region.x': str(tile['src']['x']),
-        'region.y': str(tile['src']['y']),
-        'region.w': str(tile['src']['width']),
-        'region.h': str(tile['src']['height']),
-        'region': (f"{tile['src']['x']},{tile['src']['y']},"
-                   f"{tile['src']['width']},{tile['src']['height']}"),
-        'size': f'''{tile['dst']['width']},{tile['dst']['height']}''',
-        'size.w': str(tile['dst']['width']),
-        'size.h': str(tile['dst']['height']),
-        'rotation': str(rotation),
-        'quality': str(quality),
-        'format': str(format)
+        "region.x": str(tile["src"]["x"]),
+        "region.y": str(tile["src"]["y"]),
+        "region.w": str(tile["src"]["width"]),
+        "region.h": str(tile["src"]["height"]),
+        "region": (
+            f"{tile['src']['x']},{tile['src']['y']},"
+            f"{tile['src']['width']},{tile['src']['height']}"
+        ),
+        "size": f"""{tile['dst']['width']},{tile['dst']['height']}""",
+        "size.w": str(tile["dst"]["width"]),
+        "size.h": str(tile["dst"]["height"]),
+        "rotation": str(rotation),
+        "quality": str(quality),
+        "format": str(format),
     }
 
 
@@ -184,15 +189,16 @@ class InvalidPath(ValueError):
     pass
 
 
-def get_templated_dest_path(template: Template, tile, *,
-                            bindings_for_tile=get_template_bindings) -> Path:
+def get_templated_dest_path(
+    template: Template, tile, *, bindings_for_tile=get_template_bindings
+) -> Path:
     path = Path(template.render(bindings_for_tile(tile)))
 
     if not path.parts:
-        raise InvalidPath(f'generated path is empty')
+        raise InvalidPath(f"generated path is empty")
     if path.is_absolute():
-        raise InvalidPath(f'generated path is not relative: {path}')
-    if '..' in path.parts:
+        raise InvalidPath(f"generated path is not relative: {path}")
+    if ".." in path.parts:
         raise InvalidPath(f'generated path contains a ".." segment: {path}')
 
     return path
@@ -211,14 +217,15 @@ def create_file_via_symlink(src: Path, dest: Path):
 
 
 create_file_methods = {
-    'copy': create_file_via_copy,
-    'hardlink': create_file_via_hardlink,
-    'symlink': create_file_via_symlink
+    "copy": create_file_via_copy,
+    "hardlink": create_file_via_hardlink,
+    "symlink": create_file_via_symlink,
 }
 
 
-def create_tile_layout(*, tiles, get_tile_path, get_dest_path, create_file,
-                       target_directory: Path):
+def create_tile_layout(
+    *, tiles, get_tile_path, get_dest_path, create_file, target_directory: Path
+):
     """
     Lay out a set of tiles in a target directory for use by a static-file-
     backed IIIF Image server.
@@ -241,117 +248,133 @@ def create_tile_layout(*, tiles, get_tile_path, get_dest_path, create_file,
         tile_path = get_tile_path(tile)
         relative_dest_path = get_dest_path(tile)
         validate_relative_path(
-            relative_dest_path, prefix='get_dest_path returned a path which')
+            relative_dest_path, prefix="get_dest_path returned a path which"
+        )
 
-        final_dest_path = ensure_sub_directories_exist(target_directory,
-                                                       relative_dest_path)
+        final_dest_path = ensure_sub_directories_exist(
+            target_directory, relative_dest_path
+        )
         create_file(tile_path, final_dest_path)
 
 
-def create_dzi_tile_layout(*, dzi_path, dzi_meta, get_dest_path, create_file,
-                           target_directory):
-    width = dzi_meta['width']
-    height = dzi_meta['height']
-    tile_size = dzi_meta['tile_size']
+def create_dzi_tile_layout(
+    *, dzi_path, dzi_meta, get_dest_path, create_file, target_directory
+):
+    width = dzi_meta["width"]
+    height = dzi_meta["height"]
+    tile_size = dzi_meta["tile_size"]
     scale_factors = power2_image_pyramid_scale_factors(
-        width=width, height=height, tile_size=tile_size)
+        width=width, height=height, tile_size=tile_size
+    )
 
     all_tiles = (
         tile
         for scale_factor in scale_factors
         for tile in get_layer_tiles(
-            width=width, height=height,
-            tile_size=tile_size, scale_factor=scale_factor)
+            width=width, height=height, tile_size=tile_size, scale_factor=scale_factor
+        )
     )
 
-    if dzi_path.name[-4:].lower() != '.dzi':
-        raise ValueError('dzi_path does not end in .dzi: {dzi_path}')
+    if dzi_path.name[-4:].lower() != ".dzi":
+        raise ValueError("dzi_path does not end in .dzi: {dzi_path}")
 
-    dzi_tiles_path = dzi_path.parent / f'{dzi_path.name[:-4]}_files'
-    get_tile_path = partial(get_dzi_tile_path, dzi_files_path=dzi_tiles_path,
-                            dzi_meta=dzi_meta)
+    dzi_tiles_path = dzi_path.parent / f"{dzi_path.name[:-4]}_files"
+    get_tile_path = partial(
+        get_dzi_tile_path, dzi_files_path=dzi_tiles_path, dzi_meta=dzi_meta
+    )
 
-    create_tile_layout(tiles=all_tiles, get_tile_path=get_tile_path,
-                       get_dest_path=get_dest_path, create_file=create_file,
-                       target_directory=target_directory)
+    create_tile_layout(
+        tiles=all_tiles,
+        get_tile_path=get_tile_path,
+        get_dest_path=get_dest_path,
+        create_file=create_file,
+        target_directory=target_directory,
+    )
 
 
 def normalise_output_format(format):
     # The default format for IIIF Image level 0 is 'jpg', so we should always
     # use the jpg extension, not jpeg.
-    if format == 'jpeg':
-        return 'jpg'
+    if format == "jpeg":
+        return "jpg"
     return format
 
 
 def run(args):
     # Drop None-valued args to make default handling less verbose
     args = {k: v for (k, v) in args.items() if v is not None}
-    dzi_path = Path(args['<dzi-file>'])
-    dest_dir = Path(args['<dest-directory>'])
-    tile_path_template = args.get('--tile-path-template',
-                                  DEFAULT_FILE_PATH_TEMPLATE)
-    allow_existing_dest = bool(args.get('--allow-existing-dest'))
-    file_creation_method_name = args.get('--file-creation-method',
-                                         DEFAULT_FILE_METHOD)
+    dzi_path = Path(args["<dzi-file>"])
+    dest_dir = Path(args["<dest-directory>"])
+    tile_path_template = args.get("--tile-path-template", DEFAULT_FILE_PATH_TEMPLATE)
+    allow_existing_dest = bool(args.get("--allow-existing-dest"))
+    file_creation_method_name = args.get("--file-creation-method", DEFAULT_FILE_METHOD)
     try:
         create_file = create_file_methods[file_creation_method_name]
     except KeyError:
-        raise CommandError(f'\
+        raise CommandError(
+            f'\
 Invalid --file-creation-method {file_creation_method_name!r}. \
-Possible values are {", ".join(sorted(create_file_methods.keys()))}')
+Possible values are {", ".join(sorted(create_file_methods.keys()))}'
+        )
 
     try:
         template = parse_template(tile_path_template)
     except ValueError as e:
-        raise CommandError(f'invalid --tile-path-template: {e}') from e
+        raise CommandError(f"invalid --tile-path-template: {e}") from e
 
     if dest_dir.exists():
         if not dest_dir.is_dir():
-            raise CommandError('<dest-directory> exists and is not a '
-                               'directory')
+            raise CommandError("<dest-directory> exists and is not a " "directory")
 
         if not allow_existing_dest:
-            raise CommandError(f'<dest-directory> exists, refusing to write '
-                               f'into it without --allow-existing-dest')
+            raise CommandError(
+                f"<dest-directory> exists, refusing to write "
+                f"into it without --allow-existing-dest"
+            )
 
-    if not dzi_path.name[-4:].lower() == '.dzi':
-        raise CommandError(f'<dzi_file> {dzi_path} does not have a .dzi '
-                           f'extension')
+    if not dzi_path.name[-4:].lower() == ".dzi":
+        raise CommandError(f"<dzi_file> {dzi_path} does not have a .dzi " f"extension")
     if not dzi_path.is_file():
         if dzi_path.exists():
-            raise CommandError(f'<dzi-file> {dzi_path} exists but is not a '
-                               f'regular file')
+            raise CommandError(
+                f"<dzi-file> {dzi_path} exists but is not a " f"regular file"
+            )
         else:
-            raise CommandError(f'<dzi-file> {dzi_path} does not exist')
+            raise CommandError(f"<dzi-file> {dzi_path} does not exist")
 
     try:
-        with open(dzi_path, 'rb') as f:
+        with open(dzi_path, "rb") as f:
             dzi_meta = parse_dzi_file(f)
     except Exception as e:
-        raise CommandError(f'Unable to parse <dzi-file> {dzi_path} : {e}'
-                           ) from e
+        raise CommandError(f"Unable to parse <dzi-file> {dzi_path} : {e}") from e
 
     # Create output paths by rendering the provided template.
     get_dest_path = partial(
-        get_templated_dest_path, template,
+        get_templated_dest_path,
+        template,
         bindings_for_tile=partial(
-            get_template_bindings,
-            format=normalise_output_format(dzi_meta['format'])))
+            get_template_bindings, format=normalise_output_format(dzi_meta["format"])
+        ),
+    )
 
     try:
         dest_dir.mkdir(parents=True, exist_ok=True)
     except Exception as e:
-        raise CommandError(f'Unable to create <dest-directory> {dest_dir} '
-                           f'because: {e}') from e
+        raise CommandError(
+            f"Unable to create <dest-directory> {dest_dir} " f"because: {e}"
+        ) from e
 
     create_dzi_tile_layout(
-        dzi_path=dzi_path, dzi_meta=dzi_meta, get_dest_path=get_dest_path,
-        create_file=create_file, target_directory=dest_dir)
+        dzi_path=dzi_path,
+        dzi_meta=dzi_meta,
+        get_dest_path=get_dest_path,
+        create_file=create_file,
+        target_directory=dest_dir,
+    )
 
 
 class CommandError(SystemExit):
-    def __init__(self, message=None, code=1, prefix='Error: '):
+    def __init__(self, message=None, code=1, prefix="Error: "):
         super().__init__(code)
         self.prefix = prefix
         self.message = message
@@ -364,9 +387,9 @@ def main(argv=None):
         run(args)
     except CommandError as e:
         if e.message:
-            print(f'{e.prefix}{e.message}', file=sys.stderr)
+            print(f"{e.prefix}{e.message}", file=sys.stderr)
             sys.exit(e.code)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

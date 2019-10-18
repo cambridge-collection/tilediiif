@@ -11,8 +11,8 @@ def test_module_exports_internal_version():
 
 
 def test_version_is_in_sync():
-    with open(Path(__file__).parents[1] / 'pyproject.toml') as f:
+    with open(Path(__file__).parents[1] / "pyproject.toml") as f:
         pyproject = toml.load(f)
     assert type(module_version) == str
     assert len(module_version) > 0
-    assert module_version == pyproject['tool']['poetry']['version']
+    assert module_version == pyproject["tool"]["poetry"]["version"]
