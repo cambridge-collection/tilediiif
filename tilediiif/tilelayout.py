@@ -379,6 +379,13 @@ class CommandError(SystemExit):
         self.prefix = prefix
         self.message = message
 
+    def has_message(self):
+        return bool(self.message)
+
+    def __str__(self):
+        if self.has_message():
+            return f"{self.prefix}{self.message}"
+
 
 def main(argv=None):
     args = docopt(get_usage(), argv=argv, version=__version__)
@@ -386,9 +393,9 @@ def main(argv=None):
     try:
         run(args)
     except CommandError as e:
-        if e.message:  # noqa: B306
-            print(f"{e.prefix}{e.message}", file=sys.stderr)  # noqa: B306
-            sys.exit(e.code)
+        if e.has_message():
+            print(e, file=sys.stderr)
+        sys.exit(e.code)
 
 
 if __name__ == "__main__":
