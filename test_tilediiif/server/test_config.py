@@ -4,9 +4,29 @@ from unittest.mock import patch
 import pytest
 import toml
 
-from tilediiif.server.config import Config, ConfigError, FileTransmissionType
+from tilediiif.server.config import (
+    BaseConfig,
+    ConfigProperty,
+    Config,
+    ConfigError,
+    FileTransmissionType,
+)
 
 DATA_DIR = Path(__file__).parent / "data"
+
+
+def test_config_class_property_inheritance():
+    class StandardConfig(BaseConfig):
+        property_definitions = [ConfigProperty("foo", 42), ConfigProperty("bar", 23)]
+
+    class FancyConfig(StandardConfig):
+        property_definitions = [ConfigProperty("foo", 44)]
+
+    assert FancyConfig.foo.default == 44
+    assert FancyConfig.bar.default == 23
+
+    assert StandardConfig.property_names() == {"foo", "bar"}
+    assert FancyConfig.property_names() == {"foo", "bar"}
 
 
 @pytest.fixture

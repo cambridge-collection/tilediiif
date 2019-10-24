@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import toml
 from jsonschema import validate, ValidationError
@@ -25,6 +25,7 @@ class FileTransmissionType(Enum):
 class ConfigProperty:
     name: str
     default: Any
+    validator: Callable[[Any], None] = None
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -36,41 +37,53 @@ class ConfigProperty:
         raise TypeError(f"cannot assign to {self.name}")
 
 
-class Config:
-    image_path_template = ConfigProperty(
-        name="image_path_template",
-        default="{identifier}/{region}-{size}-{rotation}-{quality}.{format}",
-    )
-    info_json_path_template = ConfigProperty(
-        name="info_json_path_template", default="{identifier}/info.json"
-    )
-    sendfile_header_name = ConfigProperty(
-        name="sendfile_header_name", default="X-Accel-Redirect"
-    )
-    data_path = ConfigProperty(name="data_path", default=".")
-    file_transmission = ConfigProperty(
-        name="file_transmission", default=FileTransmissionType.DIRECT
-    )
+class ConfigMeta(type):
+    def __init__(cls, name, bases, attrs):
+        super().__init__(name, bases, attrs)
+
+        for property in cls.property_definitions:
+            setattr(cls, property.name, property)
+
+
+class BaseConfig(metaclass=ConfigMeta):
+    property_definitions = []
 
     def __init__(self, properties=None, **kwargs):
         properties = {**({} if properties is None else properties), **kwargs}
-        if not properties.keys() <= Config.PROPERTY_NAMES:
-            names = ", ".join(properties.keys() - Config.PROPERTY_NAMES)
+        if not properties.keys() <= self.property_names():
+            names = ", ".join(properties.keys() - self.property_names())
             raise ValueError(f"invalid property names: {names}")
         self._properties = {k: v for (k, v) in properties.items() if v is not None}
+
+    @classmethod
+    def property_names(cls):
+        return frozenset(
+            prop.name
+            for c in cls.mro()
+            if issubclass(c, BaseConfig) and hasattr(c, "property_definitions")
+            for prop in c.property_definitions
+        )
+
+    @classmethod
+    def properties(cls):
+        return {name: getattr(cls, name) for name in cls.property_names()}
+
+    @classmethod
+    def ordered_property_names(cls):
+        return sorted(cls.property_names())
 
     def merged_with(self, other_config):
         return Config({**self._properties, **other_config._properties})
 
     def _values(self):
         return tuple(
-            self._properties.get(name) for name in Config.ORDERED_PROPERTY_NAMES
+            self._properties.get(name) for name in self.ordered_property_names()
         )
 
     def __repr__(self):
         props = ", ".join(
             f"{name}={self._properties[name]!r}"
-            for name in Config.ORDERED_PROPERTY_NAMES
+            for name in self.ordered_property_names()
             if name in self._properties
         )
         return f"Config({props})"
@@ -80,6 +93,21 @@ class Config:
 
     def __hash__(self):
         return hash(self._values())
+
+
+class Config(BaseConfig):
+    property_definitions = [
+        ConfigProperty(
+            name="image_path_template",
+            default="{identifier}/{region}-{size}-{rotation}-{quality}.{format}",
+        ),
+        ConfigProperty(
+            name="info_json_path_template", default="{identifier}/info.json"
+        ),
+        ConfigProperty(name="sendfile_header_name", default="X-Accel-Redirect"),
+        ConfigProperty(name="data_path", default="."),
+        ConfigProperty(name="file_transmission", default=FileTransmissionType.DIRECT),
+    ]
 
     @staticmethod
     def from_toml_file(f):
@@ -154,14 +182,6 @@ class Config:
         )
 
         return Config(properties)
-
-
-Config.PROPERTY_NAMES = frozenset(
-    prop.name
-    for prop in (getattr(Config, name) for name in dir(Config))
-    if isinstance(prop, ConfigProperty)
-)
-Config.ORDERED_PROPERTY_NAMES = sorted(Config.PROPERTY_NAMES)
 
 
 class ConfigValueEnvars(Enum):
