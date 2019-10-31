@@ -12,9 +12,9 @@ from tilediiif.server.resources import (
 )
 from tilediiif.server.uris import IIIF_IMAGE, IIIF_IMAGE_INFO, IIIF_IMAGE_INFO_BASE
 from tilediiif.templates import (
+    TemplateError,
     get_image_path_renderer,
     get_info_json_path_renderer,
-    TemplateError,
 )
 
 CONFIG_PATH_ENVAR = "TILEDIIIF_SERVER_CONFIG"

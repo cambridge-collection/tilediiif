@@ -6,9 +6,9 @@ import toml
 
 from tilediiif.server.config import (
     BaseConfig,
-    ConfigProperty,
     Config,
     ConfigError,
+    ConfigProperty,
     FileTransmissionType,
 )
 

@@ -1,10 +1,10 @@
 import json
 import math
-from collections import abc, Counter
+from collections import Counter, abc
 from functools import partial
 from pathlib import Path, PurePath
 from tempfile import TemporaryDirectory
-from unittest.mock import call, Mock, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 from hypothesis import assume, given, settings
@@ -17,15 +17,15 @@ from test_tilediiif.test_infojson import image_dimensions
 from tilediiif.dzi import get_dzi_tile_path
 from tilediiif.infojson import power2_image_pyramid_scale_factors
 from tilediiif.tilelayout import (
+    DEFAULT_FILE_METHOD,
+    DEFAULT_FILE_PATH_TEMPLATE,
+    InvalidPath,
     create_dzi_tile_layout,
     create_file_methods,
     create_tile_layout,
-    DEFAULT_FILE_METHOD,
-    DEFAULT_FILE_PATH_TEMPLATE,
     get_layer_tiles,
     get_template_bindings,
     get_templated_dest_path,
-    InvalidPath,
     parse_template,
     run,
 )

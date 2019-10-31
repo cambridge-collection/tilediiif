@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import toml
-from jsonschema import validate, ValidationError
+from jsonschema import ValidationError, validate
 
 with open(Path(__file__).parent / "config-schema.json") as f:
     CONFIG_SCHEMA = json.load(f)

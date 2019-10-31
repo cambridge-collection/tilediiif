@@ -11,7 +11,7 @@ from rfc3986.validators import Validator
 
 from tilediiif.dzi import DZIError, parse_dzi_file
 from tilediiif.filesystem import ensure_sub_directories_exist
-from tilediiif.templates import get_info_json_path_renderer, TemplateError
+from tilediiif.templates import TemplateError, get_info_json_path_renderer
 from tilediiif.version import __version__
 
 # math.log2(2**49) == math.log2(2**49 + 1) so anything above 2**49 won't work

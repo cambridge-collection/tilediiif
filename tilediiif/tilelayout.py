@@ -10,7 +10,7 @@ from docopt import docopt
 from tilediiif.dzi import get_dzi_tile_path, parse_dzi_file
 from tilediiif.filesystem import ensure_sub_directories_exist, validate_relative_path
 from tilediiif.infojson import power2_image_pyramid_scale_factors
-from tilediiif.templates import parse_template, Template
+from tilediiif.templates import Template, parse_template
 from tilediiif.validation import require_positive_non_zero_int
 from tilediiif.version import __version__
 

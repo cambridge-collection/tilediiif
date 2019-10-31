@@ -1,17 +1,17 @@
 import hashlib
-from unittest.mock import call, MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from hypothesis import example, given
 from hypothesis.strategies import builds, composite, from_regex, integers, one_of, text
 
 from tilediiif.templates import (
-    context_value_field,
-    parse_template,
-    shard_prefix,
     Template,
     TemplateBindings,
     TemplateRenderer,
+    context_value_field,
+    parse_template,
+    shard_prefix,
     use_context,
 )
 

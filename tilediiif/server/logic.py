@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Optional, Union
 
-
 _image_req_region = re.compile(
     r"""
 \A(?:

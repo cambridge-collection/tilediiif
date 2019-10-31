@@ -8,16 +8,16 @@ from hypothesis import assume, example, given
 from hypothesis.strategies import integers, none, one_of, sampled_from
 
 from tilediiif.infojson import (
-    _create_templated_file_output_method,
-    CLIError,
     DEFAULT_DATA_PATH,
     DEFAULT_ID_BASE_URL,
     DEFAULT_INDENT,
     DEFAULT_PATH_TEMPLATE,
+    MAX_IMAGE_DIMENSION,
+    CLIError,
+    _create_templated_file_output_method,
     get_id_url,
     iiif_image_metadata_with_pow2_tiles,
     main,
-    MAX_IMAGE_DIMENSION,
     power2_image_pyramid_scale_factors,
 )
 
