@@ -27,6 +27,7 @@ ipython = "^7.8"
 httpie = "^1.0"
 black = {version = "^19.3b0", allows-prereleases = true}
 flake8-bugbear = "^19.8"
+isort = "^4.3"
 
 [tool.poetry.scripts]
 infojson = 'tilediiif.infojson:main'
@@ -54,3 +55,7 @@ target-version = ['py36', 'py37', 'py38']
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
