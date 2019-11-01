@@ -1,0 +1,40 @@
+import enum
+from typing import Type
+
+from tilediiif.config.core import ConfigProperty
+from tilediiif.config.parsing import parse_bool_strict, simple_parser
+from tilediiif.config.validation import all_validator, isinstance_validator
+
+
+class IntConfigProperty(ConfigProperty):
+    def __init__(self, name, validator=None, **kwargs):
+        _validator = isinstance_validator(int)
+        if validator is not None:
+            _validator = all_validator(_validator, validator)
+        super().__init__(
+            name, **{"parse": simple_parser(int), **kwargs, "validator": _validator},
+        )
+
+
+class BoolConfigProperty(ConfigProperty):
+    def __init__(self, name, **kwargs):
+        super().__init__(
+            name,
+            **{
+                "parse": parse_bool_strict,
+                "validator": isinstance_validator(bool),
+                **kwargs,
+            },
+        )
+
+
+class EnumConfigProperty(ConfigProperty):
+    def __init__(self, name, enum_cls: Type[enum.Enum], **kwargs):
+        super().__init__(
+            name,
+            **{
+                "validator": isinstance_validator(enum_cls),
+                "parse": simple_parser(enum_cls),
+                **kwargs,
+            },
+        )

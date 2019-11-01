@@ -5,12 +5,12 @@ import pytest
 from falcon import testing
 
 from tilediiif.server.api import get_api
-from tilediiif.server.config import Config
+from tilediiif.server.config import ServerConfig
 
 
 @pytest.fixture
 def config():
-    return Config()
+    return ServerConfig()
 
 
 @pytest.fixture

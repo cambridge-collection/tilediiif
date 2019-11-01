@@ -4,8 +4,9 @@ from unittest.mock import patch, sentinel
 import falcon
 import pytest
 
+from tilediiif.config import ConfigError
 from tilediiif.server.api import CONFIG_PATH_ENVAR, get_api
-from tilediiif.server.config import Config, ConfigError, ConfigValueEnvars
+from tilediiif.server.config import ConfigValueEnvars, ServerConfig
 
 
 @pytest.yield_fixture
@@ -72,14 +73,14 @@ def test_get_api_loads_config_from_envar_location_and_envar_values(
     mock_populate_routes,
     config_path_envar,
 ):
-    mock_config_from_toml_file.return_value = Config(data_path="foo")
-    mock_config_from_environ.return_value = Config(sendfile_header_name="bar")
+    mock_config_from_toml_file.return_value = ServerConfig(data_path="foo")
+    mock_config_from_environ.return_value = ServerConfig(sendfile_header_name="bar")
 
     api = get_api()
     mock_config_from_toml_file.assert_called_once_with(config_path_envar)
     mock_config_from_environ.assert_called_once()
     mock_populate_routes.assert_called_once_with(
-        api, Config(data_path="foo", sendfile_header_name="bar")
+        api, ServerConfig(data_path="foo", sendfile_header_name="bar")
     )
 
 
@@ -88,7 +89,7 @@ def test_get_api_uses_default_config_if_no_config_specified(
 ):
     api = get_api()
     mock_config_from_toml_file.assert_not_called()
-    mock_populate_routes.assert_called_once_with(api, Config())
+    mock_populate_routes.assert_called_once_with(api, ServerConfig())
 
 
 def test_get_api_throws_config_error_with_invalid_config(monkeypatch):
@@ -105,17 +106,17 @@ def test_get_api_throws_config_error_with_invalid_config(monkeypatch):
     "config, msg",
     [
         [
-            Config(info_json_path_template="{unsupported-placeholder}/info.json"),
+            ServerConfig(info_json_path_template="{unsupported-placeholder}/info.json"),
             "info-json-path-template is invalid: template contains unexpected "
             "placeholders: 'unsupported-placeholder'",
         ],
         [
-            Config(info_json_path_template="foo/../../{identifier}/info.json"),
+            ServerConfig(info_json_path_template="foo/../../{identifier}/info.json"),
             'info-json-path-template is invalid: template contains a ".." (parent) '
             "segment",
         ],
         [
-            Config(info_json_path_template="foo/{identifier/info.json"),
+            ServerConfig(info_json_path_template="foo/{identifier/info.json"),
             "info-json-path-template is invalid: Invalid placeholder at offset 4:",
         ],
     ],

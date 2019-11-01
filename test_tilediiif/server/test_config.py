@@ -4,29 +4,10 @@ from unittest.mock import patch
 import pytest
 import toml
 
-from tilediiif.server.config import (
-    BaseConfig,
-    Config,
-    ConfigError,
-    ConfigProperty,
-    FileTransmissionType,
-)
+from tilediiif.config import ConfigError
+from tilediiif.server.config import FileTransmissionType, ServerConfig
 
 DATA_DIR = Path(__file__).parent / "data"
-
-
-def test_config_class_property_inheritance():
-    class StandardConfig(BaseConfig):
-        property_definitions = [ConfigProperty("foo", 42), ConfigProperty("bar", 23)]
-
-    class FancyConfig(StandardConfig):
-        property_definitions = [ConfigProperty("foo", 44)]
-
-    assert FancyConfig.foo.default == 44
-    assert FancyConfig.bar.default == 23
-
-    assert StandardConfig.property_names() == {"foo", "bar"}
-    assert FancyConfig.property_names() == {"foo", "bar"}
 
 
 @pytest.fixture
@@ -36,7 +17,7 @@ def config_toml_path():
 
 @pytest.fixture
 def config_toml_expected_config():
-    return Config(
+    return ServerConfig(
         sendfile_header_name="X-File",
         data_path="/var/my-images",
         file_transmission=FileTransmissionType.INDIRECT,
@@ -63,12 +44,12 @@ def test_config_creation_from_kwargs(config_toml_expected_config):
 
 
 def test_config_from_toml_file(config_toml_path, config_toml_expected_config):
-    assert Config.from_toml_file(config_toml_path) == config_toml_expected_config
+    assert ServerConfig.from_toml_file(config_toml_path) == config_toml_expected_config
 
 
 def test_config_from_toml_uses_from_json(config_toml_path):
     with patch("tilediiif.server.config.Config.from_json") as from_json:
-        Config.from_toml_file(config_toml_path)
+        ServerConfig.from_toml_file(config_toml_path)
 
     from_json.assert_called_once_with(
         toml.load(config_toml_path), name=str(config_toml_path)
@@ -87,7 +68,7 @@ def test_config_from_toml_uses_from_json(config_toml_path):
 )
 def test_config_from_toml_file_rejects_invalid_config_files(path, msg):
     with pytest.raises(ConfigError) as exc_info:
-        Config.from_toml_file(path)
+        ServerConfig.from_toml_file(path)
     assert msg in str(exc_info.value)
 
 
@@ -125,5 +106,5 @@ def test_config_from_toml_file_rejects_invalid_config_files(path, msg):
 )
 def test_config_from_json_rejects_invalid_config_data(config, name, msg):
     with pytest.raises(ConfigError) as exc_info:
-        Config.from_json(config, name=name)
+        ServerConfig.from_json(config, name=name)
     assert msg in str(exc_info.value)

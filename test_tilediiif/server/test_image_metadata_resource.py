@@ -4,7 +4,7 @@ import falcon
 import pytest
 from falcon import testing
 
-from tilediiif.server.config import Config, FileTransmissionType
+from tilediiif.server.config import FileTransmissionType, ServerConfig
 
 TEST_DIR = Path(__file__).parent
 
@@ -21,12 +21,12 @@ def test_image_resource_base_redirects_to_info_json(client: testing.TestClient, 
     "config, sendfile_header_name, info_json_path",
     [
         [
-            Config(file_transmission=FileTransmissionType.INDIRECT),
+            ServerConfig(file_transmission=FileTransmissionType.INDIRECT),
             "X-Accel-Redirect",
             "foo/info.json",
         ],
         [
-            Config(
+            ServerConfig(
                 file_transmission=FileTransmissionType.INDIRECT,
                 info_json_path_template="prefix/{identifier}/info.json",
             ),
@@ -34,7 +34,7 @@ def test_image_resource_base_redirects_to_info_json(client: testing.TestClient, 
             "prefix/foo/info.json",
         ],
         [
-            Config(
+            ServerConfig(
                 file_transmission=FileTransmissionType.INDIRECT,
                 sendfile_header_name="x-sendfile",
             ),
@@ -42,14 +42,14 @@ def test_image_resource_base_redirects_to_info_json(client: testing.TestClient, 
             "foo/info.json",
         ],
         [
-            Config(
+            ServerConfig(
                 file_transmission=FileTransmissionType.INDIRECT, data_path="/var/images"
             ),
             "X-Accel-Redirect",
             "/var/images/foo/info.json",
         ],
         [
-            Config(
+            ServerConfig(
                 file_transmission=FileTransmissionType.INDIRECT,
                 info_json_path_template="{identifier-shard}/{identifier}/" "info.json",
                 data_path="/var/images",
@@ -71,7 +71,7 @@ def test_image_info_resource_returns_sendfile_header_to_image(
 @pytest.mark.parametrize(
     "config",
     [
-        Config(
+        ServerConfig(
             file_transmission=FileTransmissionType.DIRECT,
             data_path=TEST_DIR,
             info_json_path_template="data/example-file",
@@ -88,7 +88,7 @@ def test_direct_transmission_type_responds_with_file_content(client):
 @pytest.mark.parametrize(
     "config",
     [
-        Config(
+        ServerConfig(
             file_transmission=FileTransmissionType.DIRECT,
             data_path=TEST_DIR,
             info_json_path_template="data/missing-file",
@@ -104,7 +104,7 @@ def test_direct_transmission_type_responds_with_404_for_missing_file(client):
 @pytest.mark.parametrize(
     "config",
     [
-        Config(
+        ServerConfig(
             file_transmission=FileTransmissionType.DIRECT,
             data_path=TEST_DIR,
             info_json_path_template="data",
@@ -135,7 +135,7 @@ def test_encoded_slashes_in_paths_are_decoded_before_route_matching(client):
 
 
 @pytest.mark.parametrize(
-    "config", [Config(info_json_path_template=".{identifier}/info.json")]
+    "config", [ServerConfig(info_json_path_template=".{identifier}/info.json")]
 )
 def test_requests_resolving_to_parent_paths_are_rejected(client, mock_logger_warning):
     # This has to be a little contrived because of path slashes being decoded.

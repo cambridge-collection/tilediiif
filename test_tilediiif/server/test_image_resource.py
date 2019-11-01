@@ -3,15 +3,15 @@ from pathlib import Path
 import falcon
 import pytest
 
-from tilediiif.server.config import Config, FileTransmissionType
+from tilediiif.server.config import FileTransmissionType, ServerConfig
 
 DATA_DIR = Path(__file__).parent / "data"
 PEARS_TILES = DATA_DIR / "pears_small_size512"
 
-INDIRECT_CONFIG = Config(
+INDIRECT_CONFIG = ServerConfig(
     file_transmission=FileTransmissionType.INDIRECT, data_path=str(DATA_DIR)
 )
-DIRECT_CONFIG = Config(data_path=str(DATA_DIR))
+DIRECT_CONFIG = ServerConfig(data_path=str(DATA_DIR))
 
 
 def _assert_response_has_cors_header(result):
@@ -54,7 +54,9 @@ def test_non_normalised_requests_are_redirected_to_normalised(
     "config, url, sendfile_name, sendfile_value",
     [
         [
-            INDIRECT_CONFIG.merged_with(Config(sendfile_header_name="X-Sendfile")),
+            INDIRECT_CONFIG.merged_with(
+                ServerConfig(sendfile_header_name="X-Sendfile")
+            ),
             "/imgid/full/full/0/default.jpg",
             "X-Sendfile",
             DATA_DIR / "imgid/full-full-0-default.jpg",
@@ -67,7 +69,7 @@ def test_non_normalised_requests_are_redirected_to_normalised(
         ],
         [
             INDIRECT_CONFIG.merged_with(
-                Config(
+                ServerConfig(
                     image_path_template="{identifier-shard}/{identifier}/{image-shard}/"
                     "{region}-{size}-{rotation}-{quality}.{format}"
                 )

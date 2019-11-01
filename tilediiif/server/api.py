@@ -3,7 +3,8 @@ from pathlib import Path
 
 import falcon
 
-from tilediiif.server.config import Config, ConfigError, FileTransmissionType
+from tilediiif.config import ConfigError
+from tilediiif.server.config import FileTransmissionType, ServerConfig
 from tilediiif.server.resources import (
     DirectFileTransmitter,
     IIIFImageMetadataResource,
@@ -20,21 +21,21 @@ from tilediiif.templates import (
 CONFIG_PATH_ENVAR = "TILEDIIIF_SERVER_CONFIG"
 
 
-def get_api(config: Config = None):
+def get_api(config: ServerConfig = None):
     if config is None:
         config_path = os.environ.get(CONFIG_PATH_ENVAR)
         if config_path is not None:
-            config = Config.from_toml_file(config_path)
+            config = ServerConfig.from_toml_file(config_path)
         else:
-            config = Config()
+            config = ServerConfig()
 
-        config = config.merged_with(Config.from_environ())
+        config = config.merged_with(ServerConfig.from_environ())
     api = falcon.API()
 
     return _populate_routes(api, config)
 
 
-def _populate_routes(api, config: Config):
+def _populate_routes(api, config: ServerConfig):
     if config.file_transmission == FileTransmissionType.DIRECT:
         transmit_file = DirectFileTransmitter()
     else:
