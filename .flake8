@@ -9,9 +9,6 @@ exclude =
 # black formats to 88 chars length by default
 max-line-length = 88
 ignore =
-    # line length - disable as flake8-bugbear has an equivalent rule, which
-    # defaults to 88 - black's line length.
-    E501
     # line break before binary operator - black does this intentionally, and
     # apparently the default is about to change to prefer breaking before...
     W503
