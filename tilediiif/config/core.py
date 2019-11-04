@@ -1,8 +1,12 @@
 import os
+import re
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+from types import MappingProxyType
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Tuple, Union
 
 import toml
 from jsonpath_rw import parse
@@ -118,7 +122,9 @@ def normalise_variant(variant) -> Tuple[str]:
 def _parse_function_attrs(variants):
     if not isinstance(variants, tuple) and all(isinstance(s, str) for s in variants):
         raise TypeError(f"variants must be a tuple of strings, got: {variants!r}")
-    return tuple(f"parse_{variant}" for variant in variants) + ("parse",)
+    return tuple(f"parse_{variant.replace('-', '_')}" for variant in variants) + (
+        "parse",
+    )
 
 
 class ConfigMeta(type):
@@ -157,6 +163,22 @@ class BaseConfig(metaclass=ConfigMeta):
         self._properties = {}
         for prop_name, value in properties.items():
             setattr(self, prop_name, value)
+
+    def __eq__(self, other):
+        return isinstance(other, BaseConfig) and self.values == other.values
+
+    def __hash__(self):
+        return hash(tuple(sorted(self.values.items())))
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self})"
+
+    def __str__(self):
+        return str(self.values)
+
+    @property
+    def values(self):
+        return MappingProxyType(self._properties)
 
     @classmethod
     def _validate_config_class(cls):
@@ -261,8 +283,35 @@ class EnvironmentConfigMixin(BaseConfig):
         return hash(self._values())
 
 
+def use_non_string_values_parser(
+    value,
+    *,
+    property: ConfigProperty,
+    variant: NormalisedVariant,
+    default_parsers: DefaultParsers,
+):
+    """
+    A parser function which treats non-string values as already parsed, and delegates
+    parsing of string values to the next variant's parser.
+    """
+    if len(variant) == 0:
+        raise RuntimeError(
+            "use_non_string_values_parser cannot be called as the final variant as it "
+            "delegates string parsing to the next variant"
+        )
+
+    # Allow strings to be parsed further
+    if isinstance(value, str):
+        return property.parse(
+            value, variant=variant[1:], default_parsers=default_parsers
+        )
+    # Assume non-string values are ready for use
+    return value
+
+
 class JSONConfigMixin(BaseConfig):
     is_abstract_config_cls = True
+    parse_json_default = use_non_string_values_parser
 
     @classmethod
     def _set_up_config_class(cls, name, bases, attrs):
@@ -306,25 +355,6 @@ class JSONConfigMixin(BaseConfig):
                 "parse_jsonpath": cls.parse_jsonpath_default,
             },
         )
-
-    @classmethod
-    def parse_json_default(
-        cls,
-        value,
-        *,
-        property: ConfigProperty,
-        variant: NormalisedVariant,
-        default_parsers: DefaultParsers,
-    ):
-        assert variant[0] == "json"
-
-        # Allow strings to be parsed further
-        if isinstance(value, str):
-            return property.parse(
-                value, variant=variant[1:], default_parsers=default_parsers
-            )
-        # Assume non-string values are ready for use
-        return value
 
     @classmethod
     def parse_jsonpath_default(
@@ -396,7 +426,197 @@ class TOMLConfigMixin(JSONConfigMixin):
         return cls.from_json(data, name=get_name(f) if name is None else name)
 
 
-class Config(EnvironmentConfigMixin, TOMLConfigMixin, BaseConfig):
+class CLIValueNotFound(LookupError):
+    pass
+
+
+class InvalidCLIUsageConfigError(ConfigError):
+    pass
+
+
+class BaseCLIValue(ABC):
+    @abstractmethod
+    def extract(self, args: Mapping[str, Any]) -> Any:
+        pass
+
+    @staticmethod
+    def _normalise_names(names, label="names"):
+        input = names
+        if names is None:
+            names = ()
+        if isinstance(names, str):
+            names = (names,)
+        try:
+            if not isinstance(names, tuple):
+                names = tuple(names)
+            if all(isinstance(n, str) for n in names):
+                return names
+        except TypeError:
+            pass
+        raise ValueError(f"{label} must be strings, got: {input}")
+
+    @staticmethod
+    def _extract(names, args):
+        values = [
+            (name, args[name])
+            for name in names
+            if name in args and args[name] is not None
+        ]
+        if not values:
+            raise CLIValueNotFound(names, args)
+        elif len(values) > 1:
+            values_found = ", ".join(f"{name} = {value!r}" for name, value in values)
+            raise InvalidCLIUsageConfigError(
+                f"conflicting arguments, at most one can be specified of: "
+                f"{values_found}"
+            )
+        return values[0]
+
+    def is_present(self, args: Mapping[str, Any]):
+        try:
+            self.extract(args)
+            return True
+        except CLIValueNotFound:
+            return False
+
+
+@dataclass(frozen=True)
+class CLIValue(BaseCLIValue):
+    names: Tuple[str]
+
+    def __init__(self, names: Union[Iterable[str], str] = None):
+        object.__setattr__(self, "names", self._normalise_names(names))
+
+        if len(self.names) == 0:
+            raise ValueError("At least one name must be specified")
+
+    def extract(self, args: Mapping[str, Any]) -> Any:
+        _, value = self._extract(self.names, args)
+        return value
+
+
+@dataclass(frozen=True)
+class CLIFlag(BaseCLIValue):
+    enable_names: Tuple[str]
+    disable_names: Tuple[str]
+
+    def __init__(
+        self,
+        enable_names: Union[Iterable[str], str] = None,
+        disable_names: Union[Iterable[str], str] = None,
+    ):
+        _enable_names = self._normalise_names(enable_names, label="enable_names")
+        _disable_names = self._normalise_names(disable_names, label="disable_names")
+        if len(_enable_names) + len(_disable_names) == 0:
+            raise ValueError("at least one enable or disable name must be specified")
+        if disable_names is None:
+            assert _enable_names
+            _disable_names = tuple(self.generate_disable_names(_enable_names))
+        object.__setattr__(self, "enable_names", _enable_names)
+        object.__setattr__(self, "disable_names", _disable_names)
+
+    @staticmethod
+    def generate_disable_names(names: Tuple[str]):
+        for name in names:
+            match = re.match(r"\A--(.*)\Z", name)
+            if match:
+                yield f"--no-{match.group(1)}"
+
+    def extract(self, args: Mapping[str, Any]) -> Any:
+        try:
+            positive = self._extract(self.enable_names, args)
+        except CLIValueNotFound:
+            positive = None
+        try:
+            negative = self._extract(self.disable_names, args)
+        except CLIValueNotFound:
+            negative = None
+
+        for opt, value in (o_v for o_v in [positive, negative] if o_v is not None):
+            if not (value is None or isinstance(value, bool)):
+                raise ValueError(
+                    f"args contains invalid value for boolean flag: {opt}: {value!r}"
+                )
+
+        if positive and negative:
+            raise InvalidCLIUsageConfigError(
+                f"conflicting arguments: {positive[0]} and its disabled form "
+                f"{negative[0]} cannot be specified together"
+            )
+        if positive:
+            return True
+        if negative:
+            return False
+        raise CLIValueNotFound(self.enable_names + self.disable_names, args)
+
+
+class CommandLineArgConfigMixin(BaseConfig):
+    is_abstract_config_cls = True
+    parse_cli_arg_default = use_non_string_values_parser
+
+    @classmethod
+    def drop_undefined_args(cls, args: Dict[str, Any]):
+        return {
+            arg: value
+            for arg, value in args.items()
+            if not cls.is_undefined_arg_value(value)
+        }
+
+    @staticmethod
+    def is_undefined_arg_value(value):
+        return value is None or value is False or value == []
+
+    @classmethod
+    def from_cli_args(cls, args: Dict[str, Any]):
+        stripped_args = cls.drop_undefined_args(args)
+        cli_properties = cls.get_cli_properties()
+
+        property_values = {}
+        for property, cli_value in cli_properties:
+            try:
+                property_values[property.name] = cli_value.extract(stripped_args)
+            except CLIValueNotFound:
+                pass
+
+        return cls.parse(
+            property_values,
+            variant=("cli-arg",),
+            default_parsers={"parse_cli_arg": cls.parse_cli_arg_default},
+        )
+
+    @classmethod
+    def get_cli_properties(cls):
+        return [
+            (property, cls.get_cli_value(property.attrs["cli_arg"]))
+            for property in cls.properties().values()
+            if "cli_arg" in property.attrs
+        ]
+
+    @classmethod
+    def get_cli_value(cls, cli_value):
+        if isinstance(cli_value, str):
+            return cls.parse_cli_value(cli_value)
+        if isinstance(cli_value, BaseCLIValue):
+            return cli_value
+        raise ValueError(f"unsupported cli_value: {cli_value!r}")
+
+    @classmethod
+    def parse_cli_value(cls, cli_value_expr: str):
+        match = re.match(r"\A(<\S*>)|(-[^-=\s]|--[^=\s]+)(=)?\Z", cli_value_expr)
+        if not match:
+            raise ValueError(
+                f"Unable to parse cli_value expression: {cli_value_expr!r}"
+            )
+        arg, opt, is_value = match.groups()
+
+        if arg or is_value:
+            return CLIValue(arg or opt)
+        return CLIFlag(opt)
+
+
+class Config(
+    CommandLineArgConfigMixin, EnvironmentConfigMixin, TOMLConfigMixin, BaseConfig,
+):
     is_abstract_config_cls = True
 
 

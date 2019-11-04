@@ -15,6 +15,68 @@ from tilediiif.config.parsing import parse_bool_strict, simple_parser
 from tilediiif.config.validation import isinstance_validator, iterable_validator
 
 
+@pytest.fixture
+def config_cls_a():
+    class ConfigA(BaseConfig):
+        property_definitions = [
+            ConfigProperty("foo"),
+            ConfigProperty("bar"),
+        ]
+
+    return ConfigA
+
+
+@pytest.fixture
+def config_cls_b():
+    class ConfigB(BaseConfig):
+        property_definitions = [
+            ConfigProperty("foo"),
+            ConfigProperty("bar"),
+        ]
+
+    return ConfigB
+
+
+def test_config_equals(config_cls_a, config_cls_b):
+    assert config_cls_a({"foo": 42}) == config_cls_a({"foo": 42})
+    assert config_cls_a({"foo": 42}) == config_cls_b({"foo": 42})
+
+
+def test_config_str(config_cls_a):
+    assert str(config_cls_a({})) == "{}"
+    assert str(config_cls_a({"foo": 42})) == "{'foo': 42}"
+    assert str(config_cls_a({"foo": 42, "bar": "hi"})) == "{'foo': 42, 'bar': 'hi'}"
+
+
+def test_config_repr(config_cls_a):
+    assert repr(config_cls_a({})) == "ConfigA({})"
+    assert repr(config_cls_a({"foo": 42})) == "ConfigA({'foo': 42})"
+    assert repr(config_cls_a({"foo": 42, "bar": "hi"})) == (
+        "ConfigA({'foo': 42, 'bar': 'hi'})"
+    )
+
+
+def test_config_hash(config_cls_a):
+    config = config_cls_a({"foo": 123})
+    assert isinstance(hash(config), int)
+    assert {config: "foo"}[config] == "foo"
+
+
+def test_config_values(config_cls_a):
+    config = config_cls_a({"foo": 123})
+    values = config.values
+
+    assert values == {"foo": 123}
+
+    # values is read only
+    with pytest.raises(TypeError):
+        values["abc"] = 123
+
+    config.foo = 456
+    # values is a live view
+    assert values == {"foo": 456}
+
+
 def test_config_class_property_inheritance():
     class StandardConfig(BaseConfig):
         property_definitions = [
