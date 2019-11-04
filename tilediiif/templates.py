@@ -152,7 +152,7 @@ class TemplateBindings:
 
 def use_context(*names):
     if len(names) == 1:
-        name, = names
+        (name,) = names
 
         def decorate(f):
             @wraps(f)

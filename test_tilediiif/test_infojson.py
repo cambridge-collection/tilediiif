@@ -41,7 +41,7 @@ def test_iiif_image_metadata_with_pow2_tiles(id_url, format, width, height, tile
     assert meta["width"] == width
     assert meta["height"] == height
     assert len(meta["tiles"]) == 1
-    tiles, = meta["tiles"]
+    (tiles,) = meta["tiles"]
     assert tiles["width"] == tile_size
     assert tiles["scaleFactors"] == power2_image_pyramid_scale_factors(
         width=width, height=height, tile_size=tile_size
