@@ -21,10 +21,11 @@ from tilediiif.config.exceptions import (
     ConfigValidationError,
     InvalidCLIUsageConfigError,
 )
+from tilediiif.config.parsing import delegating_parser, parse_string_values
 
 Variant = Union[None, str, Iterable[str]]
 NormalisedVariant = Tuple[str]
-DefaultParsers = Dict[str, "ParserFunction"]
+DefaultParsers = Mapping[str, "ParserFunction"]
 # ParserFunction has signature:
 # def parse(value: Any, *, property: ConfigProperty, variant: NormalisedVariant,
 #           default_parsers: DefaultParsers) -> Any
@@ -283,35 +284,9 @@ class EnvironmentConfigMixin(BaseConfig):
         return hash(self._values())
 
 
-def use_non_string_values_parser(
-    value,
-    *,
-    property: ConfigProperty,
-    variant: NormalisedVariant,
-    default_parsers: DefaultParsers,
-):
-    """
-    A parser function which treats non-string values as already parsed, and delegates
-    parsing of string values to the next variant's parser.
-    """
-    if len(variant) == 0:
-        raise RuntimeError(
-            "use_non_string_values_parser cannot be called as the final variant as it "
-            "delegates string parsing to the next variant"
-        )
-
-    # Allow strings to be parsed further
-    if isinstance(value, str):
-        return property.parse(
-            value, variant=variant[1:], default_parsers=default_parsers
-        )
-    # Assume non-string values are ready for use
-    return value
-
-
 class JSONConfigMixin(BaseConfig):
     is_abstract_config_cls = True
-    parse_json_default = use_non_string_values_parser
+    parse_json_default = parse_string_values
 
     @classmethod
     def _set_up_config_class(cls, name, bases, attrs):
@@ -356,17 +331,11 @@ class JSONConfigMixin(BaseConfig):
             },
         )
 
-    @classmethod
+    @staticmethod
+    @delegating_parser(property=True)
     def parse_jsonpath_default(
-        cls,
-        value: List[DatumInContext],
-        *,
-        property: ConfigProperty,
-        variant: NormalisedVariant,
-        default_parsers: DefaultParsers,
+        value: List[DatumInContext], *, next, property: ConfigProperty,
     ):
-        assert variant[0:2] == ("jsonpath", "json")
-
         if len(value) == 0:
             return ParseResult.NONE
         if len(value) > 1:
@@ -376,9 +345,7 @@ class JSONConfigMixin(BaseConfig):
             )
 
         try:
-            return property.parse(
-                value[0].value, variant=variant[1:], default_parsers=default_parsers
-            )
+            return next(value[0].value)
         except ValueError as e:
             raise ConfigParseError(
                 f"Invalid JSON value at {value[0].full_path}: {e}"
@@ -544,7 +511,7 @@ class CLIFlag(BaseCLIValue):
 
 class CommandLineArgConfigMixin(BaseConfig):
     is_abstract_config_cls = True
-    parse_cli_arg_default = use_non_string_values_parser
+    parse_cli_arg_default = parse_string_values
 
     @classmethod
     def drop_undefined_args(cls, args: Dict[str, Any]):

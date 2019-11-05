@@ -1,10 +1,16 @@
 import enum
-from unittest.mock import MagicMock, sentinel
+from unittest.mock import MagicMock, Mock, sentinel
 
 import pytest
 
-from tilediiif.config import ConfigParseError
-from tilediiif.config.parsing import enum_list_parser, parse_bool_strict, simple_parser
+from tilediiif.config import ConfigParseError, ConfigProperty
+from tilediiif.config.parsing import (
+    delegating_parser,
+    enum_list_parser,
+    parse_bool_strict,
+    parse_string_values,
+    simple_parser,
+)
 
 
 def test_simple_parser_decorator():
@@ -46,3 +52,104 @@ def test_parse_bool_strict_rejects_invalid_values(value):
     assert str(exc_info.value) == (
         f"boolean value must be 'true' or 'false', got: {value!r}"
     )
+
+
+def test_parse_string_values():
+    foo_prop = ConfigProperty(
+        "foo",
+        parse=simple_parser(lambda x: ("parsed", int(x))),
+        parse_structured_data=parse_string_values,
+    )
+
+    assert foo_prop.parse("42") == ("parsed", 42)
+    assert foo_prop.parse("42", variant=("structured_data",)) == ("parsed", 42)
+    assert foo_prop.parse(("already-parsed", 42), variant=("structured_data",)) == (
+        "already-parsed",
+        42,
+    )
+
+
+def test_delegating_parser_decorator():
+    @delegating_parser
+    def parse_comma_separated(value, next):
+        return [next(x) for x in value.split(",")]
+
+    foo_prop = ConfigProperty(
+        "foo", parse=simple_parser(int), parse_example=parse_comma_separated
+    )
+
+    assert foo_prop.parse("1,2,3", variant="example") == [1, 2, 3]
+
+
+@pytest.fixture
+def delegating_parser_decorator(pass_property, pass_variant, pass_default_parsers):
+    return delegating_parser(
+        property=pass_property,
+        variant=pass_variant,
+        default_parsers=pass_default_parsers,
+    )
+
+
+@pytest.mark.parametrize("pass_property", [True, False])
+@pytest.mark.parametrize("pass_variant", [True, False])
+@pytest.mark.parametrize("pass_default_parsers", [True, False])
+@pytest.mark.parametrize("sub_property", [True, False])
+@pytest.mark.parametrize("sub_variant", [True, False])
+@pytest.mark.parametrize("sub_default_parsers", [True, False])
+def test_delegating_parser_decorator_with_optional_args(
+    delegating_parser_decorator,
+    sub_property,
+    sub_variant,
+    sub_default_parsers,
+    pass_property,
+    pass_variant,
+    pass_default_parsers,
+):
+    property1 = Mock(spec=ConfigProperty)
+    property2 = Mock(spec=ConfigProperty)
+    property1.parse.return_value = sentinel.result
+    property2.parse.return_value = sentinel.result
+
+    def parse(value, next, **kwargs):
+        return next(
+            sentinel.value2,
+            property=property2 if sub_property else None,
+            variant=("c",) if sub_variant else None,
+            default_parsers=sentinel.default_parsers2 if sub_default_parsers else None,
+        )
+
+    parse = MagicMock(side_effect=parse)
+    parser = delegating_parser_decorator(parse)
+
+    assert (
+        parser(
+            sentinel.value1,
+            property=property1,
+            variant=("a", "b"),
+            default_parsers=sentinel.default_parsers1,
+        )
+        == sentinel.result
+    )
+
+    parse.assert_called_once()
+    p_args, p_kwargs = parse.mock_calls[0][1:]
+    assert p_args == (sentinel.value1,)
+    assert len(p_kwargs) == 1 + pass_property + pass_variant + pass_default_parsers
+    assert "next" in p_kwargs
+    assert p_kwargs.get("property") == (property1 if pass_property else None)
+    assert p_kwargs.get("variant") == (("a", "b") if pass_variant else None)
+    assert p_kwargs.get("default_parsers") == (
+        sentinel.default_parsers1 if pass_default_parsers else None
+    )
+
+    used_property, unused_property = (
+        (property2, property1) if sub_property else (property1, property2)
+    )
+    used_property.parse.assert_called_once_with(
+        sentinel.value2,
+        variant=("c",) if sub_variant else ("b",),
+        default_parsers=sentinel.default_parsers2
+        if sub_default_parsers
+        else sentinel.default_parsers1,
+    )
+    unused_property.parse.assert_not_called()
