@@ -1,8 +1,9 @@
 import enum
+from pathlib import Path
 from typing import Type
 
 from tilediiif.config.core import ConfigProperty
-from tilediiif.config.parsing import parse_bool_strict, simple_parser
+from tilediiif.config.parsing import parse_bool_strict, parse_path, simple_parser
 from tilediiif.config.validation import all_validator, isinstance_validator
 
 
@@ -35,6 +36,19 @@ class EnumConfigProperty(ConfigProperty):
             **{
                 "validator": isinstance_validator(enum_cls),
                 "parse": simple_parser(enum_cls),
+                **kwargs,
+            },
+        )
+
+
+class PathConfigProperty(ConfigProperty):
+    def __init__(self, name, **kwargs):
+        super().__init__(
+            name,
+            **{
+                "normaliser": Path,
+                "validator": isinstance_validator((Path, str)),
+                "parse": parse_path,
                 **kwargs,
             },
         )

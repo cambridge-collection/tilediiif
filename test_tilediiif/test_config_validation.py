@@ -20,6 +20,15 @@ def test_isinstance_validator():
     assert str(exc_info.value) == "expected a int but got a str: 'abc'"
 
 
+def test_isinstance_validator_multiple_cls():
+    validator = isinstance_validator((int, float))
+    validator(3)
+    validator(3.5)
+    with pytest.raises(ConfigValidationError) as exc_info:
+        validator("abc")
+    assert str(exc_info.value) == "expected a int or float but got a str: 'abc'"
+
+
 @pytest.mark.parametrize("value", [[], [1], [1, 2, 3]])
 def test_validate_no_duplicates_accepts_valid_values(value):
     validate_no_duplicates(value)

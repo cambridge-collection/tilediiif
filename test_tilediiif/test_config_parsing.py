@@ -8,6 +8,7 @@ from tilediiif.config.parsing import (
     delegating_parser,
     enum_list_parser,
     parse_bool_strict,
+    parse_path,
     parse_string_values,
     simple_parser,
 )
@@ -52,6 +53,23 @@ def test_parse_bool_strict_rejects_invalid_values(value):
     assert str(exc_info.value) == (
         f"boolean value must be 'true' or 'false', got: {value!r}"
     )
+
+
+@pytest.mark.parametrize(
+    "path, result",
+    [
+        ["~", "/home/foo"],
+        ["~/", "/home/foo/"],
+        ["~/.bar", "/home/foo/.bar"],
+        ["~/$THING1", "/home/foo/abc/def"],
+        ["/${THING1}/$THING2", "/abc/def/123"],
+    ],
+)
+def test_parse_path(path, result, monkeypatch):
+    monkeypatch.setenv("HOME", "/home/foo")
+    monkeypatch.setenv("THING1", "abc/def")
+    monkeypatch.setenv("THING2", "123")
+    assert parse_path(path) == result
 
 
 def test_parse_string_values():

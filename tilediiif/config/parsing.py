@@ -1,5 +1,7 @@
 import enum
 from functools import wraps
+from os.path import expanduser, expandvars
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, List, Type, TypeVar, Union
 
 from tilediiif.config.exceptions import ConfigParseError
@@ -130,3 +132,10 @@ def parse_string_values(value, next):
         return next(value)
     # Assume non-string values are ready for use
     return value
+
+
+@simple_parser
+def parse_path(path: Union[str, Path]):
+    if isinstance(path, Path):
+        path = str(path)
+    return expandvars(expanduser(path))

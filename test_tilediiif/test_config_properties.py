@@ -1,4 +1,5 @@
 import enum
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,6 +9,7 @@ from tilediiif.config.properties import (
     BoolConfigProperty,
     EnumConfigProperty,
     IntConfigProperty,
+    PathConfigProperty,
 )
 
 
@@ -27,6 +29,7 @@ def example_config_cls(enum_cls):
             IntConfigProperty("int"),
             BoolConfigProperty("bool"),
             EnumConfigProperty("enum", enum_cls),
+            PathConfigProperty("path"),
         ]
 
     return ExampleConfig
@@ -79,3 +82,19 @@ def test_enum_config_property(example_config_cls, enum_cls):
 def test_enum_config_property_validates_values(example_config_cls, enum_cls):
     with pytest.raises(ConfigValidationError):
         example_config_cls({"enum": "abc"})
+
+
+def test_path_config_property(example_config_cls, monkeypatch):
+    monkeypatch.setenv("HOME", "/home/foo")
+    assert example_config_cls(path="/tmp/bar").path == Path("/tmp/bar")
+    # Paths are only expanded when parsing
+    assert example_config_cls(path=Path("~/bar")).path == Path("~/bar")
+    assert example_config_cls.parse({"path": "~/bar"}).path == Path("/home/foo/bar")
+    assert example_config_cls.parse({"path": Path("~/bar")}).path == Path(
+        "/home/foo/bar"
+    )
+
+
+def test_path_config_property_validates_values(example_config_cls):
+    with pytest.raises(ConfigValidationError):
+        example_config_cls(path=42)

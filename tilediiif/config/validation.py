@@ -7,8 +7,10 @@ from tilediiif.config.core import ConfigValidationError
 def isinstance_validator(cls):
     def validate_isinstance(value):
         if not isinstance(value, cls):
+            classes = cls if isinstance(cls, tuple) else (cls,)
+            expected_cls_desc = " or ".join(c.__qualname__ for c in classes)
             raise ConfigValidationError(
-                f"expected a {cls.__qualname__} but got a {type(value).__qualname__}: "
+                f"expected a {expected_cls_desc} but got a {type(value).__qualname__}: "
                 f"{value!r}"
             )
 
