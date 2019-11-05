@@ -2,7 +2,7 @@ import enum
 from functools import wraps
 from typing import Any, Callable, List, Type, TypeVar
 
-from tilediiif.config.core import ConfigParseError
+from tilediiif.config.exceptions import ConfigParseError
 
 
 def simple_parser(parse_func: Callable[[Any], Any]):

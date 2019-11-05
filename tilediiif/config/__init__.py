@@ -1,21 +1,20 @@
 from .core import (
     BaseConfig,
     Config,
-    ConfigError,
-    ConfigParseError,
     ConfigProperty,
     EnvironmentConfigMixin,
     JSONConfigMixin,
     ParseResult,
     TOMLConfigMixin,
 )
+from .exceptions import ConfigError, ConfigParseError
 
 __all__ = [
     "BaseConfig",
     "Config",
+    "ConfigProperty",
     "ConfigError",
     "ConfigParseError",
-    "ConfigProperty",
     "EnvironmentConfigMixin",
     "JSONConfigMixin",
     "ParseResult",

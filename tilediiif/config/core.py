@@ -14,6 +14,14 @@ from jsonpath_rw.jsonpath import DatumInContext, JSONPath
 from jsonschema import ValidationError as JSONSchemaValidationError
 from jsonschema import validate
 
+from tilediiif.config.exceptions import (
+    CLIValueNotFound,
+    ConfigError,
+    ConfigParseError,
+    ConfigValidationError,
+    InvalidCLIUsageConfigError,
+)
+
 Variant = Union[None, str, Iterable[str]]
 NormalisedVariant = Tuple[str]
 DefaultParsers = Dict[str, "ParserFunction"]
@@ -25,16 +33,8 @@ DefaultParsers = Dict[str, "ParserFunction"]
 ParserFunction = Callable
 
 
-class ConfigError(ValueError):
-    pass
 
 
-class ConfigParseError(ConfigError):
-    pass
-
-
-class ConfigValidationError(ConfigError):
-    pass
 
 
 class ConfigProperty:
@@ -424,14 +424,6 @@ class TOMLConfigMixin(JSONConfigMixin):
         except OSError as e:
             raise ConfigError(f"Unable to read {get_name(f)}: {e}") from e
         return cls.from_json(data, name=get_name(f) if name is None else name)
-
-
-class CLIValueNotFound(LookupError):
-    pass
-
-
-class InvalidCLIUsageConfigError(ConfigError):
-    pass
 
 
 class BaseCLIValue(ABC):
