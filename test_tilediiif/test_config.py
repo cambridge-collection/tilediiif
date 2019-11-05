@@ -10,7 +10,12 @@ from tilediiif.config import (
     ConfigProperty,
     JSONConfigMixin,
 )
-from tilediiif.config.core import _parse_function_attrs, normalise_variant
+from tilediiif.config.core import (
+    EmptyEnvar,
+    EnvironmentConfigMixin,
+    _parse_function_attrs,
+    normalise_variant,
+)
 from tilediiif.config.parsing import parse_bool_strict, simple_parser
 from tilediiif.config.validation import isinstance_validator, iterable_validator
 
@@ -414,3 +419,29 @@ def test_config_from_environ_reads_os_environ(example_config_cls, monkeypatch):
 def test_config_from_environ_can_read_manually_specified_vars(example_config_cls):
     config = example_config_cls.from_environ(envars={"TEST_FOO": "55"})
     assert config.foo == 55
+
+
+@pytest.mark.parametrize(
+    "envar_empty, expected",
+    [
+        [EmptyEnvar.UNSET, "abc"],
+        [EmptyEnvar.NONE, None],
+        [EmptyEnvar.EMPTY_STRING, ""],
+        [None, None],
+    ],
+)
+def test_config_from_environ_handles_empty_envars_according_to_strategy(
+    envar_empty, expected, monkeypatch
+):
+    class EnvarConfig(EnvironmentConfigMixin, BaseConfig):
+        envar_empty_kwargs = (
+            {} if envar_empty is None else dict(envar_empty=envar_empty)
+        )
+        property_definitions = [
+            ConfigProperty(
+                "foo", default="abc", envar_name="TEST_FOO", **envar_empty_kwargs
+            ),
+        ]
+
+    monkeypatch.setenv("TEST_FOO", "")
+    assert EnvarConfig.from_environ().foo == expected

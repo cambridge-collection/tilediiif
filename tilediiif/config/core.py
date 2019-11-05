@@ -252,6 +252,12 @@ class BaseConfig(metaclass=ConfigMeta):
         return cls(property_values)
 
 
+class EmptyEnvar(Enum):
+    UNSET = ParseResult.NONE
+    NONE = None
+    EMPTY_STRING = ""
+
+
 class EnvironmentConfigMixin(BaseConfig):
     is_abstract_config_cls = True
 
@@ -273,12 +279,27 @@ class EnvironmentConfigMixin(BaseConfig):
         }
 
         try:
-            return cls.parse(raw_values, variant=("envar",))
+            return cls.parse(
+                raw_values,
+                variant=("envar",),
+                default_parsers={"parse_envar": cls.parse_envar_default},
+            )
         except ConfigValidationError as e:
             envar_names = ", ".join(envar for envar, _, _ in envar_props)
             raise ConfigValidationError(
                 f"loading config from envars {envar_names} failed: {e}"
             )
+
+    @staticmethod
+    @delegating_parser(property=True)
+    def parse_envar_default(value: str, *, next, property):
+        if len(value) == 0:
+            empty_strategy = property.attrs.get("envar_empty", EmptyEnvar.NONE)
+            value = empty_strategy.value
+
+        if value is ParseResult.NONE:
+            return ParseResult.NONE
+        return next(value)
 
     def merged_with(self, other_config):
         if type(self) != type(other_config):
