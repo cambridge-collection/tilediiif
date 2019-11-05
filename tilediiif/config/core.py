@@ -3,7 +3,7 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from functools import lru_cache
+from functools import lru_cache, partial
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Tuple, Union
@@ -34,27 +34,44 @@ DefaultParsers = Mapping[str, "ParserFunction"]
 ParserFunction = Callable
 
 
+def identity(arg):
+    return arg
 
 
+def const_default_factory(value):
+    return partial(identity, value)
 
 
+@dataclass(frozen=True)
 class ConfigProperty:
+    name: str
+    default_factory: Callable
+    validator: Callable[[Any], None]
+    normaliser: Callable[[Any], Any]
+    attrs: Dict
+
     def __init__(
         self,
         name: str,
         *,
         default=None,
+        default_factory=None,
         validator: Callable[[Any], None] = None,
         normaliser: Callable[[Any], Any] = None,
         attrs=None,
         **kwargs,
     ):
+        if default is not None and default_factory is not None:
+            raise ValueError("default and default_factory cannot both be specified")
+        if default is not None:
+            default_factory = const_default_factory(default)
+
         attrs = {**({} if attrs is None else attrs), **kwargs}
-        self.name = name
-        self.default = default
-        self.validator = validator
-        self.normaliser = normaliser
-        self.attrs = attrs
+        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "default_factory", default_factory)
+        object.__setattr__(self, "validator", validator)
+        object.__setattr__(self, "normaliser", normaliser)
+        object.__setattr__(self, "attrs", MappingProxyType(attrs))
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -63,7 +80,14 @@ class ConfigProperty:
         return self.get_value(instance)
 
     def get_value(self, config: "BaseConfig"):
-        return config._properties.get(self.name, self.default)
+        try:
+            return config._properties[self.name]
+        except KeyError:
+            return self.default
+
+    @property
+    def default(self):
+        return None if self.default_factory is None else self.default_factory()
 
     def set_value(self, config: "BaseConfig", value):
         config._properties[self.name] = value
