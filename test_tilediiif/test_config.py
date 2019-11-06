@@ -16,6 +16,7 @@ from tilediiif.config.core import (
     EnvironmentConfigMixin,
     _parse_function_attrs,
     normalise_variant,
+    simple_default_factory,
 )
 from tilediiif.config.parsing import parse_bool_strict, simple_parser
 from tilediiif.config.validation import isinstance_validator, iterable_validator
@@ -149,6 +150,30 @@ def test_config_property_default_value():
 
     assert ExampleConfig().foo == 42
     assert ExampleConfig({"foo": 7}).foo == 7
+
+
+def test_config_property_default_factory():
+    def get_default(*, config, property):
+        assert config is config_instance
+        assert property is ExampleConfig.foo
+        return 42
+
+    class ExampleConfig(BaseConfig):
+        property_definitions = [ConfigProperty("foo", default_factory=get_default)]
+
+    config_instance = ExampleConfig()
+    assert config_instance.foo == 42
+
+
+def test_simple_default_factory():
+    @simple_default_factory
+    def get_default():
+        return 42
+
+    class ExampleConfig(BaseConfig):
+        property_definitions = [ConfigProperty("foo", default_factory=get_default)]
+
+    assert ExampleConfig().foo == 42
 
 
 def test_config_property_validator():

@@ -3,7 +3,7 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from functools import lru_cache, partial
+from functools import lru_cache, partial, reduce, wraps
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Tuple, Union
@@ -39,13 +39,25 @@ def identity(arg):
 
 
 def const_default_factory(value):
-    return partial(identity, value)
+    return simple_default_factory(partial(identity, value))
+
+
+def simple_default_factory(fn):
+    """
+    A decorator to convert a no-arg function into a default_factory function.
+    """
+
+    @wraps(fn)
+    def default_factory(**_):
+        return fn()
+
+    return default_factory
 
 
 @dataclass(frozen=True)
 class ConfigProperty:
     name: str
-    default_factory: Callable
+    default_factory: Callable[..., Any]
     validator: Callable[[Any], None]
     normaliser: Callable[[Any], Any]
     attrs: Dict
@@ -83,11 +95,14 @@ class ConfigProperty:
         try:
             return config._properties[self.name]
         except KeyError:
-            return self.default
+            return self.get_default(config)
 
-    @property
-    def default(self):
-        return None if self.default_factory is None else self.default_factory()
+    def get_default(self, config: "BaseConfig"):
+        return (
+            None
+            if self.default_factory is None
+            else self.default_factory(config=config, property=self)
+        )
 
     def set_value(self, config: "BaseConfig", value):
         config._properties[self.name] = value
@@ -602,6 +617,21 @@ class Config(
     CommandLineArgConfigMixin, EnvironmentConfigMixin, TOMLConfigMixin, BaseConfig,
 ):
     is_abstract_config_cls = True
+
+    @classmethod
+    def from_merged_sources(
+        cls, cli_args=None, toml_file=None, envars=None, toml_file_name=None
+    ):
+        file_config = (
+            None
+            if toml_file is None
+            else cls.from_toml_file(toml_file, name=toml_file_name)
+        )
+        envar_config = cls.from_environ(envars=envars)
+        cli_config = None if cli_args is None else cls.from_cli_args(args=cli_args)
+
+        configs = [c for c in [file_config, envar_config, cli_config] if c is not None]
+        return reduce(lambda conf, next_conf: conf.merged_with(next_conf), configs)
 
 
 def get_name(f):
