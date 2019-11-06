@@ -1,5 +1,6 @@
 import textwrap
 from io import StringIO
+from pathlib import Path
 
 import pytest
 
@@ -436,22 +437,25 @@ def test_config_from_environ_can_read_manually_specified_vars(example_config_cls
 @pytest.mark.parametrize(
     "envar_empty, expected",
     [
-        [EmptyEnvar.UNSET, "abc"],
+        [EmptyEnvar.UNSET, Path("abc")],
         [EmptyEnvar.NONE, None],
-        [EmptyEnvar.EMPTY_STRING, ""],
+        [EmptyEnvar.EMPTY_STRING, Path("")],
         [None, None],
     ],
 )
 def test_config_from_environ_handles_empty_envars_according_to_strategy(
     envar_empty, expected, monkeypatch
 ):
+    envar_empty_kwargs = {} if envar_empty is None else dict(envar_empty=envar_empty)
+
     class EnvarConfig(EnvironmentConfigMixin, BaseConfig):
-        envar_empty_kwargs = (
-            {} if envar_empty is None else dict(envar_empty=envar_empty)
-        )
         property_definitions = [
             ConfigProperty(
-                "foo", default="abc", envar_name="TEST_FOO", **envar_empty_kwargs
+                "foo",
+                default=Path("abc"),
+                parse=simple_parser(Path),
+                envar_name="TEST_FOO",
+                **envar_empty_kwargs,
             ),
         ]
 

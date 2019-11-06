@@ -303,10 +303,9 @@ class EnvironmentConfigMixin(BaseConfig):
     def parse_envar_default(value: str, *, next, property):
         if len(value) == 0:
             empty_strategy = property.attrs.get("envar_empty", EmptyEnvar.NONE)
-            value = empty_strategy.value
+            if empty_strategy is not EmptyEnvar.EMPTY_STRING:
+                return empty_strategy.value
 
-        if value is ParseResult.NONE:
-            return ParseResult.NONE
         return next(value)
 
 
