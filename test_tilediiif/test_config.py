@@ -67,6 +67,18 @@ def test_config_hash(config_cls_a):
     assert {config: "foo"}[config] == "foo"
 
 
+@pytest.mark.parametrize(
+    "a, b, expected",
+    [
+        [{}, {}, {}],
+        [{"foo": 1}, {"bar": 5}, {"foo": 1, "bar": 5}],
+        [{"foo": 1}, {"foo": 2, "bar": 5}, {"foo": 2, "bar": 5}],
+    ],
+)
+def test_merged_with(a, b, expected, config_cls_a):
+    assert config_cls_a(a).merged_with(config_cls_a(b)) == config_cls_a(expected)
+
+
 def test_config_values(config_cls_a):
     config = config_cls_a({"foo": 123})
     values = config.values

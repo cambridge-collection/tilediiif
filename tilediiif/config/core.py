@@ -205,6 +205,14 @@ class BaseConfig(metaclass=ConfigMeta):
     def values(self):
         return MappingProxyType(self._properties)
 
+    def merged_with(self, other_config: "BaseConfig"):
+        if type(self) != type(other_config):
+            raise TypeError(
+                f"cannot merge different config types {type(self)} and "
+                f"{type(other_config)}"
+            )
+        return type(self)({**self._properties, **other_config._properties})
+
     @classmethod
     def _validate_config_class(cls):
         pass
@@ -300,33 +308,6 @@ class EnvironmentConfigMixin(BaseConfig):
         if value is ParseResult.NONE:
             return ParseResult.NONE
         return next(value)
-
-    def merged_with(self, other_config):
-        if type(self) != type(other_config):
-            raise TypeError(
-                f"cannot merge different config types {type(self)} and "
-                f"{type(other_config)}"
-            )
-        return type(self)({**self._properties, **other_config._properties})
-
-    def _values(self):
-        return tuple(
-            self._properties.get(name) for name in self.ordered_property_names()
-        )
-
-    def __repr__(self):
-        props = ", ".join(
-            f"{name}={self._properties[name]!r}"
-            for name in self.ordered_property_names()
-            if name in self._properties
-        )
-        return f"Config({props})"
-
-    def __eq__(self, other):
-        return self._values() == other._values()
-
-    def __hash__(self):
-        return hash(self._values())
 
 
 class JSONConfigMixin(BaseConfig):
