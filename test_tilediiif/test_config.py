@@ -182,8 +182,8 @@ def test_config_class_property_inheritance():
     assert FancyConfig().default_values.foo == 44
     assert FancyConfig().default_values.bar == 23
 
-    assert StandardConfig.property_names() == {"foo", "bar"}
-    assert FancyConfig.property_names() == {"foo", "bar"}
+    assert list(StandardConfig.properties().keys()) == ["foo", "bar"]
+    assert list(FancyConfig.properties().keys()) == ["foo", "bar"]
 
 
 def test_json_config_classes_require_json_schema_attr():

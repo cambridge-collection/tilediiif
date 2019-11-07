@@ -1,6 +1,7 @@
 import os
 import re
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache, reduce
@@ -331,8 +332,8 @@ class BaseConfig(metaclass=ConfigMeta):
 
     def __init__(self, values=None, **kwargs):
         property_values = {**({} if values is None else values), **kwargs}
-        if not property_values.keys() <= self.property_names():
-            names = ", ".join(property_values.keys() - self.property_names())
+        if not property_values.keys() <= self.properties().keys():
+            names = ", ".join(property_values.keys() - self.properties().keys())
             raise ValueError(f"invalid property names: {names}")
 
         self._property_values = {}
@@ -346,7 +347,9 @@ class BaseConfig(metaclass=ConfigMeta):
         return isinstance(other, BaseConfig) and self.values == other.values
 
     def __hash__(self):
-        return hash(tuple(sorted(self.values.items())))
+        # Note that the iterator order of values is deterministic (follows order of
+        # properties in cls.property_definitions)
+        return hash(tuple(self.values.items()))
 
     def __repr__(self):
         return f"{type(self).__name__}({self})"
@@ -376,21 +379,23 @@ class BaseConfig(metaclass=ConfigMeta):
 
     @classmethod
     @lru_cache()
-    def property_names(cls):
-        return frozenset(
-            prop.name
-            for c in cls.mro()
-            if issubclass(c, BaseConfig) and hasattr(c, "property_definitions")
-            for prop in c.property_definitions
-        )
-
-    @classmethod
     def properties(cls) -> Mapping[str, ConfigProperty]:
-        return {name: getattr(cls, name) for name in cls.property_names()}
+        """
+        Get a read-only mapping of property names to ConfigProperty instances for this
+        config class.
 
-    @classmethod
-    def ordered_property_names(cls):
-        return sorted(cls.property_names())
+        The iteration order of the mapping follows the definition order in
+        cls.property_definitions.
+        """
+        return MappingProxyType(
+            OrderedDict(
+                (property.name, property)
+                for classs in reversed(cls.mro())
+                if issubclass(classs, BaseConfig)
+                and hasattr(classs, "property_definitions")
+                for property in classs.property_definitions
+            )
+        )
 
     @classmethod
     def parse(
