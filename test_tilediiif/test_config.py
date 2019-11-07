@@ -1,6 +1,7 @@
 import textwrap
 from io import StringIO
 from pathlib import Path
+from unittest.mock import sentinel
 
 import pytest
 
@@ -18,6 +19,7 @@ from tilediiif.config.core import (
     normalise_variant,
     simple_default_factory,
 )
+from tilediiif.config.exceptions import ConfigValidationError
 from tilediiif.config.parsing import parse_bool_strict, simple_parser
 from tilediiif.config.validation import isinstance_validator, iterable_validator
 
@@ -223,6 +225,44 @@ def test_config_property_default_value():
 
     assert ExampleConfig().foo == 42
     assert ExampleConfig({"foo": 7}).foo == 7
+
+
+@pytest.mark.parametrize(
+    "property",
+    [
+        ConfigProperty(
+            "foo",
+            validator=isinstance_validator(int),
+            default_factory=simple_default_factory(lambda: "abc"),
+        ),
+        ConfigProperty("foo", validator=isinstance_validator(int), default="abc"),
+    ],
+)
+def test_config_property_default_values_are_validated(property):
+    with pytest.raises(ConfigValidationError) as exc_info:
+        property.get_default(sentinel)
+
+    assert (
+        str(exc_info.value)
+        == "default value for 'foo' is invalid: expected a int but got a str: 'abc'"
+    )
+
+
+@pytest.mark.parametrize(
+    "property",
+    [
+        ConfigProperty(
+            "foo",
+            normaliser=frozenset,
+            default_factory=simple_default_factory(lambda: ("a", "b")),
+        ),
+        ConfigProperty("foo", normaliser=frozenset, default=("a", "b")),
+    ],
+)
+def test_config_property_default_values_are_normalised(property):
+    default = property.get_default(sentinel)
+    assert isinstance(default, frozenset)
+    assert default == {"a", "b"}
 
 
 def test_config_property_default_factory():

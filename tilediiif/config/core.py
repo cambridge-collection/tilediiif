@@ -148,7 +148,9 @@ class ConfigProperty:
     def get_default(self, config: "BaseConfig"):
         if self.default_factory is None:
             raise ConfigValueNotPresent(config=config, property=self)
-        return self.default_factory(config=config, property=self)
+        default = self.default_factory(config=config, property=self)
+        self.validate(default, is_default=True)
+        return self.normalise(default)
 
     def set_value(self, config: "BaseConfig", value):
         config._property_values[self.name] = value
@@ -157,12 +159,15 @@ class ConfigProperty:
         self.validate(value)
         self.set_value(instance, self.normalise(value))
 
-    def validate(self, value):
+    def validate(self, value, is_default=False):
         if self.validator is not None:
             try:
                 self.validator(value)
             except ConfigValidationError as e:
-                raise ConfigValidationError(f"value for {self.name!r} is invalid: {e}")
+                value_desc = "default value" if is_default else "value"
+                raise ConfigValidationError(
+                    f"{value_desc} for {self.name!r} is invalid: {e}"
+                )
 
     def normalise(self, value):
         return value if self.normaliser is None else self.normaliser(value)
