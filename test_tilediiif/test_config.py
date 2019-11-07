@@ -81,19 +81,92 @@ def test_merged_with(a, b, expected, config_cls_a):
     assert config_cls_a(a).merged_with(config_cls_a(b)) == config_cls_a(expected)
 
 
-def test_config_values(config_cls_a):
-    config = config_cls_a({"foo": 123})
-    values = config.values
+def test_config_non_default_values():
+    class ExampleConfig(BaseConfig):
+        property_definitions = [ConfigProperty("a", default=42), ConfigProperty("b")]
 
-    assert values == {"foo": 123}
+    config_with_values = ExampleConfig(a=1, b=2)
+    assert config_with_values.non_default_values.a == 1
+    assert config_with_values.non_default_values.b == 2
+    assert ExampleConfig.a in config_with_values.non_default_values
+    assert ExampleConfig.b in config_with_values.non_default_values
+
+    assert len(config_with_values.non_default_values) == 2
+    assert dict(config_with_values.non_default_values) == {
+        ExampleConfig.a: 1,
+        ExampleConfig.b: 2,
+    }
+
+    config_without_values = ExampleConfig()
+    for property in [ExampleConfig.a, ExampleConfig.b]:
+        assert property not in config_without_values.non_default_values
+        with pytest.raises(KeyError):
+            config_without_values.non_default_values[property]
+        with pytest.raises(AttributeError):
+            getattr(config_without_values.non_default_values, property.name)
+
+    assert len(config_without_values.non_default_values) == 0
+    assert dict(config_without_values.non_default_values) == {}
+
+
+def test_config_default_values():
+    class ExampleConfig(BaseConfig):
+        property_definitions = [ConfigProperty("a", default=42), ConfigProperty("b")]
+
+    config = ExampleConfig(a=1, b=2)
+    assert ExampleConfig.a in config.default_values
+    assert ExampleConfig.b not in config.default_values
+    assert config.default_values.a == 42
+    assert config.default_values["a"] == 42
+    assert config.default_values[ExampleConfig.a] == 42
+    assert len(config.default_values) == 1
+    assert dict(config.default_values) == {ExampleConfig.a: 42}
+
+    with pytest.raises(KeyError):
+        config.default_values[ExampleConfig.b]
+    with pytest.raises(AttributeError):
+        config.default_values.b
+
+
+def test_config_values():
+    class ExampleConfig(BaseConfig):
+        property_definitions = [ConfigProperty("a", default=42), ConfigProperty("b")]
+
+    config_with_values = ExampleConfig(a=1, b=2)
+    assert config_with_values.values.a == 1
+    assert config_with_values.values.b == 2
+    assert ExampleConfig.a in config_with_values.values
+    assert ExampleConfig.b in config_with_values.values
+
+    assert len(config_with_values.values) == 2
+    assert dict(config_with_values.values) == {
+        ExampleConfig.a: 1,
+        ExampleConfig.b: 2,
+    }
+
+    config_without_values = ExampleConfig()
+    assert ExampleConfig.a in config_without_values.values
+    assert ExampleConfig.b not in config_without_values.values
+    assert config_without_values.values.a == 42
+    assert config_without_values.values[ExampleConfig.a] == 42
+    assert len(config_without_values.values) == 1
+    assert dict(config_without_values.values) == {ExampleConfig.a: 42}
+
+    with pytest.raises(KeyError):
+        config_without_values.values[ExampleConfig.b]
+    with pytest.raises(AttributeError):
+        config_without_values.values.b
 
     # values is read only
+    with pytest.raises(AttributeError):
+        config_without_values.values.a = 123
     with pytest.raises(TypeError):
-        values["abc"] = 123
+        config_without_values.values[ExampleConfig.a] = 123
 
-    config.foo = 456
+    config_without_values.b = 456
     # values is a live view
-    assert values == {"foo": 456}
+    assert config_without_values.values.b == 456
+    assert config_without_values.values[ExampleConfig.b] == 456
 
 
 def test_config_class_property_inheritance():
@@ -106,8 +179,8 @@ def test_config_class_property_inheritance():
     class FancyConfig(StandardConfig):
         property_definitions = [ConfigProperty("foo", default=44)]
 
-    assert FancyConfig.foo.default == 44
-    assert FancyConfig.bar.default == 23
+    assert FancyConfig().default_values.foo == 44
+    assert FancyConfig().default_values.bar == 23
 
     assert StandardConfig.property_names() == {"foo", "bar"}
     assert FancyConfig.property_names() == {"foo", "bar"}
@@ -163,6 +236,17 @@ def test_config_property_default_factory():
 
     config_instance = ExampleConfig()
     assert config_instance.foo == 42
+
+
+def test_config_property_has_default():
+    assert ConfigProperty("foo").has_default() is False
+    assert ConfigProperty("foo", default=42).has_default() is True
+    assert (
+        ConfigProperty(
+            "foo", default_factory=simple_default_factory(lambda: 42)
+        ).has_default()
+        is True
+    )
 
 
 def test_simple_default_factory():

@@ -3,10 +3,10 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from functools import lru_cache, partial, reduce, wraps
+from functools import lru_cache, reduce
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Tuple, Union
 
 import toml
 from jsonpath_rw import parse
@@ -19,6 +19,7 @@ from tilediiif.config.exceptions import (
     ConfigError,
     ConfigParseError,
     ConfigValidationError,
+    ConfigValueNotPresent,
     InvalidCLIUsageConfigError,
 )
 from tilediiif.config.parsing import delegating_parser, parse_string_values
@@ -38,20 +39,53 @@ def identity(arg):
     return arg
 
 
-def const_default_factory(value):
-    return simple_default_factory(partial(identity, value))
+@dataclass(frozen=True)
+class ConstDefaultFactory:
+    value: Any
+
+    def __call__(self, **_):
+        return self.value
 
 
-def simple_default_factory(fn):
+@dataclass(frozen=True)
+class SimpleDefaultFactory:
     """
     A decorator to convert a no-arg function into a default_factory function.
     """
 
-    @wraps(fn)
-    def default_factory(**_):
-        return fn()
+    fn: Callable
 
-    return default_factory
+    def __call__(self, **_):
+        return self.fn()
+
+
+simple_default_factory = SimpleDefaultFactory
+
+
+@dataclass(frozen=True)
+class FrozenMapping(Mapping):
+    mapping: Mapping
+
+    def __init__(self, mapping: Mapping):
+        object.__setattr__(self, "mapping", MappingProxyType(mapping))
+
+    def __hash__(self):
+        return hash(tuple(self.items()))
+
+    def __getitem__(self, k):
+        return self.mapping[k]
+
+    def __len__(self) -> int:
+        return len(self.mapping)
+
+    def __iter__(self):
+        return iter(self.mapping)
+
+    def __str__(self):
+        return str(self.mapping)
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self})"
 
 
 @dataclass(frozen=True)
@@ -76,36 +110,47 @@ class ConfigProperty:
         if default is not None and default_factory is not None:
             raise ValueError("default and default_factory cannot both be specified")
         if default is not None:
-            default_factory = const_default_factory(default)
+            default_factory = ConstDefaultFactory(default)
 
         attrs = {**({} if attrs is None else attrs), **kwargs}
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "default_factory", default_factory)
         object.__setattr__(self, "validator", validator)
         object.__setattr__(self, "normaliser", normaliser)
-        object.__setattr__(self, "attrs", MappingProxyType(attrs))
+        object.__setattr__(self, "attrs", FrozenMapping(attrs))
 
     def __get__(self, instance, owner):
         if instance is None:
             return self
 
-        return self.get_value(instance)
-
-    def get_value(self, config: "BaseConfig"):
         try:
-            return config._properties[self.name]
+            return self.get_value(instance)
+        except ConfigValueNotPresent:
+            return None
+
+    def has_value(self, config: "BaseConfig", use_default=True):
+        return self.name in config._property_values or (
+            use_default and self.has_default()
+        )
+
+    def has_default(self):
+        return self.default_factory is not None
+
+    def get_value(self, config: "BaseConfig", use_default=True):
+        try:
+            return config._property_values[self.name]
         except KeyError:
+            if not use_default:
+                raise ConfigValueNotPresent(config=config, property=self)
             return self.get_default(config)
 
     def get_default(self, config: "BaseConfig"):
-        return (
-            None
-            if self.default_factory is None
-            else self.default_factory(config=config, property=self)
-        )
+        if self.default_factory is None:
+            raise ConfigValueNotPresent(config=config, property=self)
+        return self.default_factory(config=config, property=self)
 
     def set_value(self, config: "BaseConfig", value):
-        config._properties[self.name] = value
+        config._property_values[self.name] = value
 
     def __set__(self, instance, value):
         self.validate(value)
@@ -177,6 +222,95 @@ class ParseResult(Enum):
     NONE = 0
 
 
+@dataclass(eq=False)
+class BaseConfigValues(Mapping):
+    config: "BaseConfig"
+    config_attr_name: str
+
+    def __init__(self, config: "BaseConfig", config_attr_name: str):
+        object.__setattr__(self, "config", config)
+        object.__setattr__(self, "config_attr_name", config_attr_name)
+
+    @abstractmethod
+    def has_value(self, property: ConfigProperty):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_value(self, property: ConfigProperty):
+        raise NotImplementedError()
+
+    def _get_property(self, name_or_prop: Union[ConfigProperty, str]):
+        name = name_or_prop if isinstance(name_or_prop, str) else name_or_prop.name
+        property = getattr(type(self.config), name, None)
+        if not isinstance(name_or_prop, str) and property is not name_or_prop:
+            raise AttributeError(name_or_prop)
+        return property
+
+    def __contains__(self, name_or_prop: Union[ConfigProperty, str]):
+        try:
+            return self.has_value(self._get_property(name_or_prop))
+        except AttributeError:
+            return False
+
+    def __getitem__(self, name_or_prop: Union[ConfigProperty, str]) -> Any:
+        if name_or_prop in self:
+            return self.get_value(self._get_property(name_or_prop))
+        raise KeyError(property)
+
+    def __getattr__(self, name: str):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
+
+    def __setattr__(self, name, _):
+        raise AttributeError(f"cannot assign to config property {name}")
+
+    def __delattr__(self, name):
+        raise AttributeError(f"cannot delete config property {name}")
+
+    def __len__(self) -> int:
+        return sum(1 for _ in self)
+
+    def __iter__(self) -> Iterator[ConfigProperty]:
+        for property in self.config.properties().values():
+            if property in self:
+                yield property
+
+    def __str__(self):
+        content = ", ".join(
+            f"{property.name!r}: {value!r}" for property, value in self.items()
+        )
+        return f"{{{content}}}"
+
+    def __repr__(self):
+        return f"{self.config!r}.{self.config_attr_name}"
+
+
+class DefaultConfigValues(BaseConfigValues):
+    def has_value(self, property: ConfigProperty):
+        return property.has_default()
+
+    def get_value(self, property: ConfigProperty):
+        return property.get_default(self.config)
+
+
+class AllConfigValues(BaseConfigValues):
+    def has_value(self, property: ConfigProperty):
+        return property.has_value(self.config, use_default=True)
+
+    def get_value(self, property: ConfigProperty):
+        return property.get_value(self.config, use_default=True)
+
+
+class NonDefaultConfigValues(BaseConfigValues):
+    def has_value(self, property: ConfigProperty):
+        return property.has_value(self.config, use_default=False)
+
+    def get_value(self, property: ConfigProperty):
+        return property.get_value(self.config, use_default=False)
+
+
 class BaseConfig(metaclass=ConfigMeta):
     is_abstract_config_cls = True
 
@@ -195,13 +329,17 @@ class BaseConfig(metaclass=ConfigMeta):
             for property in cls.property_definitions:
                 setattr(cls, property.name, property)
 
-    def __init__(self, properties=None, **kwargs):
-        properties = {**({} if properties is None else properties), **kwargs}
-        if not properties.keys() <= self.property_names():
-            names = ", ".join(properties.keys() - self.property_names())
+    def __init__(self, values=None, **kwargs):
+        property_values = {**({} if values is None else values), **kwargs}
+        if not property_values.keys() <= self.property_names():
+            names = ", ".join(property_values.keys() - self.property_names())
             raise ValueError(f"invalid property names: {names}")
-        self._properties = {}
-        for prop_name, value in properties.items():
+
+        self._property_values = {}
+        for prop_name, value in property_values.items():
+            # This updates values in self._property_values via ConfigProperty's
+            # descriptor method __set__(), which results in the value being normalised
+            # and validated.
             setattr(self, prop_name, value)
 
     def __eq__(self, other):
@@ -218,7 +356,15 @@ class BaseConfig(metaclass=ConfigMeta):
 
     @property
     def values(self):
-        return MappingProxyType(self._properties)
+        return AllConfigValues(self, "values")
+
+    @property
+    def default_values(self):
+        return DefaultConfigValues(self, "default_values")
+
+    @property
+    def non_default_values(self):
+        return NonDefaultConfigValues(self, "non_default_values")
 
     def merged_with(self, other_config: "BaseConfig"):
         if type(self) != type(other_config):
@@ -226,11 +372,7 @@ class BaseConfig(metaclass=ConfigMeta):
                 f"cannot merge different config types {type(self)} and "
                 f"{type(other_config)}"
             )
-        return type(self)({**self._properties, **other_config._properties})
-
-    @classmethod
-    def _validate_config_class(cls):
-        pass
+        return type(self)({**self._property_values, **other_config._property_values})
 
     @classmethod
     @lru_cache()
@@ -243,7 +385,7 @@ class BaseConfig(metaclass=ConfigMeta):
         )
 
     @classmethod
-    def properties(cls):
+    def properties(cls) -> Mapping[str, ConfigProperty]:
         return {name: getattr(cls, name) for name in cls.property_names()}
 
     @classmethod
