@@ -128,10 +128,13 @@ class DescribedEnumMixin:
 
     @classmethod
     def describe_members(cls):
-        return "\n".join(f"- {member.label} :- {member.description}" for member in cls)
+        return "\n".join(f"• {member.label} ➜ {member.description}" for member in cls)
 
     def __repr__(self):
         return f"{type(self).__name__}.for_label({self.label!r})"
+
+    def __str__(self):
+        return f"{self.label} ({self.description})"
 
 
 class ColourSource(DescribedEnumMixin, enum.Enum):
@@ -261,6 +264,7 @@ class JPEGConfig(Config):
             cli_arg="--jpeg-trellis-quant",
             envar_name=f"{ENVAR_PREFIX}_JPEG_TRELLIS_QUANT",
             json_path="dzi-tiles.jpeg.trellis-quant",
+            requires_mozjpeg=True,
         ),
         BoolConfigProperty(
             "overshoot_deringing",
@@ -268,6 +272,7 @@ class JPEGConfig(Config):
             cli_arg="--jpeg-overshoot-deringing",
             envar_name=f"{ENVAR_PREFIX}_JPEG_OVERSHOOT_DERINGING",
             json_path="dzi-tiles.jpeg.overshoot-deringing",
+            requires_mozjpeg=True,
         ),
         BoolConfigProperty(
             "optimize_scans",
@@ -275,6 +280,7 @@ class JPEGConfig(Config):
             cli_arg="--jpeg-optimize-scans",
             envar_name=f"{ENVAR_PREFIX}_JPEG_OPTIMIZE_SCANS",
             json_path="dzi-tiles.jpeg.optimize-scans",
+            requires_mozjpeg=True,
         ),
         EnumConfigProperty(
             "quant_table",
@@ -285,8 +291,16 @@ class JPEGConfig(Config):
             cli_arg="--jpeg-quant-table=",
             envar_name=f"{ENVAR_PREFIX}_JPEG_QUANT_TABLE",
             json_path="dzi-tiles.jpeg.quant-table",
+            requires_mozjpeg=True,
         ),
     ]
+
+    def get_values_requiring_mozjpeg(self):
+        return {
+            p: self.non_default_values[p]
+            for p in self.properties().values()
+            if p.attrs.get("requires_mozjpeg") and p in self.non_default_values
+        }
 
 
 class DZIConfig(Config):
@@ -531,10 +545,6 @@ DZITilesConfiguration.CONFIGS = MappingProxyType(
 )
 
 
-def get_config():
-    raise NotImplementedError()
-
-
 def main():
     try:
         run()
@@ -542,9 +552,33 @@ def main():
         e.do_exit()
 
 
+def ensure_mozjpeg_present_if_required(jpeg_config):
+    mozjpeg_values = jpeg_config.get_values_requiring_mozjpeg()
+    if len(mozjpeg_values) == 0 or libjpeg_supports_params():
+        return
+
+    options_desc = "\n".join(
+        f"• {property.name} = {value} "
+        f"(default: {property.get_default(config=jpeg_config)})"
+        for property, value in mozjpeg_values.items()
+    )
+
+    raise CommandError(
+        f"""\
+JPEG compression options requiring mozjpeg are enabled, but mozjpeg is not present
+
+The following config options are set to non-default values (the
+defaults do not require mozjpeg):
+
+{indent(options_desc, by=4)}
+"""
+    )
+
+
 def run():
     config = DZITilesConfiguration.load()
-    print(config)
+
+    ensure_mozjpeg_present_if_required(config)
 
 
 if __name__ == "__main__":

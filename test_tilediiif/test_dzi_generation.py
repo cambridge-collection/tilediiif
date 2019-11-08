@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -9,10 +9,13 @@ from tilediiif.dzi_generation import (
     ColourSource,
     DZITilesConfiguration,
     IOConfig,
+    JPEGConfig,
     JPEGQuantTable,
     RenderingIntent,
+    ensure_mozjpeg_present_if_required,
     indent,
 )
+from tilediiif.exceptions import CommandError
 
 EXAMPLE_CONFIG_FILE = str(
     Path(__file__).parent / "data" / "dzi-tiles-example-config.toml"
@@ -336,3 +339,19 @@ def test_load_config(dzi_config, expected):
 
         for property in data["undefined"]:
             assert property not in config.values
+
+
+@pytest.mark.parametrize("mozjpeg_supported", [True, False])
+@pytest.mark.parametrize("mozjpeg_option_used", [True, False])
+def test_ensure_mozjpeg_present_if_required(mozjpeg_supported, mozjpeg_option_used):
+    jpeg_config = JPEGConfig(overshoot_deringing=mozjpeg_option_used)
+
+    libjpeg_supports_params = MagicMock(return_value=mozjpeg_supported)
+    with patch(
+        "tilediiif.dzi_generation.libjpeg_supports_params", libjpeg_supports_params
+    ):
+        try:
+            ensure_mozjpeg_present_if_required(jpeg_config)
+            assert mozjpeg_supported or not mozjpeg_option_used
+        except CommandError:
+            assert not mozjpeg_supported or not mozjpeg_option_used
