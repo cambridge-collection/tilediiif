@@ -519,6 +519,12 @@ class JSONConfigMixin(BaseConfig):
 
     @classmethod
     def from_json(cls, obj, name=None):
+        if cls.json_schema is None:
+            raise TypeError(
+                f"{cls.__name__}.from_json() is disabled because {cls.__name__}"
+                f".json_schema is None. Set json_schema to True to enable from_json() "
+                f"without schema validation."
+            )
         try:
             validate(obj, schema=cls.json_schema)
         except JSONSchemaValidationError as e:

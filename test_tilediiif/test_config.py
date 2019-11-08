@@ -493,6 +493,31 @@ def example_config_cls():
     return ExampleConfig
 
 
+def test_config_from_json_is_disabled_if_schema_is_none():
+    class ExampleConfig(JSONConfigMixin, BaseConfig):
+        json_schema = None
+        property_definitions = []
+
+    with pytest.raises(TypeError) as exc_info:
+        ExampleConfig.from_json({})
+
+    assert str(exc_info.value).startswith(
+        "ExampleConfig.from_json() is disabled because ExampleConfig.json_schema is "
+        "None."
+    )
+
+
+def test_config_from_json_with_true_as_schema_accepts_any_json():
+    class ExampleConfig(JSONConfigMixin, BaseConfig):
+        json_schema = True
+        property_definitions = [ConfigProperty("foo", default=1, json_path="abc.def")]
+
+    assert ExampleConfig.from_json({}).foo == 1
+    assert ExampleConfig.from_json(42).foo == 1
+    assert ExampleConfig.from_json(None).foo == 1
+    assert ExampleConfig.from_json({"abc": {"def": 42}}).foo == 42
+
+
 def test_config_from_json(example_config_cls):
     config = example_config_cls.from_json(
         {
