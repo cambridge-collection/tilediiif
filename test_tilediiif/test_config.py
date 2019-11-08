@@ -13,6 +13,7 @@ from tilediiif.config import (
     JSONConfigMixin,
 )
 from tilediiif.config.core import (
+    ConstDefaultFactory,
     EmptyEnvar,
     EnvironmentConfigMixin,
     _parse_function_attrs,
@@ -610,3 +611,26 @@ def test_config_from_environ_handles_empty_envars_according_to_strategy(
 
     monkeypatch.setenv("TEST_FOO", "")
     assert EnvarConfig.from_environ().foo == expected
+
+
+def test_const_default_factory_with_hashable_value():
+    a = ConstDefaultFactory((1, 2))
+    assert a() == (1, 2)
+    assert a.value_hashable is True
+    b = ConstDefaultFactory((1, 2))
+    assert a == b
+    assert {a: sentinel}[a] is sentinel
+    assert {a: sentinel}[b] is sentinel
+
+
+def test_const_default_factory_with_unhashable_value():
+    a = ConstDefaultFactory([1, 2])
+    assert a() == [1, 2]
+    assert a.value_hashable is False
+    b = ConstDefaultFactory([1, 2])
+    # with non-hashable values, equality and hash() is based on object identity
+    assert a != b
+    assert a.value == b.value
+    # still hashable despite value not being hashable
+    assert {a: sentinel}[a] is sentinel
+    assert {a: sentinel}.get(b) is None

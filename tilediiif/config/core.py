@@ -43,9 +43,33 @@ def identity(arg):
 @dataclass(frozen=True)
 class ConstDefaultFactory:
     value: Any
+    value_hashable: bool
+
+    def __init__(self, value: Any, *, value_hashable=None):
+        object.__setattr__(self, "value", value)
+
+        if value_hashable is None:
+            try:
+                hash(value)
+                value_hashable = True
+            except TypeError:
+                value_hashable = False
+        object.__setattr__(self, "value_hashable", value_hashable)
 
     def __call__(self, **_):
         return self.value
+
+    def __eq__(self, other):
+        if self.value_hashable:
+            return isinstance(other, ConstDefaultFactory) and self.value == other.value
+        else:
+            return object.__eq__(self, other)
+
+    def __hash__(self):
+        if self.value_hashable:
+            return hash((self.value,))
+        else:
+            return object.__hash__(self)
 
 
 @dataclass(frozen=True)
