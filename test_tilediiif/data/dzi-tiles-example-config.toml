@@ -1,0 +1,19 @@
+# These are all just random non-default values
+[dzi-tiles.colour]
+input-colour-sources = ["embedded-profile", "external-profile"]
+external-input-profile = "/opt/profile-a.icc"
+output-profile = "/opt/profile-b.icc"
+colour-transform-intent = "saturation"
+
+[dzi-tiles.jpeg]
+quality = 80
+optimize-coding = true
+subsample = false
+trellis-quant = true
+overshoot-deringing = true
+optimize-scans = true
+quant-table = 4
+
+[dzi-tiles.dzi]
+tile-size = 256
+overlap = 3
