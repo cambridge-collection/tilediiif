@@ -1,13 +1,13 @@
 import math
 import os
 import shutil
-import sys
 from functools import partial
 from pathlib import Path
 
 from docopt import docopt
 
 from tilediiif.dzi import get_dzi_tile_path, parse_dzi_file
+from tilediiif.exceptions import CommandError
 from tilediiif.filesystem import ensure_sub_directories_exist, validate_relative_path
 from tilediiif.infojson import power2_image_pyramid_scale_factors
 from tilediiif.templates import Template, parse_template
@@ -373,29 +373,13 @@ Possible values are {", ".join(sorted(create_file_methods.keys()))}'
     )
 
 
-class CommandError(SystemExit):
-    def __init__(self, message=None, code=1, prefix="Error: "):
-        super().__init__(code)
-        self.prefix = prefix
-        self.message = message
-
-    def has_message(self):
-        return bool(self.message)
-
-    def __str__(self):
-        if self.has_message():
-            return f"{self.prefix}{self.message}"
-
-
 def main(argv=None):
     args = docopt(get_usage(), argv=argv, version=__version__)
 
     try:
         run(args)
     except CommandError as e:
-        if e.has_message():
-            print(e, file=sys.stderr)
-        sys.exit(e.code)
+        e.do_exit()
 
 
 if __name__ == "__main__":
