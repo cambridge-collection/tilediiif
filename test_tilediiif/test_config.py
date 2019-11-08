@@ -245,7 +245,7 @@ def test_config_property_default_values_are_validated(property):
 
     assert (
         str(exc_info.value)
-        == "default value for 'foo' is invalid: expected a int but got a str: 'abc'"
+        == "default value for 'foo' is invalid: expected int but got str: 'abc'"
     )
 
 
@@ -313,14 +313,14 @@ def test_config_property_validator():
     with pytest.raises(ConfigError) as exc_info:
         ExampleConfig({"foo": "blah"})
     assert str(exc_info.value) == (
-        "value for 'foo' is invalid: expected a int but got a str: 'blah'"
+        "value for 'foo' is invalid: expected int but got str: 'blah'"
     )
 
     config = ExampleConfig({"foo": 42})
     with pytest.raises(ConfigError) as exc_info:
         config.foo = "abc"
     assert str(exc_info.value) == (
-        "value for 'foo' is invalid: expected a int but got a str: 'abc'"
+        "value for 'foo' is invalid: expected int but got str: 'abc'"
     )
 
 
@@ -343,7 +343,7 @@ def test_config_property_parsing():
     with pytest.raises(ConfigError) as exc_info:
         assert ExampleConfig.parse({"bar": "42"})
     assert str(exc_info.value) == (
-        "value for 'bar' is invalid: expected a int but got a str: '42'"
+        "value for 'bar' is invalid: expected int but got str: '42'"
     )
 
     # But bar does have a custom parser

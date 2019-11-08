@@ -10,7 +10,7 @@ def isinstance_validator(cls):
             classes = cls if isinstance(cls, tuple) else (cls,)
             expected_cls_desc = " or ".join(c.__qualname__ for c in classes)
             raise ConfigValidationError(
-                f"expected a {expected_cls_desc} but got a {type(value).__qualname__}: "
+                f"expected {expected_cls_desc} but got {type(value).__qualname__}: "
                 f"{value!r}"
             )
 

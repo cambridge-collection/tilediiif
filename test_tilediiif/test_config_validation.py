@@ -17,7 +17,7 @@ def test_isinstance_validator():
     validator(3)
     with pytest.raises(ConfigValidationError) as exc_info:
         validator("abc")
-    assert str(exc_info.value) == "expected a int but got a str: 'abc'"
+    assert str(exc_info.value) == "expected int but got str: 'abc'"
 
 
 def test_isinstance_validator_multiple_cls():
@@ -26,7 +26,7 @@ def test_isinstance_validator_multiple_cls():
     validator(3.5)
     with pytest.raises(ConfigValidationError) as exc_info:
         validator("abc")
-    assert str(exc_info.value) == "expected a int or float but got a str: 'abc'"
+    assert str(exc_info.value) == "expected int or float but got str: 'abc'"
 
 
 @pytest.mark.parametrize("value", [[], [1], [1, 2, 3]])
@@ -76,7 +76,7 @@ def test_iterable_validator_validates_value_against_iterable_type():
     validator({1, 2})
     with pytest.raises(ConfigValidationError) as exc_info:
         validator([1, 2])
-    assert str(exc_info.value) == "expected a set but got a list: [1, 2]"
+    assert str(exc_info.value) == "expected set but got list: [1, 2]"
 
 
 def test_iterable_validator_validates_elements():
@@ -86,6 +86,5 @@ def test_iterable_validator_validates_elements():
     with pytest.raises(ConfigValidationError) as exc_info:
         validator([1, 2, 2.5])
     assert (
-        str(exc_info.value)
-        == "element 2 is invalid: expected a int but got a float: 2.5"
+        str(exc_info.value) == "element 2 is invalid: expected int but got float: 2.5"
     )
