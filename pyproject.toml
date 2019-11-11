@@ -30,6 +30,7 @@ httpie = "^1.0"
 black = {version = "^19.3b0", allows-prereleases = true}
 flake8-bugbear = "^19.8"
 isort = "^4.3"
+pytest-lazy-fixture = "^0.6.1"
 
 [tool.poetry.scripts]
 infojson = 'tilediiif.infojson:main'

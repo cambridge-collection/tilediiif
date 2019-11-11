@@ -509,6 +509,17 @@ version = ">=0.12"
 
 [[package]]
 category = "dev"
+description = "It helps to use fixtures in pytest.mark.parametrize"
+name = "pytest-lazy-fixture"
+optional = false
+python-versions = "*"
+version = "0.6.1"
+
+[package.dependencies]
+pytest = ">=3.2.5"
+
+[[package]]
+category = "dev"
 description = "A hack to explicitly set up and tear down fixtures."
 name = "pytest-subtesthack"
 optional = false
@@ -676,7 +687,7 @@ server = ["falcon", "jsonschema", "toml"]
 "server.uwsgi" = ["uwsgi"]
 
 [metadata]
-content-hash = "086b8cbe21d6700ebc38cdb4b1a4e3b51afcc2c3b6a5c2298cc54fe1b7e7ffd6"
+content-hash = "80a1e244176afd5dd847768a5a9e6726f47b0502abfe0eeab7497738ea231860"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -731,6 +742,7 @@ pygments = ["71e430bc85c88a430f000ac1d9b331d2407f681d6f6aec95e8bcfbc3df5b0127", 
 pyparsing = ["6f98a7b9397e206d78cc01df10131398f1c8b8510a2f4d97d9abd82e1aacdd80", "d9338df12903bbf5d65a0e4e87c2161968b10d2e489652bb47001d82a9b028b4"]
 pyrsistent = ["eb6545dbeb1aa69ab1fb4809bfbf5a8705e44d92ef8fc7c2361682a47c46c778"]
 pytest = ["27abc3fef618a01bebb1f0d6d303d2816a99aa87a5968ebc32fe971be91eb1e6", "58cee9e09242937e136dbb3dab466116ba20d6b7828c7620f23947f37eb4dae4"]
+pytest-lazy-fixture = ["50d02e7dfad719948efee6bb060fa13e85f11688f78243a468406110ebc06284", "d4a6263c7ca3cc04d1f7950921b0d4bdac8062ae10c0c4295bf3e0638526102c"]
 pytest-subtesthack = ["3dd014a4c6e8ba98094da85811522312b02ccad974b719498bc341764b667f96", "cd3e70875fdd3609babfad9d57e5b4c45b551a1e7e239109172059bedb4abc6b"]
 pyvips = ["8992acde85331c08bf4cd0b8213d99bc65c523fc67eade93820d600de138ad04"]
 regex = ["15454b37c5a278f46f7aa2d9339bda450c300617ca2fca6558d05d870245edc7", "1ad40708c255943a227e778b022c6497c129ad614bb7a2a2f916e12e8a359ee7", "5e00f65cc507d13ab4dfa92c1232d004fa202c1d43a32a13940ab8a5afe2fb96", "604dc563a02a74d70ae1f55208ddc9bfb6d9f470f6d1a5054c4bd5ae58744ab1", "720e34a539a76a1fedcebe4397290604cc2bdf6f81eca44adb9fb2ea071c0c69", "7caf47e4a9ac6ef08cabd3442cc4ca3386db141fb3c8b2a7e202d0470028e910", "c31eaf28c6fe75ea329add0022efeed249e37861c19681960f99bbc7db981fb2", "c7393597191fc2043c744db021643549061e12abe0b3ff5c429d806de7b93b66", "d2b302f8cdd82c8f48e9de749d1d17f85ce9a0f082880b9a4859f66b07037dc6", "e3d8dd0ec0ea280cf89026b0898971f5750a7bd92cb62c51af5a52abd020054a", "ec032cbfed59bd5a4b8eab943c310acfaaa81394e14f44454ad5c9eba4f24a74"]
