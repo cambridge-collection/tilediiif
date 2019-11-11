@@ -23,6 +23,7 @@ from tilediiif.dzi_generation import (
     LoadColoursImageOperation,
     RenderingIntent,
     ensure_mozjpeg_present_if_required,
+    format_jpeg_encoding_options,
     indent,
     set_icc_profile,
 )
@@ -118,7 +119,7 @@ def override_argv(argv):
                 "jpeg": {
                     "values": dict(
                         quality=75,
-                        optimize_coding=True,
+                        optimize_coding=False,
                         subsample=True,
                         trellis_quant=False,
                         overshoot_deringing=False,
@@ -720,3 +721,34 @@ def test_apply_colour_profile_image_operation(
     assert result.interpretation == expected_interpretation
     assert result.format == expected_format
     assert result.get(VIPS_META_ICC_PROFILE) == expected_profile
+
+
+@pytest.mark.parametrize(
+    "config, expected",
+    [
+        [JPEGConfig(), ""],
+        [JPEGConfig(quality=75, quant_table=JPEGQuantTable.JPEG_ANNEX_K), ""],
+        [JPEGConfig(quality=81), "Q=81"],
+        [JPEGConfig(optimize_coding=True), "optimize_coding"],
+        [JPEGConfig(subsample=False), "no_subsample"],
+        [JPEGConfig(trellis_quant=True), "trellis_quant"],
+        [JPEGConfig(overshoot_deringing=True), "overshoot_deringing"],
+        [JPEGConfig(optimize_scans=True), "optimize_scans"],
+        [JPEGConfig(quant_table=JPEGQuantTable.IMAGEMAGICK), "quant_table=3"],
+        [
+            JPEGConfig(
+                quality=50,
+                optimize_coding=True,
+                subsample=False,
+                trellis_quant=True,
+                overshoot_deringing=True,
+                optimize_scans=True,
+                quant_table=JPEGQuantTable.IMAGEMAGICK,
+            ),
+            "Q=50,optimize_coding,no_subsample,trellis_quant,overshoot_deringing,"
+            "optimize_scans,quant_table=3",
+        ],
+    ],
+)
+def test_format_jpeg_encoding_options(config, expected):
+    assert format_jpeg_encoding_options(config) == expected

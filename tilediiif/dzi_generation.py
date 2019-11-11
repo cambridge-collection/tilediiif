@@ -249,7 +249,7 @@ class JPEGConfig(Config):
         ),
         BoolConfigProperty(
             "optimize_coding",
-            default=True,
+            default=False,
             cli_arg="--jpeg-optimize-coding",
             envar_name=f"{ENVAR_PREFIX}_JPEG_OPTIMIZE_CODING",
             json_path="dzi-tiles.jpeg.optimize-coding",
@@ -812,6 +812,34 @@ def read_icc_profile(path: Union[str, Path]) -> bytes:
     if len(profile) == 0:
         raise ValueError(f"ICC profile file is empty: {path}")
     return profile
+
+
+def format_jpeg_encoding_options(config: JPEGConfig) -> str:
+    params = [
+        (
+            "Q",
+            str(config.values.quality)
+            if config.values.quality != config.default_values.quality
+            else None,
+        ),
+        (("optimize_coding" if config.values.optimize_coding else None),),
+        (("no_subsample" if config.values.subsample is False else None),),
+        (("trellis_quant" if config.values.trellis_quant else None),),
+        (("overshoot_deringing" if config.values.overshoot_deringing else None),),
+        (("optimize_scans" if config.values.optimize_scans else None),),
+        (
+            "quant_table",
+            (
+                str(config.values.quant_table.label)
+                if config.values.quant_table != config.default_values.quant_table
+                else None
+            ),
+        ),
+    ]
+
+    return ",".join(
+        f"{p[0]}={p[1]}" if len(p) == 2 else p[0] for p in params if p[-1] is not None
+    )
 
 
 def main():
