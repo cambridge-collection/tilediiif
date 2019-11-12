@@ -8,6 +8,7 @@ from tilediiif.config.validation import (
     in_validator,
     isinstance_validator,
     iterable_validator,
+    length_validator,
     validate_no_duplicates,
 )
 
@@ -88,3 +89,45 @@ def test_iterable_validator_validates_elements():
     assert (
         str(exc_info.value) == "element 2 is invalid: expected int but got float: 2.5"
     )
+
+
+@pytest.mark.parametrize(
+    "validator, input, err",
+    [
+        [length_validator(at_least=1), "a", None],
+        [length_validator(at_least=1), "", "length must be >= 1 but was 0"],
+        [length_validator(greater_than=1), "aa", None],
+        [length_validator(greater_than=1), "a", "length must be > 1 but was 1"],
+        [length_validator(greater_than=1), "", "length must be > 1 but was 0"],
+        [length_validator(at_most=3), "aaa", None],
+        [length_validator(at_most=3), "aaaa", "length must be <= 3 but was 4"],
+        [length_validator(less_than=3), "aa", None],
+        [length_validator(less_than=3), "aaa", "length must be < 3 but was 3"],
+    ],
+)
+def test_length_validator(validator, input, err):
+    try:
+        validator(input)
+        assert err is None
+    except ConfigValidationError as e:
+        assert str(e) == err
+
+
+@pytest.mark.parametrize(
+    "kwargs, msg",
+    [
+        [{}, "at least one constraint must be specified"],
+        [
+            dict(at_least=1, greater_than=0),
+            "at_least and greater_than cannot be specified together",
+        ],
+        [
+            dict(at_most=9, less_than=10),
+            "less_than and at_most cannot be specified together",
+        ],
+    ],
+)
+def test_length_validator_rejects_invalid_bounds(kwargs, msg):
+    with pytest.raises(ValueError) as exc_info:
+        length_validator(**kwargs)
+    assert str(exc_info.value) == msg

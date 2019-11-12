@@ -33,6 +33,34 @@ def iterable_validator(element_validator=None, iterable_type=Iterable):
     return validate_iterable
 
 
+def length_validator(at_least=None, greater_than=None, less_than=None, at_most=None):
+    if less_than is not None and at_most is not None:
+        raise ValueError("less_than and at_most cannot be specified together")
+    if at_least is not None and greater_than is not None:
+        raise ValueError("at_least and greater_than cannot be specified together")
+    if all(x is None for x in [at_least, greater_than, less_than, at_most]):
+        raise ValueError("at least one constraint must be specified")
+
+    def validate_length(value):
+        length = len(value)
+        if at_least is not None and length < at_least:
+            raise ConfigValidationError(
+                f"length must be >= {at_least} but was {length}"
+            )
+        if greater_than is not None and length <= greater_than:
+            raise ConfigValidationError(
+                f"length must be > {greater_than} but was {length}"
+            )
+        if less_than is not None and length >= less_than:
+            raise ConfigValidationError(
+                f"length must be < {less_than} but was {length}"
+            )
+        if at_most is not None and length > at_most:
+            raise ConfigValidationError(f"length must be <= {at_most} but was {length}")
+
+    return validate_length
+
+
 def in_validator(group):
     def validate_in(value):
         if value not in group:
