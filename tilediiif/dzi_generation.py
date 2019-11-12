@@ -2,6 +2,7 @@ import enum
 from abc import ABC, abstractmethod
 from ctypes import CDLL, c_bool
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from pprint import pformat
 from types import MappingProxyType
@@ -24,6 +25,7 @@ from tilediiif.config.validation import (
     in_validator,
     isinstance_validator,
     iterable_validator,
+    length_validator,
     validate_no_duplicates,
     validate_string,
 )
@@ -41,7 +43,12 @@ CONFIG_SCHEMA = {
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "enum": ["embedded-profile", "external-profile", "assume-srgb"],
+                        "enum": [
+                            "embedded-profile",
+                            "external-profile",
+                            "assume-srgb",
+                            "unmanaged",
+                        ],
                     },
                 },
                 "external-input-profile": {"type": "string"},
@@ -115,7 +122,8 @@ class RenderingIntent(enum.Enum):
 
 
 DEFAULT_RENDERING_INTENT = RenderingIntent.RELATIVE
-DEFAULT_OUTPUT_PROFILE = str(Path(__file__).parent / "data/sRGB2014.icc")
+SRGB_ICC_PROFILE = str(Path(__file__).parent / "data/sRGB2014.icc")
+DEFAULT_OUTPUT_PROFILE = SRGB_ICC_PROFILE
 
 
 class DescribedEnumMixin:
@@ -148,6 +156,10 @@ class ColourSource(DescribedEnumMixin, enum.Enum):
         "assume-srgb",
         "Treat the image as being in the standard sRGB colour space",
     )
+    UNMANAGED = (
+        "unmanaged",
+        "Don't colour-manage the image, pass through image data as-is.",
+    )
 
 
 def indent(lines, *, by):
@@ -160,6 +172,7 @@ def indent(lines, *, by):
 validate_colour_sources = all_validator(
     iterable_validator(element_validator=isinstance_validator(ColourSource)),
     validate_no_duplicates,
+    length_validator(at_least=1),
 )
 
 
@@ -201,7 +214,7 @@ class ColourConfig(Config):
             cli_arg="--colour-transform-intent=",
             envar_name=f"{ENVAR_PREFIX}_COLOUR_TRANSFORM_INTENT",
             json_path="dzi-tiles.colour.colour-transform-intent",
-        ),
+        )
     ]
 
 
@@ -601,6 +614,7 @@ DZITilesConfiguration.CONFIGS = MappingProxyType(
 )
 
 VIPS_META_ICC_PROFILE = "icc-profile-data"
+VIPS_META_TILEDIIIF_COLOUR_SOURCE = "tilediiif.dzi_generation.ColourSource"
 
 
 class DZIGenerationError(Exception):
@@ -611,7 +625,39 @@ class ColourSourceNotAvailable(LookupError):
     pass
 
 
+def get_image_colour_source(vips_image: pyvips.Image):
+    if VIPS_META_TILEDIIIF_COLOUR_SOURCE not in vips_image.get_fields():
+        raise KeyError(
+            f"Unable to determine colour source: image has no metadata value for "
+            f"key {VIPS_META_TILEDIIIF_COLOUR_SOURCE!r}"
+        )
+    try:
+        return ColourSource.for_label(vips_image.get(VIPS_META_TILEDIIIF_COLOUR_SOURCE))
+    except ValueError as e:
+        raise ValueError(f"Unable to determine colour source: {e}") from e
+
+
 class BaseColourSource(ABC):
+    colour_source_type: ColourSource = None
+
+    def tag_colour_source_type(self, vips_image: pyvips.Image):
+        label = self.colour_source_type.label
+        vips_image.set_type(
+            pyvips.GValue.gstr_type, VIPS_META_TILEDIIIF_COLOUR_SOURCE, label
+        )
+
+    @staticmethod
+    def get_image_colour_source(vips_image: pyvips.Image):
+        if VIPS_META_TILEDIIIF_COLOUR_SOURCE not in vips_image.get_fields():
+            raise ValueError(
+                f"Unable to determine colour source: image has no metadata value for "
+                f"key {VIPS_META_TILEDIIIF_COLOUR_SOURCE!r}"
+            )
+        try:
+            ColourSource.for_label(vips_image.get(VIPS_META_TILEDIIIF_COLOUR_SOURCE))
+        except ValueError as e:
+            raise ValueError(f"Unable to determine colour source: {e}") from e
+
     @abstractmethod
     def load(self, vips_image: pyvips.Image):
         raise NotImplementedError()
@@ -636,6 +682,7 @@ def validate_depth(depth):
 
 @dataclass(frozen=True)
 class EmbeddedProfileVIPSColourSource(BaseColourSource):
+    colour_source_type = ColourSource.EMBEDDED_PROFILE
     intent: pyvips.Intent
     profile_connection_space: pyvips.PCS
 
@@ -655,9 +702,11 @@ class EmbeddedProfileVIPSColourSource(BaseColourSource):
             raise ColourSourceNotAvailable("image has no embedded ICC profile")
 
         try:
-            return vips_image.icc_import(
+            result = vips_image.icc_import(
                 intent=self.intent, embedded=True, pcs=self.profile_connection_space
             )
+            self.tag_colour_source_type(result)
+            return result
         except pyvips.Error as e:
             raise DZIGenerationError(f"icc_import() failed: {e}") from e
 
@@ -686,7 +735,7 @@ def get_icc_profile(*, icc_profile, icc_profile_path):
             raise ValueError(
                 f"icc_profile_path and icc_profile cannot both be specified"
             )
-        icc_profile = read_icc_profile(icc_profile_path)
+        icc_profile = read_icc_profile(str(icc_profile_path))
     elif icc_profile is None:
         raise ValueError(f"icc_profile or icc_profile_path must be specified")
     if not (isinstance(icc_profile, bytes) and icc_profile):
@@ -696,6 +745,7 @@ def get_icc_profile(*, icc_profile, icc_profile_path):
 
 @dataclass(frozen=True)
 class AssignProfileVIPSColourSource(EmbeddedProfileVIPSColourSource):
+    colour_source_type = ColourSource.EXTERNAL_PROFILE
     icc_profile: bytes
 
     def __init__(
@@ -720,11 +770,42 @@ class AssignProfileVIPSColourSource(EmbeddedProfileVIPSColourSource):
         return super().load(vips_image)
 
 
-class AssumeSRGBColourSource(BaseColourSource):
+class AssumeSRGBColourSource(AssignProfileVIPSColourSource):
+    colour_source_type = ColourSource.ASSUME_SRGB
+
+    def __init__(
+        self,
+        *,
+        # I assume the relative intent would always be the most desirable
+        # choice as the input data should map exactly to the sRGB space, so
+        # doing any interpolation is unnecessary and undesirable.
+        intent: pyvips.Intent = pyvips.Intent.RELATIVE,
+        profile_connection_space: pyvips.PCS = None,
+    ):
+        super().__init__(
+            intent=intent,
+            profile_connection_space=profile_connection_space,
+            icc_profile_path=SRGB_ICC_PROFILE,
+        )
+
     def load(self, vips_image: pyvips.Image):
         if not vips_image.interpretation == pyvips.Interpretation.SRGB:
             raise ColourSourceNotAvailable("image interpretation is not sRGB")
-        return vips_image
+        return super().load(vips_image)
+
+
+@dataclass(frozen=True)
+class UnmanagedColourSource(BaseColourSource):
+    """
+    Performs no colour management on the input image, the pixel data is left unchanged.
+    """
+
+    colour_source_type = ColourSource.UNMANAGED
+
+    def load(self, vips_image: pyvips.Image):
+        image = vips_image.copy()
+        self.tag_colour_source_type(image)
+        return image
 
 
 @dataclass(frozen=True)
@@ -734,9 +815,9 @@ class LoadColoursImageOperation:
     a colour space with defined colours.
     """
 
-    colour_sources: Tuple[ColourSource]
+    colour_sources: Tuple[BaseColourSource]
 
-    def __init__(self, colour_sources: Iterable[ColourSource]):
+    def __init__(self, colour_sources: Iterable[BaseColourSource]):
         object.__setattr__(self, "colour_sources", tuple(colour_sources))
         if not colour_sources and all(
             isinstance(cs, ColourSource) for cs in colour_sources
@@ -820,7 +901,64 @@ class ApplyColourProfileImageOperation:
         return image.icc_export(intent=self.intent, depth=self.depth, **pcs_args)
 
 
-def read_icc_profile(path: Union[str, Path]) -> bytes:
+@dataclass(frozen=True)
+class ColourManagedImageLoader:
+    colour_loader: LoadColoursImageOperation
+    colour_converter: ApplyColourProfileImageOperation
+
+    @classmethod
+    def get_colour_source(
+        cls, colour_source_type: ColourSource, config: ColourConfig
+    ) -> BaseColourSource:
+        if colour_source_type == ColourSource.UNMANAGED:
+            return UnmanagedColourSource()
+        if colour_source_type == ColourSource.ASSUME_SRGB:
+            return AssumeSRGBColourSource()
+        if colour_source_type == ColourSource.EMBEDDED_PROFILE:
+            return EmbeddedProfileVIPSColourSource(
+                intent=config.values.rendering_intent
+            )
+        if colour_source_type == ColourSource.EXTERNAL_PROFILE:
+            if ColourConfig.input_external_profile_path not in config.values:
+                raise DZIGenerationError(
+                    f"the {ColourSource.EXTERNAL_PROFILE.label!r} colour source is in "
+                    f"input_sources but no input_external_profile_path is specified"
+                )
+            return AssignProfileVIPSColourSource(
+                intent=config.values.rendering_intent,
+                icc_profile_path=config.values.input_external_profile_path,
+            )
+
+    @classmethod
+    def from_colour_config(cls, config: ColourConfig):
+        colour_source_types = config.values.input_sources
+        if len(colour_source_types) < 1:
+            raise ValueError("no input_sources specified")
+        if len(set(colour_source_types)) != len(colour_source_types):
+            raise ValueError("input_sources contains a duplicate")
+
+        sources = tuple(cls.get_colour_source(cst) for cst in colour_source_types)
+        colour_loader = LoadColoursImageOperation(sources)
+
+        colour_converter = ApplyColourProfileImageOperation(
+            intent=config.values.rendering_intent,
+            icc_profile_path=config.values.output_profile_path,
+        )
+
+        return cls(colour_loader=colour_loader, colour_converter=colour_converter)
+
+    def __call__(self, image: pyvips.Image) -> pyvips.Image:
+        loaded_image = self.colour_loader(image)
+
+        # Images using the unmanaged colour source are not modified in any way
+        if get_image_colour_source(loaded_image) == ColourSource.UNMANAGED:
+            return loaded_image
+
+        return self.colour_converter(loaded_image)
+
+
+@lru_cache(maxsize=4)
+def read_icc_profile(path: str) -> bytes:
     profile = Path(path).read_bytes()
     if len(profile) == 0:
         raise ValueError(f"ICC profile file is empty: {path}")

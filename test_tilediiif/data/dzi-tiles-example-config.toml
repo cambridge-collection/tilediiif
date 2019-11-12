@@ -1,6 +1,8 @@
 # These are all just random non-default values
 [dzi-tiles.colour]
-input-colour-sources = ["embedded-profile", "external-profile"]
+# Note that the last two sources would never be used, but this just serves to
+# ensure they're parsed correctly.
+input-colour-sources = ["embedded-profile", "external-profile", "assume-srgb", "unmanaged"]
 external-input-profile = "/opt/profile-a.icc"
 output-profile = "/opt/profile-b.icc"
 colour-transform-intent = "saturation"

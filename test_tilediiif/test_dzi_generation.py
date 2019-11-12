@@ -23,8 +23,10 @@ from tilediiif.dzi_generation import (
     JPEGQuantTable,
     LoadColoursImageOperation,
     RenderingIntent,
+    UnmanagedColourSource,
     ensure_mozjpeg_present_if_required,
     format_jpeg_encoding_options,
+    get_image_colour_source,
     indent,
     set_icc_profile,
 )
@@ -152,7 +154,7 @@ def override_argv(argv):
             None,
             {},
             [
-                "--input-colour-sources=external-profile,assume-srgb",
+                "--input-colour-sources=external-profile,assume-srgb,unmanaged",
                 "--external-input-profile=/opt/profile-b.icc",
                 "--output-profile=/opt/profile-c.icc",
                 "--colour-transform-intent=perceptual",
@@ -173,6 +175,7 @@ def override_argv(argv):
                         input_sources=[
                             ColourSource.EXTERNAL_PROFILE,
                             ColourSource.ASSUME_SRGB,
+                            ColourSource.UNMANAGED,
                         ],
                         input_external_profile_path="/opt/profile-b.icc",
                         output_profile_path="/opt/profile-c.icc",
@@ -212,6 +215,8 @@ def override_argv(argv):
                         input_sources=[
                             ColourSource.EMBEDDED_PROFILE,
                             ColourSource.EXTERNAL_PROFILE,
+                            ColourSource.ASSUME_SRGB,
+                            ColourSource.UNMANAGED,
                         ],
                         input_external_profile_path="/opt/profile-a.icc",
                         output_profile_path="/opt/profile-b.icc",
@@ -441,7 +446,9 @@ def invalid_icc_profile():
 
 def test_assume_srgb_colour_source_returns_srgb_input_image(srgb_image):
     image = AssumeSRGBColourSource().load(srgb_image)
-    assert image is srgb_image
+    assert image is not srgb_image
+    assert get_image_colour_source(image) == ColourSource.ASSUME_SRGB
+    assert image.interpretation == pyvips.PCS.LAB
 
 
 def test_assume_srgb_colour_source_rejects_non_srgb_images(rgb_image):
@@ -473,6 +480,7 @@ def test_embedded_profile_vips_colour_source_loads_image_with_embedded_profile(
 
     image = colour_source.load(image_with_srgb_icc_profile)
 
+    assert get_image_colour_source(image) == ColourSource.EMBEDDED_PROFILE
     assert image.interpretation == expected_pcs
     assert image.get(VIPS_META_ICC_PROFILE) == srgb_profile
 
@@ -530,6 +538,7 @@ def test_assign_profile_vips_colour_source_assigns_profile_from_path(
 
     result_image = colour_source.load(image)
 
+    assert get_image_colour_source(result_image) == ColourSource.EXTERNAL_PROFILE
     assert result_image.get(VIPS_META_ICC_PROFILE) == srgb_profile
     assert result_image.interpretation == expected_pcs
 
@@ -553,6 +562,13 @@ def test_assign_profile_vips_colour_source_rejects_invalid_init_params(params):
         AssignProfileVIPSColourSource(**params)
 
 
+def test_unmanaged_colour_source(srgb_image):
+    image = UnmanagedColourSource().load(srgb_image)
+
+    assert image is not srgb_image
+    assert get_image_colour_source(image) == ColourSource.UNMANAGED
+
+
 @pytest.fixture
 def assume_srgb_colour_source():
     return AssumeSRGBColourSource()
@@ -568,6 +584,11 @@ def assign_profile_colour_source(srgb_profile):
     return AssignProfileVIPSColourSource(
         intent=pyvips.Intent.RELATIVE, icc_profile=srgb_profile
     )
+
+
+@pytest.fixture
+def unmanaged_colour_source():
+    return UnmanagedColourSource()
 
 
 @pytest.fixture
@@ -635,6 +656,11 @@ def colour_sources(request):
             pytest.lazy_fixture("image_with_srgb_icc_profile"),
             0,
         ],
+        [
+            ["unmanaged_colour_source", "dummy_colour_source"],
+            pytest.lazy_fixture("srgb_image"),
+            0,
+        ],
     ],
     indirect=("colour_sources",),
 )
@@ -650,6 +676,11 @@ def test_load_colours_image_operation(colour_sources, image, source_used):
         assert source_used is None
         assert str(e) == "no ColourSource could handle image"
         return
+
+    assert (
+        get_image_colour_source(result)
+        == colour_sources[source_used].colour_source_type
+    )
 
     for i, wrapped_source in enumerate(wrapped_sources):
         if i <= source_used:
