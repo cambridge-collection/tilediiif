@@ -11,6 +11,7 @@ import pyvips
 from docopt import docopt
 
 from tilediiif.config import BaseConfig, Config, ConfigProperty, EnvironmentConfigMixin
+from tilediiif.config.exceptions import ConfigValidationError
 from tilediiif.config.parsing import delegating_parser, enum_list_parser, simple_parser
 from tilediiif.config.properties import (
     BoolConfigProperty,
@@ -328,6 +329,14 @@ class DZIConfig(Config):
     ]
 
 
+def validate_dzi_path(path: Union[str, Path]):
+    if str(path).endswith("/"):
+        raise ConfigValidationError(
+            "path ends with a /, but the path should identify a path under a "
+            "directory"
+        )
+
+
 class IOConfig(Config):
     json_schema = None
     property_definitions = [
@@ -336,6 +345,9 @@ class IOConfig(Config):
             "dest_dzi",
             cli_arg="<dest-dzi>",
             default_factory=lambda *, config, **_: config.src_image,
+            validator=all_validator(
+                isinstance_validator((Path, str)), validate_dzi_path
+            ),
         ),
     ]
 

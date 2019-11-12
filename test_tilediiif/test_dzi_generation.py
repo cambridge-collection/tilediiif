@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import pyvips
 
+from tilediiif.config.exceptions import ConfigValidationError
 from tilediiif.dzi_generation import (
     DEFAULT_OUTPUT_PROFILE,
     VIPS_META_ICC_PROFILE,
@@ -64,6 +65,16 @@ def test_io_config(args, src_image, dest_dzi):
     config = IOConfig.from_cli_args(args)
     assert config.values.src_image == src_image
     assert config.values.dest_dzi == dest_dzi
+
+
+def test_io_config_validation_rejects_invalid_dzi_paths():
+    with pytest.raises(ConfigValidationError) as exc_info:
+        IOConfig(src_image="blah.jpg", dest_dzi="some/dir/")
+
+    assert str(exc_info.value) == (
+        "value for 'dest_dzi' is invalid: path ends with a /, but the path should "
+        "identify a path under a directory"
+    )
 
 
 @pytest.fixture
