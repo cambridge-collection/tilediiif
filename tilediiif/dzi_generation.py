@@ -1,8 +1,11 @@
 import enum
+import logging
 from abc import ABC, abstractmethod
-from ctypes import CDLL, c_bool
+from contextlib import contextmanager
+from ctypes import CDLL
 from dataclasses import dataclass
 from functools import lru_cache
+from logging import LogRecord
 from pathlib import Path
 from pprint import pformat
 from types import MappingProxyType
@@ -12,7 +15,7 @@ import pyvips
 from docopt import docopt
 
 from tilediiif.config import BaseConfig, Config, ConfigProperty, EnvironmentConfigMixin
-from tilediiif.config.exceptions import ConfigValidationError
+from tilediiif.config.exceptions import ConfigError, ConfigValidationError
 from tilediiif.config.parsing import delegating_parser, enum_list_parser, simple_parser
 from tilediiif.config.properties import (
     BoolConfigProperty,
@@ -214,7 +217,7 @@ class ColourConfig(Config):
             cli_arg="--colour-transform-intent=",
             envar_name=f"{ENVAR_PREFIX}_COLOUR_TRANSFORM_INTENT",
             json_path="dzi-tiles.colour.colour-transform-intent",
-        )
+        ),
     ]
 
 
@@ -350,10 +353,24 @@ def validate_dzi_path(path: Union[str, Path]):
         )
 
 
+def validate_no_vips_options(path: Union[Path, str]):
+    if path_has_vips_options(path):
+        raise ConfigValidationError(
+            "Image filenames cannot end with square brackets because VIPS parses "
+            "image load options inside square brackets from filenames"
+        )
+
+
 class IOConfig(Config):
     json_schema = None
     property_definitions = [
-        PathConfigProperty("src_image", cli_arg="<src-image>"),
+        PathConfigProperty(
+            "src_image",
+            cli_arg="<src-image>",
+            validator=all_validator(
+                isinstance_validator((Path, str)), validate_no_vips_options
+            ),
+        ),
         PathConfigProperty(
             "dest_dzi",
             cli_arg="<dest-dzi>",
@@ -403,10 +420,11 @@ Arguments:
         The path of the image to build DZI tiles from.
 
     <dest-dzi>
-        The path to write the generated DZI data to. This path must be of the form
-        [${{path}}/]${{name}}.
-          - The tiles are created in the directory  [${{path}}/]${{name}}_files
-          - The dzi metadata is created in the file [${{path}}/]${{name}}.dzi
+        The path to write the generated DZI data to.
+        This path must be of the form "[${{path}}/]${{name}}":
+
+          • The tiles are created in the directory  "[${{path}}/]${{name}}_files"
+          • The dzi metadata is created in the file "[${{path}}/]${{name}}.dzi"
 
         If not specified, <dest-dzi> defaults to the <src-image> path (which gets
         .dzi and _files appended as described).
@@ -502,6 +520,7 @@ DZI image pyramid options:
 """
 
 
+@lru_cache(maxsize=1)
 def pyvips_supports_params():
     """
     Check if the VIPS library pyvips is binding supports the libjpeg param API.
@@ -535,6 +554,30 @@ def pyvips_supports_params():
     return not ignored_param_warning_seen
 
 
+@contextmanager
+def vips_warnings_as_errors():
+    """
+    A context manager that throws a UnexpectedVIPSLogDZIGenerationError if pyvips emits
+    any log messages at warning level (or above) while entered.
+    """
+
+    def filter(record: LogRecord):
+        if record.level >= logging.WARNING:
+            raise UnexpectedVIPSLogDZIGenerationError(
+                f"pyvips unexpectedly emitted a log message at {record.levelname} "
+                f"level: {record.msg}, aborting DZI generation"
+            )
+        return True
+
+    logger = pyvips.logger
+    try:
+        logger.filters.insert(0, filter)
+        yield
+    finally:
+        logger.removeFilter(filter)
+
+
+@lru_cache(maxsize=1)
 def libjpeg_supports_params():
     """Check if the libjpeg used by this process supports param API.
 
@@ -548,10 +591,12 @@ def libjpeg_supports_params():
         return False
 
     try:
-        jpeg_c_bool_param_supported = c_bool.in_dll(jpeg, "jpeg_c_bool_param_supported")
-    except ValueError:
+        # MozJPEG contains a function which checks if a named param is supported.
+        # Regular libjpeg doesn't.
+        jpeg.jpeg_c_bool_param_supported
+        return True
+    except AttributeError:
         return False
-    return bool(jpeg_c_bool_param_supported)
 
 
 @dataclass
@@ -619,6 +664,15 @@ VIPS_META_TILEDIIIF_COLOUR_SOURCE = "tilediiif.dzi_generation.ColourSource"
 
 class DZIGenerationError(Exception):
     pass
+
+
+@dataclass()
+class UnexpectedVIPSLogDZIGenerationError(DZIGenerationError):
+    message: str
+    log_record: LogRecord
+
+    def __str__(self):
+        return self.message
 
 
 class ColourSourceNotAvailable(LookupError):
@@ -916,7 +970,7 @@ class ColourManagedImageLoader:
             return AssumeSRGBColourSource()
         if colour_source_type == ColourSource.EMBEDDED_PROFILE:
             return EmbeddedProfileVIPSColourSource(
-                intent=config.values.rendering_intent
+                intent=config.values.rendering_intent.value
             )
         if colour_source_type == ColourSource.EXTERNAL_PROFILE:
             if ColourConfig.input_external_profile_path not in config.values:
@@ -925,7 +979,7 @@ class ColourManagedImageLoader:
                     f"input_sources but no input_external_profile_path is specified"
                 )
             return AssignProfileVIPSColourSource(
-                intent=config.values.rendering_intent,
+                intent=config.values.rendering_intent.value,
                 icc_profile_path=config.values.input_external_profile_path,
             )
 
@@ -937,11 +991,13 @@ class ColourManagedImageLoader:
         if len(set(colour_source_types)) != len(colour_source_types):
             raise ValueError("input_sources contains a duplicate")
 
-        sources = tuple(cls.get_colour_source(cst) for cst in colour_source_types)
+        sources = tuple(
+            cls.get_colour_source(cst, config) for cst in colour_source_types
+        )
         colour_loader = LoadColoursImageOperation(sources)
 
         colour_converter = ApplyColourProfileImageOperation(
-            intent=config.values.rendering_intent,
+            intent=config.values.rendering_intent.value,
             icc_profile_path=config.values.output_profile_path,
         )
 
@@ -993,11 +1049,73 @@ def format_jpeg_encoding_options(config: JPEGConfig) -> str:
     )
 
 
-def main():
+def path_has_vips_options(path: Union[Path, str]) -> bool:
+    path = str(path)
+    return path.endswith("]") and "[" in path
+
+
+def save_dzi(
+    *,
+    src_image: pyvips.Image = None,
+    dest_dzi: Union[Path, str] = None,
+    io_config: IOConfig = None,
+    dzi_config: DZIConfig = None,
+    tile_encoding_config: JPEGConfig = None,
+    colour_config: ColourConfig = None,
+):
+    if io_config is not None:
+        if src_image is not None:
+            raise TypeError("cannot specify src_image and io_config")
+        if dest_dzi is not None:
+            raise TypeError("cannot specify dest_dzi and io_config")
+
+        src_path = str(io_config.values.src_image)
+        assert not path_has_vips_options(src_path)
+        try:
+            src_image = pyvips.Image.new_from_file(src_path)
+        except pyvips.Error as e:
+            if f'file "{src_path}" not found' in str(e):
+                raise FileNotFoundError(src_path) from e
+            raise DZIGenerationError(f"unable to load src image: {e}") from e
+
+        dest_dzi = Path(io_config.values.dest_dzi)
+    else:
+        if src_image is None or dest_dzi is None:
+            raise TypeError(
+                "src_image and dest_dzi must be specified if io_config isn't"
+            )
+        dest_dzi = Path(dest_dzi)
+
+    if Path("{dest_dzi}.dzi").exists():
+        raise DZIGenerationError(f"{dest_dzi}.dzi already exists")
+    if Path("{dest_dzi}._files").exists():
+        raise DZIGenerationError(f"{dest_dzi}._files already exists")
+    if not dest_dzi.parent.is_dir():
+        if dest_dzi.parent.exists():
+            raise DZIGenerationError(f"{dest_dzi.parent} exists but is not a directory")
+        raise DZIGenerationError(
+            f"{dest_dzi.parent} does not exist, it must be a directory"
+        )
+
+    if not isinstance(src_image, pyvips.Image):
+        raise TypeError("src_image must be a pyvips.Image")
+
+    ensure_mozjpeg_present_if_required(tile_encoding_config)
+    tile_suffix = f".jpg[{format_jpeg_encoding_options(tile_encoding_config)}]"
+
+    # Transform input image to output colour profile
+    colour_loader = ColourManagedImageLoader.from_colour_config(colour_config)
+    output_image = colour_loader(src_image)
+
     try:
-        run()
-    except CommandError as e:
-        e.do_exit()
+        output_image.dzsave(
+            str(dest_dzi),
+            overlap=dzi_config.values.overlap,
+            tile_size=dzi_config.tile_size,
+            suffix=tile_suffix,
+        )
+    except pyvips.Error as e:
+        raise DZIGenerationError(f"dzsave() failed: {e}") from e
 
 
 def ensure_mozjpeg_present_if_required(jpeg_config):
@@ -1016,12 +1134,12 @@ def ensure_mozjpeg_present_if_required(jpeg_config):
         for property, value in mozjpeg_values.items()
     )
 
-    # TODO: should make this part of the JPEG saving API and raise a regular exception
-    raise CommandError(
+    raise DZIGenerationError(
         f"""\
 JPEG compression options requiring mozjpeg are enabled, but mozjpeg is not supported:
-    - libjpeg supports param API: {libjpeg_params_supported}
-    - libvips supports libjpeg params: {pyvips_params_supported}
+
+    • libjpeg supports param API: {libjpeg_params_supported}
+    • libvips supports libjpeg params: {pyvips_params_supported}
 
 The following config options are set to non-default values (the
 defaults do not require mozjpeg):
@@ -1031,10 +1149,34 @@ defaults do not require mozjpeg):
     )
 
 
-def run():
-    config = DZITilesConfiguration.load()
+def main():
+    try:
+        run()
+    except CommandError as e:
+        e.do_exit()
 
-    ensure_mozjpeg_present_if_required(config)
+
+def run():
+    try:
+        config = DZITilesConfiguration.load()
+    except ConfigError as e:
+        raise CommandError(f"{e}") from e
+
+    try:
+        # VIPS has a few places where it logs warnings rather than failing if something
+        # is wrong. One such case (which we handle explicitly) is MozJPEG encoding
+        # params being requested without the library being available. In order to avoid
+        # silently ignoring things not working as expected, we intercept any VIPS log
+        # messages and raise errors from them, terminating the DZI generation.
+        with vips_warnings_as_errors():
+            save_dzi(
+                io_config=config.io,
+                dzi_config=config.dzi,
+                tile_encoding_config=config.jpeg,
+                colour_config=config.colour,
+            )
+    except DZIGenerationError as e:
+        raise CommandError(f"DZI generation failed: {e}") from e
 
 
 if __name__ == "__main__":

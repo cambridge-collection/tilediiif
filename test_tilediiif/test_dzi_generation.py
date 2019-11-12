@@ -15,6 +15,7 @@ from tilediiif.dzi_generation import (
     ColourConfig,
     ColourSource,
     ColourSourceNotAvailable,
+    DZIConfig,
     DZIGenerationError,
     DZITilesConfiguration,
     EmbeddedProfileVIPSColourSource,
@@ -28,9 +29,9 @@ from tilediiif.dzi_generation import (
     format_jpeg_encoding_options,
     get_image_colour_source,
     indent,
+    save_dzi,
     set_icc_profile,
 )
-from tilediiif.exceptions import CommandError
 
 EXAMPLE_CONFIG_FILE = str(
     Path(__file__).parent / "data" / "dzi-tiles-example-config.toml"
@@ -88,7 +89,7 @@ def enable_example_config(monkeypatch, config_file):
 
 
 @pytest.fixture
-def dzi_config(enable_example_config, override_argv, override_envars):
+def full_dzi_config(enable_example_config, override_argv, override_envars):
     return DZITilesConfiguration.load()
 
 
@@ -352,13 +353,13 @@ def override_argv(argv):
         ],
     ],
 )
-def test_load_config(dzi_config, expected):
+def test_load_config(full_dzi_config, expected):
     assert expected
     for config_name, data in expected.items():
         expected_values = data["values"]
         config_cls = DZITilesConfiguration.CONFIGS[config_name]
         expected_config = config_cls(expected_values)
-        config = getattr(dzi_config, config_name)
+        config = getattr(full_dzi_config, config_name)
 
         assert dict(config.values) == dict(expected_config.non_default_values)
 
@@ -387,7 +388,7 @@ def test_ensure_mozjpeg_present_if_required(
             try:
                 ensure_mozjpeg_present_if_required(jpeg_config)
                 assert mozjpeg_supported or not mozjpeg_option_used
-            except CommandError:
+            except DZIGenerationError:
                 assert not mozjpeg_supported or not mozjpeg_option_used
 
 
@@ -791,3 +792,53 @@ def test_apply_colour_profile_image_operation(
 )
 def test_format_jpeg_encoding_options(config, expected):
     assert format_jpeg_encoding_options(config) == expected
+
+
+@pytest.fixture
+def dzi_config():
+    return DZIConfig()
+
+
+@pytest.fixture
+def colour_config():
+    return ColourConfig()
+
+
+@pytest.fixture
+def jpeg_config():
+    return JPEGConfig()
+
+
+@pytest.mark.parametrize(
+    "io_args, msg",
+    [
+        [
+            dict(src_image=new_test_image(), io_config=IOConfig()),
+            "cannot specify src_image and io_config",
+        ],
+        [
+            dict(dest_dzi="some/path", io_config=IOConfig()),
+            "cannot specify dest_dzi and io_config",
+        ],
+        [
+            dict(dest_dzi="some/path"),
+            "src_image and dest_dzi must be specified if io_config isn't",
+        ],
+        [
+            dict(src_image=new_test_image()),
+            "src_image and dest_dzi must be specified if io_config isn't",
+        ],
+    ],
+)
+def test_save_dzi_takes_io_as_two_args_or_io_config(
+    io_args, msg, dzi_config, jpeg_config, colour_config
+):
+    with pytest.raises(TypeError) as exc_info:
+        save_dzi(
+            **io_args,
+            dzi_config=dzi_config,
+            tile_encoding_config=jpeg_config,
+            colour_config=colour_config,
+        )
+
+    assert str(exc_info.value) == msg
