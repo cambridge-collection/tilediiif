@@ -335,7 +335,7 @@ class IOConfig(Config):
         PathConfigProperty(
             "dest_dzi",
             cli_arg="<dest-dzi>",
-            default_factory=lambda *, config, **_: f"{config.src_image}.dzi",
+            default_factory=lambda *, config, **_: config.src_image,
         ),
     ]
 
@@ -379,11 +379,12 @@ Arguments:
 
     <dest-dzi>
         The path to write the generated DZI data to. This path must be of the form
-        [${{path}}/]${{name}}.dzi. The tiles are created in the directory
-        [${{path}}/]${{name}}_files
+        [${{path}}/]${{name}}.
+          - The tiles are created in the directory  [${{path}}/]${{name}}_files
+          - The dzi metadata is created in the file [${{path}}/]${{name}}.dzi
 
-        If not specified, <dest-dzi> defaults to the <src-image> path with .dzi
-        appended.
+        If not specified, <dest-dzi> defaults to the <src-image> path (which gets
+        .dzi and _files appended as described).
 
 Colour space conversion options:
 

@@ -52,11 +52,11 @@ def test_indent(by):
 @pytest.mark.parametrize(
     "args, src_image, dest_dzi",
     [
-        [{"<src-image>": "foo/bar.tif"}, Path("foo/bar.tif"), Path("foo/bar.tif.dzi")],
+        [{"<src-image>": "foo/bar.tif"}, Path("foo/bar.tif"), Path("foo/bar.tif")],
         [
-            {"<src-image>": "foo/bar.tif", "<dest-dzi>": "foo/bar.dzi"},
+            {"<src-image>": "foo/bar.tif", "<dest-dzi>": "foo/bar"},
             Path("foo/bar.tif"),
-            Path("foo/bar.dzi"),
+            Path("foo/bar"),
         ],
     ],
 )
@@ -130,8 +130,7 @@ def override_argv(argv):
                 },
                 "io": {
                     "values": dict(
-                        src_image="some/path/image.tif",
-                        dest_dzi="some/path/image.tif.dzi",
+                        src_image="some/path/image.tif", dest_dzi="some/path/image.tif",
                     ),
                     "undefined": [],
                 },
@@ -185,8 +184,7 @@ def override_argv(argv):
                 },
                 "io": {
                     "values": dict(
-                        src_image="some/path/image.tif",
-                        dest_dzi="some/path/image.tif.dzi",
+                        src_image="some/path/image.tif", dest_dzi="some/path/image.tif",
                     ),
                     "undefined": [],
                 },
@@ -225,8 +223,7 @@ def override_argv(argv):
                 },
                 "io": {
                     "values": dict(
-                        src_image="some/path/image.tif",
-                        dest_dzi="some/path/image.tif.dzi",
+                        src_image="some/path/image.tif", dest_dzi="some/path/image.tif",
                     ),
                     "undefined": [],
                 },
@@ -279,8 +276,7 @@ def override_argv(argv):
                 },
                 "io": {
                     "values": dict(
-                        src_image="some/path/image.tif",
-                        dest_dzi="some/path/image.tif.dzi",
+                        src_image="some/path/image.tif", dest_dzi="some/path/image.tif",
                     ),
                     "undefined": [],
                 },
@@ -304,6 +300,7 @@ def override_argv(argv):
                 "--jpeg-quant-table=3",
                 "--dzi-overlap=0",
                 "some/path/image.tif",
+                "some/path/dzis/image",
             ],
             {
                 "colour": {
@@ -331,7 +328,7 @@ def override_argv(argv):
                 "io": {
                     "values": dict(
                         src_image="some/path/image.tif",
-                        dest_dzi="some/path/image.tif.dzi",
+                        dest_dzi="some/path/dzis/image",
                     ),
                     "undefined": [],
                 },
