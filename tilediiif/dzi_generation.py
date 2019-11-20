@@ -978,9 +978,16 @@ class ColourManagedImageLoader:
                     f"the {ColourSource.EXTERNAL_PROFILE.label!r} colour source is in "
                     f"input_sources but no input_external_profile_path is specified"
                 )
+            try:
+                icc_profile = read_icc_profile(
+                    config.values.input_external_profile_path
+                )
+            except (OSError, ValueError) as e:
+                raise DZIGenerationError(
+                    f"Unable to read external input ICC profile: {e}"
+                ) from e
             return AssignProfileVIPSColourSource(
-                intent=config.values.rendering_intent.value,
-                icc_profile_path=config.values.input_external_profile_path,
+                intent=config.values.rendering_intent.value, icc_profile=icc_profile,
             )
 
     @classmethod

@@ -3,7 +3,6 @@ import platform
 import subprocess
 from pathlib import Path
 from signal import Signals
-from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -19,12 +18,6 @@ LIB_PATH_LIBJPEG = LIBS_DIR / "libjpeg" / PLATFORM
 LIB_PATH_MOZJPEG = LIBS_DIR / "mozjpeg" / PLATFORM
 LIB_PATH_VIPS_WITHOUT_MOZJPEG = LIBS_DIR / "vips-without-mozjpeg" / PLATFORM
 LIB_PATH_VIPS_WITH_MOZJPEG = LIBS_DIR / "vips-with-mozjpeg" / PLATFORM
-
-
-@pytest.yield_fixture()
-def tmp_data_path(tmp_path):
-    with TemporaryDirectory(dir=tmp_path) as path:
-        yield Path(path)
 
 
 LIBS_WITHOUT_MOZJPEG_SUPPORT = pytest.mark.parametrize(
@@ -62,14 +55,13 @@ def cli_option_requiring_mozjpeg(request):
 @pytest.mark.skipif(COND_PLATFORM_HAS_NO_TEST_LIBS)
 @LIBS_WITHOUT_MOZJPEG_SUPPORT
 def test_using_mozjpeg_options_without_mozjpeg_fails(
-    tmp_data_path,
+    dzi_path,
     cli_option_requiring_mozjpeg,
     libjpeg_path,
     libvips_path,
     libjpeg_is_mozjpeg,
     libvips_supports_mozjpeg,
 ):
-    dzi_path = tmp_data_path / "result"
     result = subprocess.run(
         [
             "dzi-tiles",
