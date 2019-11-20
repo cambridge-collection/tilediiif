@@ -1,6 +1,6 @@
 import enum
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
 from contextlib import contextmanager
 from ctypes import CDLL
 from dataclasses import dataclass
@@ -699,6 +699,7 @@ class BaseColourSource(ABC):
         vips_image.set_type(
             pyvips.GValue.gstr_type, VIPS_META_TILEDIIIF_COLOUR_SOURCE, label
         )
+        return vips_image
 
     @staticmethod
     def get_image_colour_source(vips_image: pyvips.Image):
@@ -712,9 +713,8 @@ class BaseColourSource(ABC):
         except ValueError as e:
             raise ValueError(f"Unable to determine colour source: {e}") from e
 
-    @abstractmethod
     def load(self, vips_image: pyvips.Image):
-        raise NotImplementedError()
+        return self.tag_colour_source_type(vips_image.copy())
 
 
 def validate_intent(intent):
@@ -737,32 +737,11 @@ def validate_depth(depth):
 @dataclass(frozen=True)
 class EmbeddedProfileVIPSColourSource(BaseColourSource):
     colour_source_type = ColourSource.EMBEDDED_PROFILE
-    intent: pyvips.Intent
-    profile_connection_space: pyvips.PCS
-
-    def __init__(
-        self, *, intent: pyvips.Intent, profile_connection_space: pyvips.PCS = None
-    ):
-        validate_intent(intent)
-        object.__setattr__(self, "intent", intent)
-
-        if profile_connection_space is None:
-            profile_connection_space = VIPS_DEFAULT_PCS
-        validate_profile_connection_space(profile_connection_space)
-        object.__setattr__(self, "profile_connection_space", profile_connection_space)
 
     def load(self, vips_image: pyvips.Image):
         if VIPS_META_ICC_PROFILE not in vips_image.get_fields():
             raise ColourSourceNotAvailable("image has no embedded ICC profile")
-
-        try:
-            result = vips_image.icc_import(
-                intent=self.intent, embedded=True, pcs=self.profile_connection_space
-            )
-            self.tag_colour_source_type(result)
-            return result
-        except pyvips.Error as e:
-            raise DZIGenerationError(f"icc_import() failed: {e}") from e
+        return super().load(vips_image)
 
 
 VIPS_INTENT_VALUES = frozenset(
@@ -787,60 +766,42 @@ def get_icc_profile(*, icc_profile, icc_profile_path):
     if icc_profile_path is not None:
         if icc_profile is not None:
             raise ValueError(
-                f"icc_profile_path and icc_profile cannot both be specified"
+                "icc_profile_path and icc_profile cannot both be specified"
             )
+        if not isinstance(icc_profile_path, (Path, str)):
+            raise TypeError("icc_profile_path must be a Path or str")
         icc_profile = read_icc_profile(str(icc_profile_path))
     elif icc_profile is None:
-        raise ValueError(f"icc_profile or icc_profile_path must be specified")
+        raise ValueError("icc_profile or icc_profile_path must be specified")
     if not (isinstance(icc_profile, bytes) and icc_profile):
         raise ValueError(f"invalid icc_profile: {icc_profile}")
     return icc_profile
 
 
 @dataclass(frozen=True)
-class AssignProfileVIPSColourSource(EmbeddedProfileVIPSColourSource):
+class AssignProfileVIPSColourSource(BaseColourSource):
     colour_source_type = ColourSource.EXTERNAL_PROFILE
     icc_profile: bytes
 
-    def __init__(
-        self,
-        *,
-        intent: pyvips.Intent,
-        icc_profile=None,
-        icc_profile_path: Union[str, Path] = None,
-        profile_connection_space: pyvips.PCS = None,
-    ):
-        super().__init__(
-            intent=intent, profile_connection_space=profile_connection_space
-        )
+    def __init__(self, *, icc_profile=None, icc_profile_path: Union[str, Path] = None):
+        super().__init__()
         icc_profile = get_icc_profile(
             icc_profile=icc_profile, icc_profile_path=icc_profile_path
         )
         object.__setattr__(self, "icc_profile", icc_profile)
 
     def load(self, vips_image: pyvips.Image):
-        vips_image = vips_image.copy()
-        set_icc_profile(vips_image, self.icc_profile)
-        return super().load(vips_image)
+        image = super().load(vips_image)
+        assert image is not vips_image
+        set_icc_profile(image, self.icc_profile)
+        return image
 
 
 class AssumeSRGBColourSource(AssignProfileVIPSColourSource):
     colour_source_type = ColourSource.ASSUME_SRGB
 
-    def __init__(
-        self,
-        *,
-        # I assume the relative intent would always be the most desirable
-        # choice as the input data should map exactly to the sRGB space, so
-        # doing any interpolation is unnecessary and undesirable.
-        intent: pyvips.Intent = pyvips.Intent.RELATIVE,
-        profile_connection_space: pyvips.PCS = None,
-    ):
-        super().__init__(
-            intent=intent,
-            profile_connection_space=profile_connection_space,
-            icc_profile_path=SRGB_ICC_PROFILE,
-        )
+    def __init__(self):
+        super().__init__(icc_profile_path=SRGB_ICC_PROFILE)
 
     def load(self, vips_image: pyvips.Image):
         if not vips_image.interpretation == pyvips.Interpretation.SRGB:
@@ -855,11 +816,6 @@ class UnmanagedColourSource(BaseColourSource):
     """
 
     colour_source_type = ColourSource.UNMANAGED
-
-    def load(self, vips_image: pyvips.Image):
-        image = vips_image.copy()
-        self.tag_colour_source_type(image)
-        return image
 
 
 @dataclass(frozen=True)
@@ -895,10 +851,11 @@ class ApplyColourProfileImageOperation:
     """
     Convert the colours of an image to those of an ICC profile.
 
-    The input image must already be in a profile connection space.
+    The input image must be in a device format (e.g. RGB) with an ICC profile attached
+    as VIPS metadata.
     """
 
-    icc_profile: bytes
+    icc_profile_path: Path
     intent: pyvips.Intent
     profile_connection_space: pyvips.PCS
     depth: int
@@ -907,16 +864,11 @@ class ApplyColourProfileImageOperation:
         self,
         *,
         intent: pyvips.Intent,
-        icc_profile: bytes = None,
-        icc_profile_path: Union[Path, str] = None,
+        icc_profile_path: Union[Path, str],
         profile_connection_space: pyvips.PCS = None,
         depth: int = None,
     ):
-        object.__setattr__(
-            self,
-            "icc_profile",
-            get_icc_profile(icc_profile=icc_profile, icc_profile_path=icc_profile_path),
-        )
+        object.__setattr__(self, "icc_profile_path", icc_profile_path)
 
         validate_intent(intent)
         object.__setattr__(self, "intent", intent)
@@ -930,29 +882,33 @@ class ApplyColourProfileImageOperation:
         validate_depth(depth)
         object.__setattr__(self, "depth", depth)
 
-    def ensure_image_in_expected_pcs(self, image):
-        expected_pcs = (
-            (self.profile_connection_space,)
-            if self.profile_connection_space is not None
-            else VIPS_PCS_VALUES
+    @staticmethod
+    def ensure_image_has_attached_profile(image: pyvips.Image):
+        profile = (
+            None
+            if VIPS_META_ICC_PROFILE not in image.get_fields()
+            else image.get(VIPS_META_ICC_PROFILE)
         )
-        if image.interpretation not in expected_pcs:
-            raise ValueError(
-                "image is not in a profile connection space: interpretation = "
-                f"{image.interpretation}, expected {' or '.join(expected_pcs)}"
-            )
+        if not (isinstance(profile, bytes) and len(profile) > 0):
+            raise ValueError(f"image has no ICC profile attached")
 
     def __call__(self, image: pyvips.Image) -> pyvips.Image:
-        image = image.copy()  # Don't change the input image
-        self.ensure_image_in_expected_pcs(image)
-        set_icc_profile(image, self.icc_profile)
-        assert isinstance(image.get(VIPS_META_ICC_PROFILE), bytes)
+        self.ensure_image_has_attached_profile(image)
         pcs_args = (
             {}
             if self.profile_connection_space is None
             else {"pcs": self.profile_connection_space}
         )
-        return image.icc_export(intent=self.intent, depth=self.depth, **pcs_args)
+        try:
+            return image.icc_transform(
+                str(self.icc_profile_path),
+                embedded=True,
+                intent=self.intent,
+                depth=self.depth,
+                **pcs_args,
+            )
+        except pyvips.Error as e:
+            raise DZIGenerationError(f"icc_transform() failed: {e}") from e
 
 
 @dataclass(frozen=True)
@@ -969,9 +925,7 @@ class ColourManagedImageLoader:
         if colour_source_type == ColourSource.ASSUME_SRGB:
             return AssumeSRGBColourSource()
         if colour_source_type == ColourSource.EMBEDDED_PROFILE:
-            return EmbeddedProfileVIPSColourSource(
-                intent=config.values.rendering_intent.value
-            )
+            return EmbeddedProfileVIPSColourSource()
         if colour_source_type == ColourSource.EXTERNAL_PROFILE:
             if ColourConfig.input_external_profile_path not in config.values:
                 raise DZIGenerationError(
@@ -986,9 +940,7 @@ class ColourManagedImageLoader:
                 raise DZIGenerationError(
                     f"Unable to read external input ICC profile: {e}"
                 ) from e
-            return AssignProfileVIPSColourSource(
-                intent=config.values.rendering_intent.value, icc_profile=icc_profile,
-            )
+            return AssignProfileVIPSColourSource(icc_profile=icc_profile)
 
     @classmethod
     def from_colour_config(cls, config: ColourConfig):

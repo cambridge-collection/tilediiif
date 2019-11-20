@@ -392,14 +392,25 @@ def test_ensure_mozjpeg_present_if_required(
                 assert not mozjpeg_supported or not mozjpeg_option_used
 
 
-def new_test_image():
-    """Create a 1x1 8bit RGB image with all channels set to 0."""
-    return pyvips.Image.new_from_memory(b"\x00" * 3, 1, 1, 3, "uchar")
+def new_test_image(depth=8):
+    """Create a 1x1 8 or 16 bit RGB image with all channels set to 0."""
+    if depth == 8:
+        return pyvips.Image.new_from_memory(b"\x00" * 3, 1, 1, 3, "uchar")
+    elif depth == 16:
+        return pyvips.Image.new_from_memory(b"\x00\x00" * 3, 1, 1, 3, "ushort").copy(
+            interpretation=pyvips.Interpretation.RGB16
+        )
+    raise ValueError(f"unsupported depth: {depth}")
 
 
 @pytest.fixture
-def srgb_image():
-    return new_test_image().copy(interpretation=pyvips.Interpretation.SRGB)
+def srgb_image(rgb_image):
+    return rgb_image.copy(interpretation=pyvips.Interpretation.SRGB)
+
+
+@pytest.fixture
+def srgb16_image(rgb16_image):
+    return rgb16_image.copy(interpretation=pyvips.Interpretation.SRGB)
 
 
 @pytest.fixture
@@ -408,13 +419,34 @@ def rgb_image():
 
 
 @pytest.fixture
-def image_with_srgb_icc_profile(srgb_profile):
-    image = new_test_image()
+def rgb16_image():
+    return new_test_image(depth=16)
+
+
+@pytest.fixture
+def image_with_srgb_icc_profile(rgb_image, srgb_profile):
+    image = rgb_image.copy()
     set_icc_profile(image, srgb_profile)
     return image
 
 
-@pytest.fixture(params=["srgb_image", "rgb_image", "image_with_srgb_icc_profile"])
+@pytest.fixture
+def image_16_with_srgb_icc_profile(rgb16_image, srgb_profile):
+    image = rgb16_image.copy()
+    set_icc_profile(image, srgb_profile)
+    return image
+
+
+@pytest.fixture(
+    params=[
+        "srgb_image",
+        "srgb16_image",
+        "rgb_image",
+        "rgb16_image",
+        "image_with_srgb_icc_profile",
+        "image_16_with_srgb_icc_profile",
+    ]
+)
 def image(request):
     return request.getfixturevalue(request.param)
 
@@ -445,11 +477,12 @@ def invalid_icc_profile():
     return b"\x00" * 4
 
 
-def test_assume_srgb_colour_source_returns_srgb_input_image(srgb_image):
+def test_assume_srgb_colour_source_returns_srgb_input_image(srgb_image, srgb_profile):
     image = AssumeSRGBColourSource().load(srgb_image)
     assert image is not srgb_image
     assert get_image_colour_source(image) == ColourSource.ASSUME_SRGB
-    assert image.interpretation == pyvips.PCS.LAB
+    assert image.interpretation == pyvips.Interpretation.SRGB
+    assert image.get(VIPS_META_ICC_PROFILE) == srgb_profile
 
 
 def test_assume_srgb_colour_source_rejects_non_srgb_images(rgb_image):
@@ -458,31 +491,26 @@ def test_assume_srgb_colour_source_rejects_non_srgb_images(rgb_image):
         AssumeSRGBColourSource().load(rgb_image)
 
 
-@pytest.mark.parametrize("intent", [pyvips.Intent.RELATIVE, pyvips.Intent.PERCEPTUAL])
 @pytest.mark.parametrize(
-    "pcs, expected_pcs",
-    [
-        [None, pyvips.PCS.LAB],
-        [pyvips.PCS.LAB, pyvips.PCS.LAB],
-        [pyvips.PCS.XYZ, pyvips.PCS.XYZ],
-    ],
+    "image",
+    ["image_with_srgb_icc_profile", "image_16_with_srgb_icc_profile"],
+    indirect=True,
 )
 def test_embedded_profile_vips_colour_source_loads_image_with_embedded_profile(
-    pcs, expected_pcs, image_with_srgb_icc_profile, srgb_profile, intent
+    image, srgb_profile,
 ):
-    assert image_with_srgb_icc_profile.get(VIPS_META_ICC_PROFILE) == srgb_profile
-    assert image_with_srgb_icc_profile.interpretation == pyvips.Interpretation.RGB
+    assert image.get(VIPS_META_ICC_PROFILE) == srgb_profile
+    assert image.interpretation in {
+        pyvips.Interpretation.RGB,
+        pyvips.Interpretation.RGB16,
+    }
 
-    colour_source = EmbeddedProfileVIPSColourSource(
-        intent=intent, profile_connection_space=pcs
-    )
-    assert colour_source.intent == intent
-    assert colour_source.profile_connection_space == expected_pcs
+    colour_source = EmbeddedProfileVIPSColourSource()
 
-    image = colour_source.load(image_with_srgb_icc_profile)
+    result_image = colour_source.load(image)
 
-    assert get_image_colour_source(image) == ColourSource.EMBEDDED_PROFILE
-    assert image.interpretation == expected_pcs
+    assert get_image_colour_source(result_image) == ColourSource.EMBEDDED_PROFILE
+    assert result_image.format == image.format
     assert image.get(VIPS_META_ICC_PROFILE) == srgb_profile
 
 
@@ -491,71 +519,47 @@ def test_embedded_profile_vips_colour_source_rejects_image_without_embedded_prof
 ):
     assert VIPS_META_ICC_PROFILE not in srgb_image.get_fields()
     with pytest.raises(ColourSourceNotAvailable):
-        EmbeddedProfileVIPSColourSource(intent=pyvips.Intent.RELATIVE).load(srgb_image)
-
-
-def test_embedded_profile_vips_colour_source_raises_error_on_failed_conversion(
-    image_with_invalid_icc_profile,
-):
-    with pytest.raises(DZIGenerationError) as exc_info:
-        EmbeddedProfileVIPSColourSource(intent=pyvips.Intent.RELATIVE).load(
-            image_with_invalid_icc_profile
-        )
-
-    assert "icc_import() failed: unable to call icc_import" in str(exc_info.value)
+        EmbeddedProfileVIPSColourSource().load(srgb_image)
 
 
 @pytest.mark.parametrize(
-    "params",
+    "icc_profile, icc_profile_path, expected_profile",
     [
-        dict(),
-        dict(intent="sdf"),
-        dict(intent=pyvips.Intent.RELATIVE, profile_connection_space="sfds"),
-    ],
-)
-def test_embedded_profile_vips_colour_source_rejects_invalid_init_params(params):
-    with pytest.raises((TypeError, ValueError)):
-        EmbeddedProfileVIPSColourSource(**params)
-
-
-@pytest.mark.parametrize("intent", [pyvips.Intent.RELATIVE, pyvips.Intent.PERCEPTUAL])
-@pytest.mark.parametrize(
-    "pcs, expected_pcs",
-    [
-        [None, pyvips.PCS.LAB],
-        [pyvips.PCS.LAB, pyvips.PCS.LAB],
-        [pyvips.PCS.XYZ, pyvips.PCS.XYZ],
+        [
+            pytest.lazy_fixture("srgb_profile"),
+            None,
+            pytest.lazy_fixture("srgb_profile"),
+        ],
+        [
+            None,
+            pytest.lazy_fixture("srgb_profile_path"),
+            pytest.lazy_fixture("srgb_profile"),
+        ],
     ],
 )
 def test_assign_profile_vips_colour_source_assigns_profile_from_path(
-    image, srgb_profile_path, srgb_profile, pcs, expected_pcs, intent
+    image, icc_profile, icc_profile_path, expected_profile
 ):
     colour_source = AssignProfileVIPSColourSource(
-        icc_profile_path=srgb_profile_path, intent=intent, profile_connection_space=pcs
+        icc_profile=icc_profile, icc_profile_path=icc_profile_path,
     )
-    assert colour_source.icc_profile == srgb_profile
-    assert colour_source.profile_connection_space == expected_pcs
-    assert colour_source.intent == intent
+    assert colour_source.icc_profile == expected_profile
 
     result_image = colour_source.load(image)
 
+    assert result_image is not image
+    assert result_image.format == image.format
     assert get_image_colour_source(result_image) == ColourSource.EXTERNAL_PROFILE
-    assert result_image.get(VIPS_META_ICC_PROFILE) == srgb_profile
-    assert result_image.interpretation == expected_pcs
+    assert result_image.get(VIPS_META_ICC_PROFILE) == expected_profile
 
 
 @pytest.mark.parametrize(
     "params",
     [
         dict(),
-        dict(icc_profile=42, intent=pyvips.Intent.RELATIVE),
-        dict(icc_profile_path="foo", icc_profile=b"foo", intent=pyvips.Intent.RELATIVE),
-        dict(icc_profile=b"foo", intent="sdf"),
-        dict(
-            icc_profile=b"foo",
-            intent=pyvips.Intent.RELATIVE,
-            profile_connection_space="sfds",
-        ),
+        dict(icc_profile=42),
+        dict(icc_profile_path=42),
+        dict(icc_profile_path="foo", icc_profile=b"foo"),
     ],
 )
 def test_assign_profile_vips_colour_source_rejects_invalid_init_params(params):
@@ -567,6 +571,7 @@ def test_unmanaged_colour_source(srgb_image):
     image = UnmanagedColourSource().load(srgb_image)
 
     assert image is not srgb_image
+    assert image.format == srgb_image.format
     assert get_image_colour_source(image) == ColourSource.UNMANAGED
 
 
@@ -577,14 +582,12 @@ def assume_srgb_colour_source():
 
 @pytest.fixture
 def embedded_profile_colour_source():
-    return EmbeddedProfileVIPSColourSource(intent=pyvips.Intent.RELATIVE)
+    return EmbeddedProfileVIPSColourSource()
 
 
 @pytest.fixture
 def assign_profile_colour_source(srgb_profile):
-    return AssignProfileVIPSColourSource(
-        intent=pyvips.Intent.RELATIVE, icc_profile=srgb_profile
-    )
+    return AssignProfileVIPSColourSource(icc_profile=srgb_profile)
 
 
 @pytest.fixture
@@ -701,6 +704,11 @@ def pcs_image(pcs, image_with_srgb_icc_profile):
 
 @pytest.mark.parametrize("intent", [pyvips.Intent.RELATIVE, pyvips.Intent.PERCEPTUAL])
 @pytest.mark.parametrize(
+    "image",
+    ["image_with_srgb_icc_profile", "image_16_with_srgb_icc_profile"],
+    indirect=True,
+)
+@pytest.mark.parametrize(
     "depth, expected_interpretation, expected_format",
     [
         [8, pyvips.Interpretation.RGB, pyvips.BandFormat.UCHAR],
@@ -708,44 +716,23 @@ def pcs_image(pcs, image_with_srgb_icc_profile):
     ],
 )
 @pytest.mark.parametrize(
-    "icc_profile, icc_profile_path, expected_profile",
-    [
-        [
-            pytest.lazy_fixture("srgb_profile"),
-            None,
-            pytest.lazy_fixture("srgb_profile"),
-        ],
-        [
-            None,
-            pytest.lazy_fixture("srgb_profile_path"),
-            pytest.lazy_fixture("srgb_profile"),
-        ],
-    ],
+    "icc_profile_path, expected_profile",
+    [[pytest.lazy_fixture("srgb_profile_path"), pytest.lazy_fixture("srgb_profile")]],
 )
-@pytest.mark.parametrize(
-    "pcs, expected_pcs",
-    [
-        [None, pyvips.PCS.LAB],
-        [pyvips.PCS.LAB, pyvips.PCS.LAB],
-        [pyvips.PCS.XYZ, pyvips.PCS.XYZ],
-    ],
-)
+@pytest.mark.parametrize("pcs", [None, pyvips.PCS.LAB, pyvips.PCS.XYZ])
 def test_apply_colour_profile_image_operation(
     intent,
-    pcs_image,
+    image,
     pcs,
-    expected_pcs,
     depth,
     expected_interpretation,
     expected_format,
-    icc_profile,
     icc_profile_path,
     expected_profile,
 ):
-    assert pcs_image.interpretation == expected_pcs
+    assert isinstance(image.get(VIPS_META_ICC_PROFILE), bytes)
 
     image_op = ApplyColourProfileImageOperation(
-        icc_profile=icc_profile,
         icc_profile_path=icc_profile_path,
         profile_connection_space=pcs,
         intent=intent,
@@ -753,14 +740,39 @@ def test_apply_colour_profile_image_operation(
     )
 
     assert image_op.profile_connection_space == pcs  # None indicates any PCS is fine
-    assert image_op.icc_profile == expected_profile
+    assert image_op.icc_profile_path == icc_profile_path
     assert image_op.intent == intent
     assert image_op.depth == depth
 
-    result = image_op(pcs_image)
+    result = image_op(image)
     assert result.interpretation == expected_interpretation
     assert result.format == expected_format
     assert result.get(VIPS_META_ICC_PROFILE) == expected_profile
+
+
+@pytest.mark.parametrize("image", ["srgb_image", "rgb_image"], indirect=True)
+def test_apply_colour_profile_image_operation_requires_input_image_to_have_profile(
+    image, srgb_profile_path,
+):
+    image_op = ApplyColourProfileImageOperation(
+        icc_profile_path=srgb_profile_path, intent=pyvips.Intent.RELATIVE
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        image_op(image)
+
+    assert str(exc_info.value) == "image has no ICC profile attached"
+
+
+def test_apply_colour_profile_image_operation_raises_error_on_failed_conversion(
+    image_with_invalid_icc_profile, srgb_profile_path
+):
+    with pytest.raises(DZIGenerationError) as exc_info:
+        ApplyColourProfileImageOperation(
+            icc_profile_path=srgb_profile_path, intent=pyvips.Intent.RELATIVE,
+        )(image_with_invalid_icc_profile)
+
+    assert "icc_transform() failed: unable to call icc_transform" in str(exc_info.value)
 
 
 @pytest.mark.parametrize(
