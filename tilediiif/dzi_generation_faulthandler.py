@@ -1,3 +1,6 @@
+import sys
+
+
 def run_dzi_generation_with_faulthandler_enabled():
     """
     Run tilediiif.dzi_generation:main() with error handlers enabled for segfaults.
@@ -11,6 +14,21 @@ def run_dzi_generation_with_faulthandler_enabled():
 
     faulthandler.enable()
 
-    from tilediiif.dzi_generation import main
+    try:
+        from tilediiif.dzi_generation import main
+    except ModuleNotFoundError as e:
+        import traceback
+
+        print(
+            f"""\
+Error: {e}
+
+tilediiif must be installed with the 'dzigeneration' extra to use dzi-tiles. e.g:
+  $ pip install tilediiif[dzigeneration]
+""",
+            file=sys.stderr,
+        )
+        traceback.print_exc()
+        sys.exit(2)
 
     main()
