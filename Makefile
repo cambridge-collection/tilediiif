@@ -16,3 +16,11 @@ check-isort:
 flake8:
 	poetry run flake8 $(python_dirs)
 lint: check-isort check-black flake8
+dist:
+	poetry build
+integration-test-target-venv:
+	tox --recreate -e py37-target
+integration-test: dist integration-test-target-venv
+	tox -e py37-testrunner
+
+.PHONY: format-python isort black check-black check-isort flake8 lint dist integration-test-target-venv integration-test

@@ -48,12 +48,20 @@ server = ["falcon", "jsonschema", "jsonpath-rw", "toml"]
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py37
-isolated_build = True
+envlist = py37-{testrunner,target}
+skipsdist = true
 
 [testenv]
-deps = pytest
-commands = pytest --junitxml=test-results/integration-test-results.xml integration_test
+whitelist_externals =
+    env
+deps =
+    testrunner: poetry
+commands_pre =
+    target: pip install dist/tilediiif-0.1.0-py3-none-any.whl[dzigeneration]
+    testrunner: poetry install -E dzigeneration
+
+commands =
+    testrunner: env PATH={toxworkdir}/py37-target/bin {envbindir}/pytest --junitxml=test-results/integration-test-results.xml integration_test
 """
 
 [tool.black]

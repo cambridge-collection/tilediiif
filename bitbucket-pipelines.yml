@@ -1,26 +1,31 @@
-image: python:3.7.4
+image: camdl/tilediiif-pipelines:1.0.1
 pipelines:
   default:
     - parallel:
         - step:
             name: Unit test
             script:
-              - pip install poetry
-              - poetry install --extras server
+              - pip3 install poetry
+              - poetry install --extras server --extras dzigeneration
               - poetry run pytest --junitxml=test-results/unit-test-results.xml tilediiif test_tilediiif
             caches:
               - pip
         - step:
             name: Integration test
             script:
-              - pip install tox
-              - tox
+              - pip3 install poetry tox
+              - poetry build
+              # Set up a clean virtualenv with only the built package installed.
+              - tox --recreate -e py37-target
+              # Run the integration tests, invoking the commands in the
+              # py37-target virtualenv.
+              - tox -e py37-testrunner
             caches:
               - pip
         - step:
             name: Lint
             script:
-              - pip install flake8 black
+              - pip3 install flake8 black
               - >
                 black --check tilediiif test_tilediiif integration_test || \
                   echo "Error: Python code has not been formatted - run 'make format-python'"
