@@ -1,6 +1,5 @@
 import math
 import struct
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -9,9 +8,8 @@ from hypothesis import given
 from hypothesis._strategies import sampled_from
 from hypothesis.strategies import integers, lists
 
-PROJECT_ROOT = Path(__file__).parents[2]
-PROFILE_SRGB_PATH = PROJECT_ROOT / "tilediiif/data/sRGB2014.icc"
-IMAGE_DATA = Path(__file__).parents[1] / "data/images"
+from integration_test.data import IMAGE_DATA, PROFILE_SRGB_PATH, PROJECT_ROOT
+
 IMAGE_PEARS = PROJECT_ROOT / "test_tilediiif/server/data/pears_small.jpg"
 IMAGE_SUNSET_P3 = IMAGE_DATA / "Sunset-P3.jpg"
 IMAGE_SUNSET_P3_SIZE = (397, 600)

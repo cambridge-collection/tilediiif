@@ -1,28 +1,15 @@
 import math
 import re
 import subprocess
-from pathlib import Path
 
 import pytest
 import pyvips
 
+from integration_test.data import (
+    TEST_IMG_PEARS_SRGB_EMBEDDED,
+    TEST_IMG_PEARS_SRGB_STRIPPED,
+)
 from tilediiif.dzi import parse_dzi_file
-
-TEST_IMG_PEARS_SRGB_EMBEDDED = {
-    "path": Path(__file__).parents[2] / "test_tilediiif/server/data/pears_small.jpg",
-    "width": 1000,
-    "height": 750,
-    "colour_profile": "srgb",
-    "colour_profile_location": "embedded",
-}
-
-TEST_IMG_PEARS_SRGB_STRIPPED = {
-    "path": Path(__file__).parents[1] / "data/images/pears_small_srgb_stripped.jpg",
-    "width": 1000,
-    "height": 750,
-    "colour_profile": "srgb",
-    "colour_profile_location": None,
-}
 
 
 @pytest.mark.parametrize(
