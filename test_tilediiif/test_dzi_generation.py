@@ -1,3 +1,5 @@
+import logging
+import re
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -19,12 +21,15 @@ from tilediiif.dzi_generation import (
     DZIGenerationError,
     DZITilesConfiguration,
     EmbeddedProfileVIPSColourSource,
+    InterceptingHandler,
     IOConfig,
     JPEGConfig,
     JPEGQuantTable,
     LoadColoursImageOperation,
     RenderingIntent,
+    UnexpectedVIPSLogDZIGenerationError,
     UnmanagedColourSource,
+    capture_vips_log_messages,
     ensure_mozjpeg_present_if_required,
     format_jpeg_encoding_options,
     get_image_colour_source,
@@ -854,3 +859,116 @@ def test_save_dzi_takes_io_as_two_args_or_io_config(
         )
 
     assert str(exc_info.value) == msg
+
+
+@pytest.mark.parametrize(
+    "logger",
+    [
+        # Note that pyvips had a bug resulting in its log messages going to a child
+        # logger under pyvips. And regardless, we want to ensure we see messages from
+        # sub loggers.
+        pytest.param(pyvips.logger, id="pyvips_logger_attribute"),
+        pytest.param("pyvips", id="named_logger_pyvips"),
+        pytest.param("pyvips.foo", id="named_logger_pyvips.foo"),
+    ],
+)
+@pytest.mark.parametrize(
+    "level, level_threshold, should_capture",
+    [
+        pytest.param(
+            level,
+            level_threshold,
+            should_capture,
+            id=f"{logging.getLevelName(level)}_"
+            f"{logging.getLevelName(level_threshold)}",
+        )
+        for level, level_threshold, should_capture in [
+            [logging.ERROR, None, True],
+            [logging.WARNING, None, True],
+            [logging.INFO, None, False],
+            [logging.ERROR, logging.WARNING, True],
+            [logging.WARNING, logging.WARNING, True],
+            [logging.INFO, logging.WARNING, False],
+            [logging.ERROR, logging.ERROR, True],
+            [logging.WARNING, logging.ERROR, False],
+            [logging.INFO, logging.ERROR, False],
+        ]
+    ],
+)
+def test_capture_vips_log_messages_captures_warnings(
+    logger, level, level_threshold, should_capture
+):
+    level_arg = {} if level_threshold is None else {"level": level_threshold}
+    assert not any(
+        isinstance(h, InterceptingHandler) for h in logging.getLogger("pyvips").handlers
+    )
+    with capture_vips_log_messages(**level_arg) as capture:
+        assert any(
+            isinstance(h, InterceptingHandler)
+            for h in logging.getLogger("pyvips").handlers
+        )
+
+        log = logging.getLogger(logger) if isinstance(logger, str) else logger
+        log.log(level, "foo")
+
+    assert not any(
+        isinstance(h, InterceptingHandler) for h in logging.getLogger("pyvips").handlers
+    )
+
+    if should_capture:
+        assert len(capture.records) == 1
+        assert capture.records[0].message == "foo"
+    else:
+        assert len(capture.records) == 0
+
+
+def test_capture_vips_log_messages_intercepts_warnings_from_vips_native_code():
+    with capture_vips_log_messages() as capture:
+        trigger_vips_warning()
+
+    assert len(capture.records) == 1
+    assert TRIGGERED_VIPS_WARNING_MSG.match(capture.records[0].message)
+
+    with pytest.raises(UnexpectedVIPSLogDZIGenerationError) as exc_info:
+        capture.raise_if_records_seen()
+        assert re.match(
+            r"^pyvips unexpectedly emitted a log message at "
+            r"WARNING level: VIPS: ignoring optimize_scans.*, aborting DZI generation$",
+            str(exc_info),
+        )
+
+
+def test_exceptions_in_cffi_callbacks_are_swallowed(capsys):
+    class TestHandler(logging.NullHandler):
+        def handle(self, record):
+            raise RuntimeError("something went wrong")
+
+    handler = TestHandler()
+    logger = logging.getLogger("pyvips")
+    try:
+        logger.addHandler(handler)
+        trigger_vips_warning()
+        # nothing raised, exception is printed on stderr
+        captured = capsys.readouterr()
+        assert re.search(
+            r"^From cffi callback <function _log_handler_callback at \w+>:$\s*"
+            r"^Traceback \(most recent call last\):$.*"
+            r"^RuntimeError: something went wrong$",
+            captured.err,
+            re.MULTILINE | re.DOTALL,
+        )
+    finally:
+        logger.removeHandler(handler)
+
+
+TRIGGERED_VIPS_WARNING_MSG = re.compile(r"\AVIPS: ignoring optimize_scans.*\Z")
+
+
+def trigger_vips_warning():
+    img = pyvips.Image.new_from_memory(b"\x00" * 3, 1, 1, 3, "uchar")
+    # Can't optimise scans in a non-progressive JPEG, so this warns. MozJPEG is
+    # required to use optimize_scans, and it also warns if MozJPEG is not available,
+    # so doing this will always emit a warning:
+    #  - "ignoring optimize_scans" if MozJPEG is not present
+    #  - "ignoring optimize_scans for baseline" if MozJPEG is present
+    img.jpegsave_buffer(interlace=False, optimize_scans=True)

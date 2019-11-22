@@ -3,13 +3,14 @@ import logging
 from abc import ABC
 from contextlib import contextmanager
 from ctypes import CDLL
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from logging import LogRecord
 from pathlib import Path
 from pprint import pformat
+from tempfile import TemporaryDirectory
 from types import MappingProxyType
-from typing import Iterable, Tuple, Union
+from typing import Iterable, List, Tuple, Union
 
 import pyvips
 from docopt import docopt
@@ -554,27 +555,51 @@ def pyvips_supports_params():
     return not ignored_param_warning_seen
 
 
-@contextmanager
-def vips_warnings_as_errors():
-    """
-    A context manager that throws a UnexpectedVIPSLogDZIGenerationError if pyvips emits
-    any log messages at warning level (or above) while entered.
-    """
+@dataclass(frozen=True)
+class InterceptedLogRecords:
+    records: List[LogRecord] = field(default_factory=list)
 
-    def filter(record: LogRecord):
-        if record.level >= logging.WARNING:
+    def raise_if_records_seen(self):
+        """
+        Raises a UnexpectedVIPSLogDZIGenerationError any log messages were captured.
+        """
+        for record in self.records:
             raise UnexpectedVIPSLogDZIGenerationError(
                 f"pyvips unexpectedly emitted a log message at {record.levelname} "
-                f"level: {record.msg}, aborting DZI generation"
+                f"level: {record.msg}, aborting DZI generation",
+                log_record=record,
             )
+
+
+class InterceptingHandler(logging.Handler):
+    def __init__(self, level=logging.NOTSET):
+        super().__init__(level=level)
+        self.intercepted_records = InterceptedLogRecords()
+
+    def filter(self, record: LogRecord):
+        self.intercepted_records.records.append(record)
         return True
 
-    logger = pyvips.logger
+    def emit(self, record):
+        pass
+
+
+@contextmanager
+def capture_vips_log_messages(level=logging.WARNING):
+    """
+    A context manager that captures pyvips log messages while active.
+    """
+    # Note that we can't raise while handling a vips warning log message, as vips logs
+    # come from naitive code via cffi, and exceptions raised in cffi callbacks get
+    # swallowed. See the test:
+    # test_tilediiif.test_dzi_generation.test_exceptions_in_cffi_callbacks_are_swallowed
+    interceptor = InterceptingHandler(level=level)
+    logger = logging.getLogger("pyvips")
     try:
-        logger.filters.insert(0, filter)
-        yield
+        logger.addHandler(interceptor)
+        yield interceptor.intercepted_records
     finally:
-        logger.removeFilter(filter)
+        logger.removeHandler(interceptor)
 
 
 @lru_cache(maxsize=1)
@@ -1031,7 +1056,9 @@ def save_dzi(
         src_path = str(io_config.values.src_image)
         assert not path_has_vips_options(src_path)
         try:
-            src_image = pyvips.Image.new_from_file(src_path)
+            with capture_vips_log_messages() as capture:
+                src_image = pyvips.Image.new_from_file(src_path)
+            capture.raise_if_records_seen()
         except pyvips.Error as e:
             if f'file "{src_path}" not found' in str(e):
                 raise FileNotFoundError(src_path) from e
@@ -1045,9 +1072,9 @@ def save_dzi(
             )
         dest_dzi = Path(dest_dzi)
 
-    if Path("{dest_dzi}.dzi").exists():
+    if Path(f"{dest_dzi}.dzi").exists():
         raise DZIGenerationError(f"{dest_dzi}.dzi already exists")
-    if Path("{dest_dzi}._files").exists():
+    if Path(f"{dest_dzi}._files").exists():
         raise DZIGenerationError(f"{dest_dzi}._files already exists")
     if not dest_dzi.parent.is_dir():
         if dest_dzi.parent.exists():
@@ -1062,17 +1089,37 @@ def save_dzi(
     ensure_mozjpeg_present_if_required(tile_encoding_config)
     tile_suffix = f".jpg[{format_jpeg_encoding_options(tile_encoding_config)}]"
 
-    # Transform input image to output colour profile
-    colour_loader = ColourManagedImageLoader.from_colour_config(colour_config)
-    output_image = colour_loader(src_image)
+    with capture_vips_log_messages() as capture:
+        # Transform input image to output colour profile
+        colour_loader = ColourManagedImageLoader.from_colour_config(colour_config)
+        output_image = colour_loader(src_image)
+    capture.raise_if_records_seen()
 
     try:
-        output_image.dzsave(
-            str(dest_dzi),
-            overlap=dzi_config.values.overlap,
-            tile_size=dzi_config.tile_size,
-            suffix=tile_suffix,
-        )
+        # We need to generate the output in a temporary location, as we must not leave
+        # any partial/undefined output if generation fails.
+        with TemporaryDirectory(
+            prefix="__dzi-tiles-tmp-", suffix=f"__{dest_dzi.name}", dir=dest_dzi.parent
+        ) as tmp_dzi_dir:
+            tmp_dest_dzi = Path(tmp_dzi_dir) / "tmp"
+
+            # VIPS has a few places where it logs warnings rather than failing if
+            # something is wrong. One such case (which we handle explicitly) is MozJPEG
+            # encoding params being requested without the library being available. In
+            # order to avoid silently ignoring things not working as expected, we
+            # intercept any VIPS log messages and raise errors from them, terminating
+            # the DZI generation.
+            with capture_vips_log_messages() as capture:
+                output_image.dzsave(
+                    str(tmp_dest_dzi),
+                    overlap=dzi_config.values.overlap,
+                    tile_size=dzi_config.tile_size,
+                    suffix=tile_suffix,
+                )
+            capture.raise_if_records_seen()
+
+            Path(f"{tmp_dest_dzi}.dzi").replace(f"{dest_dzi}.dzi")
+            Path(f"{tmp_dest_dzi}_files").replace(f"{dest_dzi}_files")
     except pyvips.Error as e:
         raise DZIGenerationError(f"dzsave() failed: {e}") from e
 
@@ -1122,18 +1169,12 @@ def run():
         raise CommandError(f"{e}") from e
 
     try:
-        # VIPS has a few places where it logs warnings rather than failing if something
-        # is wrong. One such case (which we handle explicitly) is MozJPEG encoding
-        # params being requested without the library being available. In order to avoid
-        # silently ignoring things not working as expected, we intercept any VIPS log
-        # messages and raise errors from them, terminating the DZI generation.
-        with vips_warnings_as_errors():
-            save_dzi(
-                io_config=config.io,
-                dzi_config=config.dzi,
-                tile_encoding_config=config.jpeg,
-                colour_config=config.colour,
-            )
+        save_dzi(
+            io_config=config.io,
+            dzi_config=config.dzi,
+            tile_encoding_config=config.jpeg,
+            colour_config=config.colour,
+        )
     except DZIGenerationError as e:
         raise CommandError(f"DZI generation failed: {e}") from e
 
