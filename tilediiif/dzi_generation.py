@@ -517,9 +517,15 @@ Output tile encoding options:
     --jpeg-optimize-scans
     --no-jpeg-optimize-scans
         Split DCT coefficients into separate scans. Only effects progressive JPEGs.
-        Requires mozjpeg.
+        This can reduce file sizes, but note that it will result in colour distortion
+        in partial preview because the luminance channel is received first, followed by
+        each chroma channels in turn. As a result, the preview is initially greyscale,
+        then coloured with one chroma channel (resulting in distorted colours), then
+        normal colours when the last chroma channel is loaded. However, also note that
+        the OpenSeaDragon viewer with Canvas rendering does not seem to render partial
+        progressive JPEGs, so this effect is not visible unless Canvas is disabled, or
+        a tile is displayed as a regular image in a web page. Requires mozjpeg.
         Default: disabled
-
 
     --jpeg-quant-table=<value>
         Selects the quantization table to use (see vips_jpegsave docs).
