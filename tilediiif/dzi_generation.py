@@ -408,6 +408,8 @@ Generate a tiled image pyramid in DZI format.
 
 Usage:
     dzi-tiles [options] <src-image> [<dest-dzi>]
+    dzi-tiles (-h|--help)
+    dzi-tiles --version
 
 Info:
     The vips image library is used to efficiently create tiles from a high-res input
