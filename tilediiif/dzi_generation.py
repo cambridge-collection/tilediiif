@@ -1040,7 +1040,7 @@ def path_has_vips_options(path: Union[Path, str]) -> bool:
 
 def save_dzi(
     *,
-    src_image: pyvips.Image = None,
+    src_image: Union[pyvips.Image, Path, str] = None,
     dest_dzi: Union[Path, str] = None,
     io_config: IOConfig = None,
     dzi_config: DZIConfig = None,
@@ -1053,38 +1053,53 @@ def save_dzi(
         if dest_dzi is not None:
             raise TypeError("cannot specify dest_dzi and io_config")
 
-        src_path = str(io_config.values.src_image)
-        assert not path_has_vips_options(src_path)
-        try:
-            with capture_vips_log_messages() as capture:
-                src_image = pyvips.Image.new_from_file(src_path)
-            capture.raise_if_records_seen()
-        except pyvips.Error as e:
-            if f'file "{src_path}" not found' in str(e):
-                raise FileNotFoundError(src_path) from e
-            raise DZIGenerationError(f"unable to load src image: {e}") from e
-
+        src_image = str(io_config.values.src_image)
         dest_dzi = Path(io_config.values.dest_dzi)
     else:
         if src_image is None or dest_dzi is None:
             raise TypeError(
                 "src_image and dest_dzi must be specified if io_config isn't"
             )
+        if isinstance(src_image, (Path, str)):
+            try:
+                IOConfig(src_image=src_image)
+            except ConfigValidationError as e:
+                raise ValueError(f"invalid src_image: {e}")
+        try:
+            IOConfig(dest_dzi=dest_dzi)
+        except ConfigValidationError as e:
+            raise ValueError(f"invalid dest_dzi: {e}")
         dest_dzi = Path(dest_dzi)
 
     if Path(f"{dest_dzi}.dzi").exists():
-        raise DZIGenerationError(f"{dest_dzi}.dzi already exists")
-    if Path(f"{dest_dzi}._files").exists():
-        raise DZIGenerationError(f"{dest_dzi}._files already exists")
+        raise FileExistsError(f"{dest_dzi}.dzi already exists")
+    if Path(f"{dest_dzi}_files").exists():
+        raise FileExistsError(f"{dest_dzi}_files already exists")
     if not dest_dzi.parent.is_dir():
         if dest_dzi.parent.exists():
-            raise DZIGenerationError(f"{dest_dzi.parent} exists but is not a directory")
-        raise DZIGenerationError(
+            raise NotADirectoryError(f"{dest_dzi.parent} exists but is not a directory")
+        raise FileNotFoundError(
             f"{dest_dzi.parent} does not exist, it must be a directory"
         )
 
+    if isinstance(src_image, (str, Path)):
+        try:
+            with capture_vips_log_messages() as capture:
+                src_image = pyvips.Image.new_from_file(src_image)
+            capture.raise_if_records_seen()
+        except pyvips.Error as e:
+            if f'file "{src_image}" not found' in str(e):
+                raise FileNotFoundError(src_image) from e
+            raise DZIGenerationError(f"unable to load src image: {e}") from e
     if not isinstance(src_image, pyvips.Image):
-        raise TypeError("src_image must be a pyvips.Image")
+        raise TypeError("src_image must be a pyvips.Image, str or Path")
+
+    if dzi_config is None:
+        dzi_config = DZIConfig()
+    if tile_encoding_config is None:
+        tile_encoding_config = JPEGConfig()
+    if colour_config is None:
+        colour_config = ColourConfig()
 
     ensure_mozjpeg_present_if_required(tile_encoding_config)
     tile_suffix = f".jpg[{format_jpeg_encoding_options(tile_encoding_config)}]"
@@ -1121,7 +1136,7 @@ def save_dzi(
             Path(f"{tmp_dest_dzi}.dzi").replace(f"{dest_dzi}.dzi")
             Path(f"{tmp_dest_dzi}_files").replace(f"{dest_dzi}_files")
     except pyvips.Error as e:
-        raise DZIGenerationError(f"dzsave() failed: {e}") from e
+        raise DZIGenerationError(f"dzsave() failed: {str(e).strip()}") from e
 
 
 def ensure_mozjpeg_present_if_required(jpeg_config):

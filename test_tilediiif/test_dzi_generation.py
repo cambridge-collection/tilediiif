@@ -1,6 +1,7 @@
 import logging
 import re
 from pathlib import Path
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,6 +16,7 @@ from tilediiif.dzi_generation import (
     AssumeSRGBColourSource,
     BaseColourSource,
     ColourConfig,
+    ColourManagedImageLoader,
     ColourSource,
     ColourSourceNotAvailable,
     DZIConfig,
@@ -834,6 +836,10 @@ def jpeg_config():
             "cannot specify src_image and io_config",
         ],
         [
+            dict(src_image="some/path", io_config=IOConfig()),
+            "cannot specify src_image and io_config",
+        ],
+        [
             dict(dest_dzi="some/path", io_config=IOConfig()),
             "cannot specify dest_dzi and io_config",
         ],
@@ -845,20 +851,337 @@ def jpeg_config():
             dict(src_image=new_test_image()),
             "src_image and dest_dzi must be specified if io_config isn't",
         ],
+        [
+            dict(src_image="some/path"),
+            "src_image and dest_dzi must be specified if io_config isn't",
+        ],
     ],
 )
-def test_save_dzi_takes_io_as_two_args_or_io_config(
-    io_args, msg, dzi_config, jpeg_config, colour_config
-):
+def test_save_dzi_takes_io_as_two_args_or_io_config(io_args, msg):
     with pytest.raises(TypeError) as exc_info:
-        save_dzi(
-            **io_args,
-            dzi_config=dzi_config,
-            tile_encoding_config=jpeg_config,
-            colour_config=colour_config,
-        )
+        save_dzi(**io_args)
 
     assert str(exc_info.value) == msg
+
+
+def test_save_dzi_raises_file_not_found_if_src_does_not_exist(tmp_data_path):
+    with pytest.raises(FileNotFoundError) as exc_info:
+        save_dzi(
+            io_config=IOConfig(
+                src_image=tmp_data_path / "does-not-exist",
+                dest_dzi=tmp_data_path / "out",
+            )
+        )
+    assert str(exc_info.value) == str(tmp_data_path / "does-not-exist")
+
+
+@pytest.fixture
+def unreadable_file(tmp_data_path):
+    file = tmp_data_path / "unreadable_file"
+    file.touch(mode=0o000)
+    return file
+
+
+@pytest.fixture
+def empty_file(tmp_data_path):
+    file = tmp_data_path / "empty_file"
+    file.touch()
+    return file
+
+
+@pytest.mark.parametrize(
+    "src_img_path, expected_message",
+    [
+        [
+            pytest.lazy_fixture("unreadable_file"),
+            re.compile(
+                r"\Aunable to load src image: unable to load from file.*"
+                r"Permission denied",
+                re.MULTILINE | re.DOTALL,
+            ),
+        ],
+        [
+            pytest.lazy_fixture("unreadable_file"),
+            re.compile(
+                r"\Aunable to load src image: unable to load from file.*"
+                r"is not a known file format",
+                re.MULTILINE | re.DOTALL,
+            ),
+        ],
+    ],
+)
+def test_save_dzi_raises_dzi_generation_error_if_src_cannot_be_loaded(
+    tmp_data_path, src_img_path, expected_message
+):
+
+    with pytest.raises(DZIGenerationError) as exc_info:
+        save_dzi(
+            io_config=IOConfig(src_image=src_img_path, dest_dzi=tmp_data_path / "out")
+        )
+    assert expected_message.search(str(exc_info.value))
+
+
+@pytest.fixture(
+    params=[
+        "with_existing_dzi",
+        "with_existing_files_dir",
+        "with_non_dir_parent",
+        "with_missing_parent",
+    ]
+)
+def invalid_dest_dzi_type(request):
+    return request.param
+
+
+@pytest.fixture
+def invalid_dest_dzi(request, tmp_data_path, invalid_dest_dzi_type):
+    return request.getfixturevalue(f"invalid_dest_dzi_{invalid_dest_dzi_type}")
+
+
+@pytest.fixture(
+    params=[
+        pytest.param(True, id="via-io_config"),
+        pytest.param(False, id="via-src_image-and-dest_dzi"),
+    ]
+)
+def invalid_dest_dzi_save_dzi_io_args(
+    request,
+    image_with_srgb_icc_profile,
+    image_with_srgb_icc_profile_path,
+    invalid_dest_dzi,
+):
+    use_io_config = request.param
+    if use_io_config:
+        return {
+            "io_config": IOConfig(
+                src_image=image_with_srgb_icc_profile_path, dest_dzi=invalid_dest_dzi
+            )
+        }
+    else:
+        return {"src_image": image_with_srgb_icc_profile, "dest_dzi": invalid_dest_dzi}
+
+
+@pytest.fixture
+def tmp_data_path(tmp_path):
+    with TemporaryDirectory(dir=tmp_path) as path:
+        yield Path(path)
+
+
+@pytest.fixture
+def image_with_srgb_icc_profile_path(image_with_srgb_icc_profile):
+    with NamedTemporaryFile() as f:
+        image_with_srgb_icc_profile.pngsave(f.name)
+        yield f.name
+
+
+@pytest.fixture
+def invalid_dest_dzi_exception(request, invalid_dest_dzi_type):
+    return request.getfixturevalue(
+        f"invalid_dest_dzi_{invalid_dest_dzi_type}_exception"
+    )
+
+
+@pytest.fixture
+def invalid_dest_dzi_with_existing_dzi(tmp_data_path):
+    dest_dzi = tmp_data_path / "out"
+    (tmp_data_path / "out.dzi").touch()
+    return dest_dzi
+
+
+@pytest.fixture
+def invalid_dest_dzi_with_existing_dzi_exception(invalid_dest_dzi):
+    return FileExistsError(f"{invalid_dest_dzi}.dzi already exists")
+
+
+@pytest.fixture
+def invalid_dest_dzi_with_existing_files_dir(tmp_data_path):
+    dest_dzi = tmp_data_path / "out"
+    (tmp_data_path / "out_files").mkdir()
+    return dest_dzi
+
+
+@pytest.fixture
+def invalid_dest_dzi_with_existing_files_dir_exception(invalid_dest_dzi):
+    return FileExistsError(f"{invalid_dest_dzi}_files already exists")
+
+
+@pytest.fixture
+def invalid_dest_dzi_with_non_dir_parent(tmp_data_path):
+    dzi_parent = tmp_data_path / "a"
+    dest_dzi = dzi_parent / "out"
+    dzi_parent.touch()
+    return dest_dzi
+
+
+@pytest.fixture
+def invalid_dest_dzi_with_non_dir_parent_exception(invalid_dest_dzi):
+    return NotADirectoryError(
+        f"{invalid_dest_dzi.parent} exists but is not a directory"
+    )
+
+
+@pytest.fixture
+def invalid_dest_dzi_with_missing_parent(tmp_data_path):
+    # parent is not created
+    dzi_parent = tmp_data_path / "a"
+    dest_dzi = dzi_parent / "out"
+    return dest_dzi
+
+
+@pytest.fixture
+def invalid_dest_dzi_with_missing_parent_exception(invalid_dest_dzi):
+    return FileNotFoundError(
+        f"{invalid_dest_dzi.parent} does not exist, it must be a directory"
+    )
+
+
+def test_save_dzi_raises_appropriate_os_error_for_dest_path_errors(
+    invalid_dest_dzi_save_dzi_io_args, invalid_dest_dzi_exception
+):
+
+    with pytest.raises(type(invalid_dest_dzi_exception)) as exc_info:
+        save_dzi(**invalid_dest_dzi_save_dzi_io_args)
+
+    assert str(exc_info.value) == str(invalid_dest_dzi_exception)
+
+
+@pytest.fixture
+def mock_colour_managed_image_loader(mock_colour_loader):
+    mock = MagicMock(return_value=mock_colour_loader)
+    with patch.object(ColourManagedImageLoader, "from_colour_config", new=mock):
+        yield mock
+
+
+@pytest.fixture
+def mock_colour_loader(mock_output_image):
+    return MagicMock(side_effect=lambda _: mock_output_image)
+
+
+@pytest.fixture
+def mock_output_image(mock_dzsave):
+    mock = MagicMock(spec=pyvips.Image)
+    mock.dzsave = mock_dzsave
+    return mock
+
+
+@pytest.fixture
+def dest_dzi(tmp_data_path):
+    return tmp_data_path / "out"
+
+
+@pytest.fixture
+def mock_dzsave():
+    def dzsave(dzi_path, **_):
+        Path(f"{dzi_path}.dzi").touch()
+        Path(f"{dzi_path}_files").mkdir()
+
+    return MagicMock(side_effect=dzsave)
+
+
+@pytest.fixture
+def mock_dzsave_with_vips_warning():
+    def dzsave(dzi_path, **_):
+        Path(f"{dzi_path}.dzi").touch()
+        Path(f"{dzi_path}_files").mkdir()
+        # This should result in an error
+        logging.getLogger("pyvips").warning("something went slightly wrong")
+
+    return MagicMock(side_effect=dzsave)
+
+
+@pytest.fixture
+def mock_dzsave_raising_pyvips_error():
+    def dzsave(dzi_path, **_):
+        Path(f"{dzi_path}.dzi").touch()
+        Path(f"{dzi_path}_files").mkdir()
+        raise pyvips.Error("something went very wrong")
+
+    return MagicMock(side_effect=dzsave)
+
+
+@pytest.mark.parametrize("colour_config", [None, ColourConfig()])
+def test_save_dzi_loads_colour_managed_image_and_saves_it(
+    image_with_srgb_icc_profile,
+    dest_dzi,
+    colour_config,
+    dzi_config,
+    jpeg_config,
+    mock_colour_managed_image_loader,
+    mock_colour_loader,
+    mock_output_image,
+    mock_dzsave,
+):
+    assert not Path(f"{dest_dzi}.dzi").exists()
+    assert not Path(f"{dest_dzi}_files").exists()
+
+    mock_src_img = MagicMock(wraps=image_with_srgb_icc_profile, spec=pyvips.Image)
+    save_dzi(
+        src_image=mock_src_img,
+        dest_dzi=dest_dzi,
+        colour_config=colour_config,
+        tile_encoding_config=jpeg_config,
+        dzi_config=dzi_config,
+    )
+
+    mock_colour_managed_image_loader.assert_called_once()
+    (used_config,) = mock_colour_managed_image_loader.mock_calls[0][1]
+    if colour_config is None:
+        assert used_config == ColourConfig()
+    else:
+        assert used_config is colour_config
+
+    mock_colour_loader.assert_called_once_with(mock_src_img)
+    mock_output_image.dzsave.assert_called_once()
+    # DZI is created in a temporary location
+    tmp_dest_dzi = Path(mock_output_image.dzsave.mock_calls[0][1][0])
+    assert mock_output_image.dzsave.mock_calls[0][1][0] != dest_dzi
+    assert tmp_dest_dzi.name == "tmp"
+    assert mock_output_image.dzsave.mock_calls[0][2] == dict(
+        overlap=dzi_config.overlap,
+        tile_size=dzi_config.tile_size,
+        suffix=f".jpg[{format_jpeg_encoding_options(jpeg_config)}]",
+    )
+
+    assert Path(f"{dest_dzi}.dzi").is_file()
+    assert Path(f"{dest_dzi}_files").is_dir()
+    # temp output is cleaned up
+    assert not Path(f"{tmp_dest_dzi}.dzi").exists()
+    assert not Path(f"{tmp_dest_dzi}_files").exists()
+
+
+@pytest.mark.parametrize(
+    "mock_dzsave",
+    [
+        pytest.lazy_fixture("mock_dzsave_with_vips_warning"),
+        pytest.lazy_fixture("mock_dzsave_raising_pyvips_error"),
+    ],
+)
+def test_save_dzi_cleans_up_if_dzsave_fails(
+    image_with_srgb_icc_profile,
+    dest_dzi,
+    mock_colour_managed_image_loader,
+    mock_colour_loader,
+    mock_output_image,
+    mock_dzsave,
+):
+    with pytest.raises(DZIGenerationError) as exc_info:
+        save_dzi(src_image=image_with_srgb_icc_profile, dest_dzi=dest_dzi)
+
+    assert any(
+        str(exc_info.value) == msg
+        for msg in [
+            "pyvips unexpectedly emitted a log message at WARNING level: something "
+            "went slightly wrong, aborting DZI generation",
+            "dzsave() failed: something went very wrong",
+        ]
+    )
+
+    (tmp_dest_dzi,) = mock_dzsave.mock_calls[0][1]
+    assert not Path(f"{tmp_dest_dzi}.dzi").exists()
+    assert not Path(f"{tmp_dest_dzi}_files").exists()
+
+    assert not Path(f"{dest_dzi}.dzi").exists()
+    assert not Path(f"{dest_dzi}_files").exists()
 
 
 @pytest.mark.parametrize(
