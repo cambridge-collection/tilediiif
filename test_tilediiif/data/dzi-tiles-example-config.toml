@@ -10,6 +10,7 @@ colour-transform-intent = "saturation"
 [dzi-tiles.jpeg]
 quality = 80
 optimize-coding = true
+progressive = true
 subsample = false
 trellis-quant = true
 overshoot-deringing = true

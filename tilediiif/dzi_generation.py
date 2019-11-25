@@ -69,6 +69,7 @@ CONFIG_SCHEMA = {
             "properties": {
                 "quality": {"type": "integer", "minimum": 0, "maximum": 100},
                 "optimize-coding": {"type": "boolean"},
+                "progressive": {"type": "boolean"},
                 "subsample": {"type": "boolean"},
                 "trellis-quant": {"type": "boolean"},
                 "overshoot-deringing": {"type": "boolean"},
@@ -273,6 +274,14 @@ class JPEGConfig(Config):
             json_path="dzi-tiles.jpeg.optimize-coding",
         ),
         BoolConfigProperty(
+            "progressive",
+            default=False,
+            cli_arg="--jpeg-progressive",
+            envar_name=f"{ENVAR_PREFIX}_JPEG_PROGRESSIVE",
+            json_path="dzi-tiles.jpeg.progressive",
+            requires_mozjpeg=False,
+        ),
+        BoolConfigProperty(
             "subsample",
             default=True,
             cli_arg="--jpeg-subsample",
@@ -473,11 +482,21 @@ Output tile encoding options:
     and mozjpeg is not present.
 
     --jpeg-quality=<number>
-        The JPEG compression level to generate tiles with. Default: 75
+        The JPEG compression level to generate tiles with.
+        Default: 75
 
     --jpeg-optimize-coding
     --no-jpeg-optimize-coding
-        Compute optimal Huffman coding tables. Default: enabled
+        Compute optimal Huffman coding tables.
+        Default: enabled
+
+    --jpeg-progressive
+    --no-jpeg-progressive
+        Progressive JPEGs are encoded in multiple scans, allowing the whole image to be
+        previewed before its fully transferred. They tend to be slightly smaller than
+        baseline JPEGs, but require more memory to encode and decode. Note that several
+        other encoding options only effect progressive JPEGs.
+        Default: disabled
 
     --jpeg-subsample
     --no-jpeg-subsample
@@ -497,8 +516,10 @@ Output tile encoding options:
 
     --jpeg-optimize-scans
     --no-jpeg-optimize-scans
-        Split DCT coefficients into separate scans. Requires mozjpeg.
+        Split DCT coefficients into separate scans. Only effects progressive JPEGs.
+        Requires mozjpeg.
         Default: disabled
+
 
     --jpeg-quant-table=<value>
         Selects the quantization table to use (see vips_jpegsave docs).
@@ -1014,6 +1035,7 @@ def format_jpeg_encoding_options(config: JPEGConfig) -> str:
             else None,
         ),
         (("optimize_coding" if config.values.optimize_coding else None),),
+        (("interlace" if config.values.progressive else None),),
         (("no_subsample" if config.values.subsample is False else None),),
         (("trellis_quant" if config.values.trellis_quant else None),),
         (("overshoot_deringing" if config.values.overshoot_deringing else None),),

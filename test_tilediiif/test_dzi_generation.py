@@ -141,6 +141,7 @@ def override_argv(argv):
                     "values": dict(
                         quality=75,
                         optimize_coding=False,
+                        progressive=False,
                         subsample=True,
                         trellis_quant=False,
                         overshoot_deringing=False,
@@ -168,6 +169,7 @@ def override_argv(argv):
                 "--colour-transform-intent=perceptual",
                 "--jpeg-quality=30",
                 "--jpeg-optimize-coding",
+                "--jpeg-progressive",
                 "--no-jpeg-subsample",
                 "--jpeg-trellis-quant",
                 "--jpeg-overshoot-deringing",
@@ -196,6 +198,7 @@ def override_argv(argv):
                     "values": dict(
                         quality=30,
                         optimize_coding=True,
+                        progressive=True,
                         subsample=False,
                         trellis_quant=True,
                         overshoot_deringing=True,
@@ -237,6 +240,7 @@ def override_argv(argv):
                     "values": dict(
                         quality=80,
                         optimize_coding=True,
+                        progressive=True,
                         subsample=False,
                         trellis_quant=True,
                         overshoot_deringing=True,
@@ -263,6 +267,7 @@ def override_argv(argv):
                 "DZI_TILES_COLOUR_TRANSFORM_INTENT": "perceptual",
                 "DZI_TILES_JPEG_QUALITY": "30",
                 "DZI_TILES_JPEG_OPTIMIZE_CODING": "true",
+                "DZI_TILES_JPEG_PROGRESSIVE": "true",
                 "DZI_TILES_JPEG_SUBSAMPLE": "false",
                 "DZI_TILES_JPEG_TRELLIS_QUANT": "true",
                 "DZI_TILES_JPEG_OVERSHOOT_DERINGING": "true",
@@ -290,6 +295,7 @@ def override_argv(argv):
                     "values": dict(
                         quality=30,
                         optimize_coding=True,
+                        progressive=True,
                         subsample=False,
                         trellis_quant=True,
                         overshoot_deringing=True,
@@ -314,6 +320,7 @@ def override_argv(argv):
                 "DZI_TILES_EXTERNAL_INPUT_PROFILE": "/opt/profile-c.icc",
                 "DZI_TILES_JPEG_QUALITY": "70",
                 "DZI_TILES_JPEG_OPTIMIZE_CODING": "false",
+                "DZI_TILES_JPEG_PROGRESSIVE": "false",
                 "DZI_TILES_JPEG_QUANT_TABLE": "5",
                 "DZI_TILES_DZI_TILE_SIZE": "100",
                 "DZI_TILES_DZI_OVERLAP": "2",
@@ -341,6 +348,7 @@ def override_argv(argv):
                     "values": dict(
                         quality=70,
                         optimize_coding=False,
+                        progressive=False,
                         subsample=True,
                         trellis_quant=True,
                         overshoot_deringing=True,
@@ -789,6 +797,7 @@ def test_apply_colour_profile_image_operation_raises_error_on_failed_conversion(
         [JPEGConfig(quality=75, quant_table=JPEGQuantTable.JPEG_ANNEX_K), ""],
         [JPEGConfig(quality=81), "Q=81"],
         [JPEGConfig(optimize_coding=True), "optimize_coding"],
+        [JPEGConfig(progressive=True), "interlace"],
         [JPEGConfig(subsample=False), "no_subsample"],
         [JPEGConfig(trellis_quant=True), "trellis_quant"],
         [JPEGConfig(overshoot_deringing=True), "overshoot_deringing"],
@@ -798,13 +807,14 @@ def test_apply_colour_profile_image_operation_raises_error_on_failed_conversion(
             JPEGConfig(
                 quality=50,
                 optimize_coding=True,
+                progressive=True,
                 subsample=False,
                 trellis_quant=True,
                 overshoot_deringing=True,
                 optimize_scans=True,
                 quant_table=JPEGQuantTable.IMAGEMAGICK,
             ),
-            "Q=50,optimize_coding,no_subsample,trellis_quant,overshoot_deringing,"
+            "Q=50,optimize_coding,interlace,no_subsample,trellis_quant,overshoot_deringing,"
             "optimize_scans,quant_table=3",
         ],
     ],
