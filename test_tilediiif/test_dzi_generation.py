@@ -904,14 +904,10 @@ def empty_file(tmp_data_path):
     [
         [
             pytest.lazy_fixture("unreadable_file"),
-            re.compile(
-                r"\Aunable to load src image: unable to load from file.*"
-                r"Permission denied",
-                re.MULTILINE | re.DOTALL,
-            ),
+            re.compile(r"\Aunable to load src image: ", re.MULTILINE | re.DOTALL,),
         ],
         [
-            pytest.lazy_fixture("unreadable_file"),
+            pytest.lazy_fixture("empty_file"),
             re.compile(
                 r"\Aunable to load src image: unable to load from file.*"
                 r"is not a known file format",
