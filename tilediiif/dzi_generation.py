@@ -1118,7 +1118,7 @@ def save_dzi(
                 src_image = pyvips.Image.new_from_file(src_image)
             capture.raise_if_records_seen()
         except pyvips.Error as e:
-            if f'file "{src_image}" not found' in str(e):
+            if not Path(src_image).exists():
                 raise FileNotFoundError(src_image) from e
             raise DZIGenerationError(f"unable to load src image: {e}") from e
     if not isinstance(src_image, pyvips.Image):
