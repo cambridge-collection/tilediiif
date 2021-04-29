@@ -410,17 +410,23 @@ def test_ensure_mozjpeg_present_if_required(
 def new_test_image(depth=8):
     """Create a 1x1 8 or 16 bit RGB image with all channels set to 0."""
     if depth == 8:
-        return pyvips.Image.new_from_memory(b"\x00" * 3, 1, 1, 3, "uchar")
+        img = pyvips.Image.new_from_memory(b"\x00" * 3, 1, 1, 3, "uchar")
+        assert img.interpretation == pyvips.Interpretation.SRGB
+        return img
     elif depth == 16:
-        return pyvips.Image.new_from_memory(b"\x00\x00" * 3, 1, 1, 3, "ushort").copy(
-            interpretation=pyvips.Interpretation.RGB16
+        img = pyvips.Image.new_from_memory(b"\x00\x00" * 3, 1, 1, 3, "ushort").copy(
+            interpretation=pyvips.Interpretation.RGB16,
         )
+        assert img.interpretation == pyvips.Interpretation.RGB16
+        return img
     raise ValueError(f"unsupported depth: {depth}")
 
 
 @pytest.fixture
-def srgb_image(rgb_image):
-    return rgb_image.copy(interpretation=pyvips.Interpretation.SRGB)
+def srgb_image():
+    image = new_test_image()
+    assert image.interpretation == pyvips.Interpretation.SRGB
+    return image
 
 
 @pytest.fixture
@@ -429,8 +435,11 @@ def srgb16_image(rgb16_image):
 
 
 @pytest.fixture
-def rgb_image():
-    return new_test_image()
+def generic_multiband_8bit_image():
+    img = new_test_image().copy(interpretation=pyvips.Interpretation.MULTIBAND)
+    assert img.interpretation == pyvips.Interpretation.MULTIBAND
+    assert img.format == pyvips.BandFormat.UCHAR
+    return img
 
 
 @pytest.fixture
@@ -439,8 +448,8 @@ def rgb16_image():
 
 
 @pytest.fixture
-def image_with_srgb_icc_profile(rgb_image, srgb_profile):
-    image = rgb_image.copy()
+def image_with_srgb_icc_profile(srgb_image, srgb_profile):
+    image = srgb_image.copy()
     set_icc_profile(image, srgb_profile)
     return image
 
@@ -456,7 +465,7 @@ def image_16_with_srgb_icc_profile(rgb16_image, srgb_profile):
     params=[
         "srgb_image",
         "srgb16_image",
-        "rgb_image",
+        "generic_multiband_8bit_image",
         "rgb16_image",
         "image_with_srgb_icc_profile",
         "image_16_with_srgb_icc_profile",
@@ -500,10 +509,14 @@ def test_assume_srgb_colour_source_returns_srgb_input_image(srgb_image, srgb_pro
     assert image.get(VIPS_META_ICC_PROFILE) == srgb_profile
 
 
-def test_assume_srgb_colour_source_rejects_non_srgb_images(rgb_image):
-    assert rgb_image.interpretation == pyvips.Interpretation.RGB
+def test_assume_srgb_colour_source_rejects_non_srgb_images(
+    generic_multiband_8bit_image,
+):
+    assert (
+        generic_multiband_8bit_image.interpretation == pyvips.Interpretation.MULTIBAND
+    )
     with pytest.raises(ColourSourceNotAvailable):
-        AssumeSRGBColourSource().load(rgb_image)
+        AssumeSRGBColourSource().load(generic_multiband_8bit_image)
 
 
 @pytest.mark.parametrize(
@@ -516,7 +529,7 @@ def test_embedded_profile_vips_colour_source_loads_image_with_embedded_profile(
 ):
     assert image.get(VIPS_META_ICC_PROFILE) == srgb_profile
     assert image.interpretation in {
-        pyvips.Interpretation.RGB,
+        pyvips.Interpretation.SRGB,
         pyvips.Interpretation.RGB16,
     }
 
@@ -631,10 +644,14 @@ def colour_sources(request):
 @pytest.mark.parametrize(
     "colour_sources, image, source_used",
     [
-        [["assume_srgb_colour_source"], pytest.lazy_fixture("rgb_image"), None],
+        [
+            ["assume_srgb_colour_source"],
+            pytest.lazy_fixture("generic_multiband_8bit_image"),
+            None,
+        ],
         [
             ["embedded_profile_colour_source", "assume_srgb_colour_source"],
-            pytest.lazy_fixture("rgb_image"),
+            pytest.lazy_fixture("generic_multiband_8bit_image"),
             None,
         ],
         [
@@ -648,7 +665,7 @@ def colour_sources(request):
                 "assume_srgb_colour_source",
                 "assign_profile_colour_source",
             ],
-            pytest.lazy_fixture("rgb_image"),
+            pytest.lazy_fixture("generic_multiband_8bit_image"),
             2,
         ],
         [
@@ -658,7 +675,7 @@ def colour_sources(request):
                 "assign_profile_colour_source",
                 "dummy_colour_source",
             ],
-            pytest.lazy_fixture("rgb_image"),
+            pytest.lazy_fixture("generic_multiband_8bit_image"),
             2,
         ],
         [
@@ -726,7 +743,7 @@ def pcs_image(pcs, image_with_srgb_icc_profile):
 @pytest.mark.parametrize(
     "depth, expected_interpretation, expected_format",
     [
-        [8, pyvips.Interpretation.RGB, pyvips.BandFormat.UCHAR],
+        [8, pyvips.Interpretation.SRGB, pyvips.BandFormat.UCHAR],
         [16, pyvips.Interpretation.RGB16, pyvips.BandFormat.USHORT],
     ],
 )
@@ -765,7 +782,9 @@ def test_apply_colour_profile_image_operation(
     assert result.get(VIPS_META_ICC_PROFILE) == expected_profile
 
 
-@pytest.mark.parametrize("image", ["srgb_image", "rgb_image"], indirect=True)
+@pytest.mark.parametrize(
+    "image", ["srgb_image", "generic_multiband_8bit_image"], indirect=True
+)
 def test_apply_colour_profile_image_operation_requires_input_image_to_have_profile(
     image, srgb_profile_path,
 ):

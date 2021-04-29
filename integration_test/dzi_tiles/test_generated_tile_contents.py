@@ -191,10 +191,7 @@ def get_tile_deltae(
     # Assume the source image is in a format with defined colours, e.g. 'srgb'
     # interpretation. dE00() internally invokes colourspace('LAB'), so src_img can be
     # in any interpretation that vips supports as input to colourspace().
-    assert src_img.interpretation not in (
-        pyvips.Interpretation.RGB,
-        pyvips.Interpretation.RGB16,
-    )
+    assert src_img.interpretation == pyvips.Interpretation.SRGB
     if dzi_meta is None:
         dzi_meta = parse_dzi_file(f"{dzi_path}.dzi")
 
