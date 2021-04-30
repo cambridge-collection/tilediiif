@@ -1,5 +1,9 @@
 ARG MOZJPEG_VERSION=4.0.3
 ARG VIPS_VERSION=8.10.6
+ARG VIPS_USE_MOZJPEG=1
+
+ARG _MOZJPEG_VARIANT_ENABLED=${VIPS_USE_MOZJPEG:+with-mozjpeg}
+ARG _MOZJPEG_VARIANT=${_MOZJPEG_VARIANT_ENABLED:-without-mozjpeg}
 
 
 FROM debian:buster-slim AS build-mozjpeg
@@ -14,17 +18,24 @@ RUN cd /tmp/mozjpeg-${MOZJPEG_VERSION} \
     && cmake -G"Unix Makefiles" \
     && make \
     && make deb
+RUN printf "%s\n" /opt/mozjpeg/lib64 > /etc/ld.so.conf.d/00.mozjpeg.conf
 RUN apt install /tmp/mozjpeg-${MOZJPEG_VERSION}/mozjpeg_${MOZJPEG_VERSION}_amd64.deb
 
 
-FROM debian:buster-slim AS build-vips
+FROM debian:buster-slim AS build-vips-base-with-mozjpeg
 ARG MOZJPEG_VERSION
+ENV MOZJPEG_VERSION=$MOZJPEG_VERSION
+ENV PKG_CONFIG_PATH=/opt/mozjpeg/lib64/pkgconfig:$PKG_CONFIG_PATH
+COPY --from=build-mozjpeg /opt/mozjpeg /opt/mozjpeg
+
+FROM debian:buster-slim AS build-vips-base-without-mozjpeg
+
+
+FROM build-vips-base-$_MOZJPEG_VARIANT AS build-vips
 ARG VIPS_VERSION
 ARG VIPS_TARBALL=https://github.com/libvips/libvips/releases/download/v$VIPS_VERSION/vips-$VIPS_VERSION.tar.gz
 ARG VIPS_TARBALL_SHA256=2468088d958e0e2de1be2991ff8940bf45664a826c0dad12342e1804e2805a6e
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PKG_CONFIG_PATH=/opt/mozjpeg/lib64/pkgconfig
-COPY --from=build-mozjpeg /opt/mozjpeg /opt/mozjpeg
 WORKDIR /tmp
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -63,10 +74,22 @@ RUN cd vips-$VIPS_VERSION \
     && ./configure --prefix=/opt/vips --with-magickpackage=GraphicsMagick | tee /tmp/vips-configure-output \
     && make | tee /tmp/vips-build-output \
     && make install
+RUN printf "%s\n" /opt/vips/lib > /etc/ld.so.conf.d/00.vips.conf
 
 
-FROM python:3.9-buster as base
+FROM python:3.9-buster AS base-without-mozjpeg
+FROM python:3.9-buster AS base-with-mozjpeg
+ARG MOZJPEG_VERSION
+ENV MOZJPEG_VERSION=$MOZJPEG_VERSION \
+    PATH=$PATH:/opt/mozjpeg/bin
+COPY --from=build-mozjpeg /opt/mozjpeg /opt/mozjpeg
+COPY --from=build-mozjpeg /etc/ld.so.conf.d/00.mozjpeg.conf /etc/ld.so.conf.d/00.mozjpeg.conf
+
+FROM base-$_MOZJPEG_VARIANT AS base
 ENV DEBIAN_FRONTEND=noninteractive
+ARG VIPS_VERSION
+COPY --from=build-vips /opt/vips /opt/vips
+COPY --from=build-vips /etc/ld.so.conf.d/00.vips.conf /etc/ld.so.conf.d/00.vips.conf
 RUN apt-get update && apt-get install -y \
     libexif12 \
     librsvg2-2 \
@@ -86,16 +109,13 @@ RUN apt-get update && apt-get install -y \
     libopenslide0 \
     libheif1 \
     libgif7 \
+    # update the linker cache to contain libs added via /etc/ld.so.conf.d
+    && ldconfig \
     && rm -rf /var/cache/* /var/lib/cache/* /var/lib/apt/lists/* /var/log/*
-ARG MOZJPEG_VERSION
-ARG VIPS_VERSION
-COPY --from=build-mozjpeg /opt/mozjpeg /opt/mozjpeg
-COPY --from=build-vips /opt/vips /opt/vips
 ENV VIPS_VERSION=$VIPS_VERSION \
-    MOZJPEG_VERSION=$MOZJPEG_VERSION \
-    PATH=$PATH:/opt/vips/bin:/opt/mozjpeg/bin \
-    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/vips/lib:/opt/mozjpeg/lib64 \
-    PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/vips/lib/pkgconfig:/opt/mozjpeg/lib64/pkgconfig
+    PATH=$PATH:/opt/vips/bin \
+    # required when building pyvips
+    PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/vips/lib/pkgconfig
 
 
 FROM base AS dev
@@ -106,4 +126,11 @@ COPY poetry.lock poetry.lock
 RUN apt-get update && apt-get install -y build-essential
 RUN pip install poetry \
     && poetry config virtualenvs.create false \
-    && poetry install --no-root --no-interaction --extras server --extras dzigeneration
+    && poetry install --no-interaction --extras server --extras dzigeneration
+
+
+# An image in which vips was built with mozjpeg, but mozjpeg is not available at runtime, so vips
+# will blow up when trying to do things requiring mozjpeg.
+FROM dev AS dev-with-broken-mozjpeg
+RUN rm -rf /opt/mozjpeg /etc/ld.so.conf.d/00.mozjpeg.conf \
+    && ldconfig

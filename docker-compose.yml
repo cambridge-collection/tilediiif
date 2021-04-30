@@ -8,4 +8,28 @@ services:
             target: dev
         volumes:
             - .:/opt/project
-        command: pytest test_tilediiif integration_test
+        command: sh -c "poetry install && pytest test_tilediiif integration_test"
+
+    dev-with-broken-mozjpeg:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: dev-with-broken-mozjpeg
+        volumes:
+            - .:/opt/project
+        environment:
+            EXPECT_MOZJPEG_SUPPORT: broken
+        command: sh -c "poetry install && pytest -vv integration_test/dzi_tiles/test_mozjpeg.py"
+
+    dev-without-mozjpeg:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: dev
+            args:
+                VIPS_USE_MOZJPEG:
+        volumes:
+            - .:/opt/project
+        environment:
+            EXPECT_MOZJPEG_SUPPORT: disabled
+        command: sh -c "poetry install && pytest -vv integration_test/dzi_tiles/test_mozjpeg.py"
