@@ -4,7 +4,7 @@ import struct
 import numpy as np
 import pytest
 import pyvips
-from hypothesis import given
+from hypothesis import given, example
 from hypothesis._strategies import sampled_from
 from hypothesis.strategies import integers, lists
 
@@ -225,6 +225,15 @@ def test_srgb_icc_import_intents_are_identical(r, g, b, intent_a, intent_b):
     in_intent_b=intents,
     out_intent_a=intents,
     out_intent_b=intents,
+)
+@example(
+    r=248,
+    g=248,
+    b=248,
+    in_intent_a="saturation",
+    in_intent_b="absolute",
+    out_intent_a="saturation",
+    out_intent_b="saturation",
 )
 def test_srgb_icc_export_intents_are_identical(
     r, g, b, in_intent_a, in_intent_b, out_intent_a, out_intent_b
