@@ -13,10 +13,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y curl
 RUN curl -L "https://github.com/mozilla/mozjpeg/archive/refs/tags/v${MOZJPEG_VERSION}.tar.gz" > mozjpeg.tar.gz \
     && tar -xf mozjpeg.tar.gz
-RUN apt-get install -y build-essential cmake nasm libpng-dev
-RUN cd /tmp/mozjpeg-${MOZJPEG_VERSION} \
-    && cmake -G"Unix Makefiles" \
-    && make \
+WORKDIR /tmp/mozjpeg-${MOZJPEG_VERSION}
+RUN apt-get install -y cmake make nasm clang libpng-dev
+ENV CC=/usr/bin/clang CXX=/usr/bin/clang++
+RUN cmake -G"Unix Makefiles" -DWITH_JPEG8=1 | tee cmake.log
+    # Ensure arithmetic coding is enabled
+RUN ((fgrep -q '(WITH_ARITH_DEC = 1)' cmake.log && fgrep -q '(WITH_ARITH_ENC = 1)' cmake.log) \
+        || (printf '\nError: Arithmetic coding is required, but appears not to be enabled in CMake output\n' && exit 2))
+RUN make \
     && make deb
 RUN printf "%s\n" /opt/mozjpeg/lib64 > /etc/ld.so.conf.d/00.mozjpeg.conf
 RUN apt install /tmp/mozjpeg-${MOZJPEG_VERSION}/mozjpeg_${MOZJPEG_VERSION}_amd64.deb
@@ -35,10 +39,13 @@ FROM build-vips-base-$_MOZJPEG_VARIANT AS build-vips
 ARG VIPS_VERSION
 ARG VIPS_TARBALL=https://github.com/libvips/libvips/releases/download/v$VIPS_VERSION/vips-$VIPS_VERSION.tar.gz
 ARG VIPS_TARBALL_SHA256=2468088d958e0e2de1be2991ff8940bf45664a826c0dad12342e1804e2805a6e
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    CC=/usr/bin/clang \
+    CXX=/usr/bin/clang++
 WORKDIR /tmp
 RUN apt-get update && apt-get install -y \
     build-essential \
+    clang \
     pkg-config \
     libglib2.0-dev \
     libexpat1-dev \
