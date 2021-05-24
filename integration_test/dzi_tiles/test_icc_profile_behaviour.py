@@ -194,67 +194,6 @@ def test_srgb_roundtrip_icc_import_icc_export_16(r, g, b, pcs):
     assert dist([r, g, b], img_pcs2srgb(0, 0)) <= 0xFF
 
 
-intents = sampled_from(
-    [
-        pyvips.Intent.SATURATION,
-        pyvips.Intent.ABSOLUTE,
-        pyvips.Intent.PERCEPTUAL,
-        pyvips.Intent.RELATIVE,
-    ]
-)
-intent_pairs = lists(elements=intents, min_size=2, max_size=2)
-
-
-@given(r=byte, g=byte, b=byte, intent_a=intents, intent_b=intents)
-def test_srgb_icc_import_intents_are_identical(r, g, b, intent_a, intent_b):
-    img = pyvips.Image.new_from_memory(bytes([r, g, b]), 1, 1, 3, "uchar").copy(
-        interpretation=pyvips.Interpretation.SRGB
-    )
-
-    img_lab_a = img.icc_import(input_profile=str(PROFILE_SRGB_PATH), intent=intent_a)
-    img_lab_b = img.icc_import(input_profile=str(PROFILE_SRGB_PATH), intent=intent_b)
-
-    assert img_lab_a(0, 0) == img_lab_b(0, 0)
-
-
-@given(
-    r=byte,
-    g=byte,
-    b=byte,
-    in_intent_a=intents,
-    in_intent_b=intents,
-    out_intent_a=intents,
-    out_intent_b=intents,
-)
-@example(
-    r=248,
-    g=248,
-    b=248,
-    in_intent_a="saturation",
-    in_intent_b="absolute",
-    out_intent_a="saturation",
-    out_intent_b="saturation",
-)
-def test_srgb_icc_export_intents_are_identical(
-    r, g, b, in_intent_a, in_intent_b, out_intent_a, out_intent_b
-):
-    img = pyvips.Image.new_from_memory(bytes([r, g, b]), 1, 1, 3, "uchar").copy(
-        interpretation=pyvips.Interpretation.SRGB
-    )
-
-    img_lab_a = img.icc_import(input_profile=str(PROFILE_SRGB_PATH), intent=in_intent_a)
-    img_lab_b = img.icc_import(input_profile=str(PROFILE_SRGB_PATH), intent=in_intent_b)
-    assert img_lab_a(0, 0) == img_lab_b(0, 0)
-
-    img_srgb_a = img_lab_a.icc_export(
-        output_profile=str(PROFILE_SRGB_PATH), intent=out_intent_a
-    )
-    img_srgb_b = img_lab_b.icc_export(
-        output_profile=str(PROFILE_SRGB_PATH), intent=out_intent_b
-    )
-    assert img_srgb_a(0, 0) == img_srgb_b(0, 0)
-
-
 @pytest.mark.xfail()
 @given(r=byte, g=byte, b=byte, pcs=profile_connection_spaces)
 def test_srgb_icc_import_matches_colourspace_func(r, g, b, pcs):
