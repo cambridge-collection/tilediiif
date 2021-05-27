@@ -1,19 +1,21 @@
+import contextlib
 import json
 import math
+import shutil
+import tempfile
 from collections import Counter, abc
 from functools import partial
 from pathlib import Path, PurePath
-from tempfile import TemporaryDirectory
+from typing import ContextManager, Callable
 from unittest.mock import Mock, call, patch
 
 import pytest
 from hypothesis import assume, given, settings
-from hypothesis._strategies import lists
-from hypothesis.strategies import composite, integers, sampled_from, text
+from hypothesis.strategies import lists, composite, integers, sampled_from, text
 
-from test_tilediiif import test_dzi
-from test_tilediiif.test_dzi import dzi_metadata
-from test_tilediiif.test_infojson import image_dimensions
+from tests import test_dzi
+from tests.test_dzi import dzi_metadata
+from tests.test_infojson import image_dimensions
 from tilediiif.tools.dzi import get_dzi_tile_path
 from tilediiif.tools.infojson import power2_image_pyramid_scale_factors
 from tilediiif.tools.tilelayout import (
@@ -273,17 +275,21 @@ def test_create_file_copy(
     assert src_has_changed == src_affected_by_dst
 
 
-@pytest.yield_fixture()
-def mock_ensure_sub_directories_exist():
-    with patch("tilediiif.tilelayout.ensure_sub_directories_exist") as mock:
-        mock.side_effect = lambda base, sub: base / sub
-        yield mock
+@pytest.fixture()
+def mock_ensure_sub_directories_exist() -> Callable[[], ContextManager[Mock]]:
+    @contextlib.contextmanager
+    def patch_ensure_sub_directories_exist():
+        with patch("tilediiif.tools.tilelayout.ensure_sub_directories_exist") as mock:
+            mock.side_effect = lambda base, sub: base / sub
+            yield mock
+
+    return patch_ensure_sub_directories_exist
 
 
 @given(tiles=lists(tiles(), max_size=50))
-def test_create_tile_layout(tiles, subtest):
-    @subtest
-    def _test_inner(mock_ensure_sub_directories_exist):
+def test_create_tile_layout(tiles, mock_ensure_sub_directories_exist):
+    with mock_ensure_sub_directories_exist() as mocked_ensure_sub_directories_exist:
+
         def get_tile_path(tile):
             return PurePath(f"/src/tile-{tiles.index(tile)}/foo/file.jpeg")
 
@@ -301,7 +307,7 @@ def test_create_tile_layout(tiles, subtest):
             target_directory=target_directory,
         )
 
-        assert mock_ensure_sub_directories_exist.mock_calls == [
+        assert mocked_ensure_sub_directories_exist.mock_calls == [
             call(target_directory, get_dest_path(tile)) for tile in tiles
         ]
 
@@ -336,7 +342,6 @@ def test_create_tile_layout_rejects_invalid_dest_paths(invalid_dest, msg):
     assert str(exc_info.value) == msg
 
 
-@pytest.mark.usefixtures("mock_ensure_sub_directories_exist")
 @given(
     dzi_meta=dzi_metadata(
         widths=sampled_from([42, 800, 7920]),
@@ -345,7 +350,7 @@ def test_create_tile_layout_rejects_invalid_dest_paths(invalid_dest, msg):
     )
 )
 @settings(max_examples=10, deadline=2000)
-def test_create_dzi_tile_layout(dzi_meta):
+def test_create_dzi_tile_layout(dzi_meta, mock_ensure_sub_directories_exist):
     def get_dest_path(tile):
         return PurePath(f"dest/tile-{tile_key(tile)}/bar/file.jpg")
 
@@ -371,15 +376,17 @@ def test_create_dzi_tile_layout(dzi_meta):
     )
 
     with patch(
-        "tilediiif.tilelayout.create_tile_layout", new=Mock(wraps=create_tile_layout)
+        "tilediiif.tools.tilelayout.create_tile_layout",
+        new=Mock(wraps=create_tile_layout),
     ) as mock_create_tile_layout:
-        create_dzi_tile_layout(
-            dzi_path=dzi_path,
-            dzi_meta=dzi_meta,
-            get_dest_path=get_dest_path,
-            create_file=create_file,
-            target_directory=target_directory,
-        )
+        with mock_ensure_sub_directories_exist():
+            create_dzi_tile_layout(
+                dzi_path=dzi_path,
+                dzi_meta=dzi_meta,
+                get_dest_path=get_dest_path,
+                create_file=create_file,
+                target_directory=target_directory,
+            )
     mock_create_tile_layout.assert_called_once()
 
     tile_count = 0
@@ -404,13 +411,14 @@ def tile_key(tile):
 
 @pytest.yield_fixture()
 def mock_create_dzi_tile_layout():
-    with patch("tilediiif.tilelayout.create_dzi_tile_layout") as mock:
+    with patch("tilediiif.tools.tilelayout.create_dzi_tile_layout") as mock:
         yield mock
 
 
 @pytest.fixture
-def dummy_run(mock_create_dzi_tile_layout):
+def dummy_run(mock_create_dzi_tile_layout: Mock):
     def dummy_run(args):
+        mock_create_dzi_tile_layout.reset_mock()
         run(args)
         mock_create_dzi_tile_layout.assert_called_once()
         _, kwargs = mock_create_dzi_tile_layout.call_args
@@ -419,39 +427,62 @@ def dummy_run(mock_create_dzi_tile_layout):
     return dummy_run
 
 
-@pytest.yield_fixture()
-def tidied_tmp_path(tmp_path):
-    with TemporaryDirectory(dir=tmp_path) as path:
-        path = Path(path)
-        path.rmdir()
-        yield path
+TmpPathManager = Callable[[], ContextManager[Path]]
 
-        # TemporaryDirectory expects the dir to exist when cleaning up...
-        if not path.exists():
-            path.mkdir()
+
+@pytest.fixture()
+def tidied_tmp_path(tmp_path) -> TmpPathManager:
+    """
+    A context manager which:
+
+    * on entry: provides an un-created path for a dir to be created at
+    * on exit: removes the dir
+    """
+    path = Path(tempfile.mktemp(dir=tmp_path))
+    assert not path.exists()
+    depth = 0
+
+    @contextlib.contextmanager
+    def un_created_tmp_dir():
+        nonlocal path, depth
+        depth += 1
+        yield path
+        depth -= 1
+        assert depth >= 0
+        if depth == 0:
+            shutil.rmtree(path, ignore_errors=True)
+
+    return un_created_tmp_dir
 
 
 @pytest.fixture
-def dummy_run_with_defaults(dummy_run, tidied_tmp_path, dzi_ms_add_path):
+def dummy_run_with_defaults(
+    dummy_run, tidied_tmp_path: TmpPathManager, dzi_ms_add_path
+):
     def dummy_run_with_defaults(args=None):
-        args = {
-            "<dzi-file>": str(dzi_ms_add_path),
-            "<dest-directory>": str(tidied_tmp_path),
-            **({} if args is None else args),
-        }
-        return dummy_run(args)
+        with tidied_tmp_path() as tmp_path:
+            args = {
+                "<dzi-file>": str(dzi_ms_add_path),
+                "<dest-directory>": str(tmp_path),
+                **({} if args is None else args),
+            }
+            return dummy_run(args)
 
     return dummy_run_with_defaults
 
 
 def test_run_uses_supplied_paths(
-    dummy_run_with_defaults, tidied_tmp_path, dzi_ms_add_path, dzi_ms_add_meta
+    dummy_run_with_defaults,
+    tidied_tmp_path: TmpPathManager,
+    dzi_ms_add_path: Path,
+    dzi_ms_add_meta: Path,
 ):
-    kwargs = dummy_run_with_defaults()
+    with tidied_tmp_path() as tmp_path:
+        kwargs = dummy_run_with_defaults()
 
-    assert kwargs["dzi_path"] == dzi_ms_add_path
-    assert kwargs["dzi_meta"] == dzi_ms_add_meta
-    assert kwargs["target_directory"] == tidied_tmp_path
+        assert kwargs["dzi_path"] == dzi_ms_add_path
+        assert kwargs["dzi_meta"] == dzi_ms_add_meta
+        assert kwargs["target_directory"] == tmp_path
 
 
 @pytest.mark.parametrize(
@@ -469,25 +500,19 @@ def test_run_option_file_creation_method(args, expected, dummy_run_with_defaults
 
 
 @given(tile=tiles())
-def test_run_option_tile_path_template(subtest, tile):
-    # Need to use the @subtest hack when combining hypothesis with
-    # function-level fixtures.
-    @subtest
-    def test_inner(dummy_run_with_defaults):
-        kwargs = dummy_run_with_defaults({"--tile-path-template": "foo/{region.x}"})
-        assert kwargs["get_dest_path"](tile) == Path(f"foo/{tile['src']['x']}")
+def test_run_option_tile_path_template(tile, dummy_run_with_defaults):
+    kwargs = dummy_run_with_defaults({"--tile-path-template": "foo/{region.x}"})
+    assert kwargs["get_dest_path"](tile) == Path(f"foo/{tile['src']['x']}")
 
 
 @given(tile=tiles())
-def test_run_option_tile_path_template_default(subtest, tile):
-    @subtest
-    def test_inner(dummy_run_with_defaults):
-        kwargs = dummy_run_with_defaults()
-        path = str(kwargs["get_dest_path"](tile))
-        assert path == parse_template(DEFAULT_FILE_PATH_TEMPLATE).render(
-            get_template_bindings(tile)
-        )
-        assert len(path) > 0
+def test_run_option_tile_path_template_default(tile, dummy_run_with_defaults):
+    kwargs = dummy_run_with_defaults()
+    path = str(kwargs["get_dest_path"](tile))
+    assert path == parse_template(DEFAULT_FILE_PATH_TEMPLATE).render(
+        get_template_bindings(tile)
+    )
+    assert len(path) > 0
 
 
 @given(tile=tiles())
@@ -500,17 +525,20 @@ def test_run_option_tile_path_template_default(subtest, tile):
         [DATA_DIR / "jpeg-format.dzi", "jpg"],
     ],
 )
-def test_tiles_use_format_from_dzi(subtest, tile, dzi_file, tile_extension):
-    @subtest
-    def test_inner(dummy_run_with_defaults):
-        kwargs = dummy_run_with_defaults(args={"<dzi-file>": str(dzi_file)})
-        path = str(kwargs["get_dest_path"](tile))
-        assert path == parse_template(DEFAULT_FILE_PATH_TEMPLATE).render(
-            get_template_bindings(tile, format=tile_extension)
-        )
+def test_tiles_use_format_from_dzi(
+    tile, dzi_file, tile_extension, dummy_run_with_defaults
+):
+    kwargs = dummy_run_with_defaults(args={"<dzi-file>": str(dzi_file)})
+    path = str(kwargs["get_dest_path"](tile))
+    assert path == parse_template(DEFAULT_FILE_PATH_TEMPLATE).render(
+        get_template_bindings(tile, format=tile_extension)
+    )
 
 
-def test_run_option_allow_existing_dest(dummy_run_with_defaults, tidied_tmp_path):
-    tidied_tmp_path.mkdir()
-    kwargs = dummy_run_with_defaults({"--allow-existing-dest": True})
-    assert kwargs["target_directory"] == tidied_tmp_path
+def test_run_option_allow_existing_dest(
+    dummy_run_with_defaults, tidied_tmp_path: TmpPathManager
+):
+    with tidied_tmp_path() as tmp_path:
+        tmp_path.mkdir()
+        kwargs = dummy_run_with_defaults({"--allow-existing-dest": True})
+        assert kwargs["target_directory"] == tmp_path
