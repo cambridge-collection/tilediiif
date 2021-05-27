@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import pyvips
 
-from tilediiif.dzi_generation import VIPS_META_ICC_PROFILE
+from tilediiif.tools.dzi_generation import VIPS_META_ICC_PROFILE
 
 ROOT = (Path(__file__) / "../../..").resolve()
 
@@ -18,7 +18,7 @@ def test_new_images_use_srgb_interpretation(bytes_per_channel, format):
 
 def test_rgb_images_loaded_from_files_use_srgb_interpretation():
     img = pyvips.Image.new_from_file(
-        str(ROOT / "integration_test/data/images/pears_small_adobergb1998.jpg")
+        str(ROOT / "integration_tests/data/images/pears_small_adobergb1998.jpg")
     )
     assert img.interpretation == pyvips.Interpretation.SRGB
     assert isinstance(img.get(VIPS_META_ICC_PROFILE), bytes)
@@ -27,7 +27,7 @@ def test_rgb_images_loaded_from_files_use_srgb_interpretation():
 
 def test_16_bit_rgb_images_loaded_from_files_use_rgb16_interpretation():
     img = pyvips.Image.new_from_file(
-        str(ROOT / "integration_test/data/images/test-16_no-colour-profile.png")
+        str(ROOT / "integration_tests/data/images/test-16_no-colour-profile.png")
     )
     assert img.interpretation == pyvips.Interpretation.RGB16
     assert VIPS_META_ICC_PROFILE not in img.get_fields()
@@ -35,7 +35,7 @@ def test_16_bit_rgb_images_loaded_from_files_use_rgb16_interpretation():
 
 def test_16_bit_rgb_with_colour_profiles_images_loaded_from_files_use_rgb16_interpretation():
     img = pyvips.Image.new_from_file(
-        str(ROOT / "integration_test/data/images/test-16_with-colour-profile.png")
+        str(ROOT / "integration_tests/data/images/test-16_with-colour-profile.png")
     )
     assert img.interpretation == pyvips.Interpretation.RGB16
     assert isinstance(img.get(VIPS_META_ICC_PROFILE), bytes)

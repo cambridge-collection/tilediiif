@@ -5,11 +5,11 @@ import subprocess
 import pytest
 import pyvips
 
-from integration_test.data import (
+from integration_tests.data import (
     TEST_IMG_PEARS_SRGB_EMBEDDED,
     TEST_IMG_PEARS_SRGB_STRIPPED,
 )
-from tilediiif.dzi import parse_dzi_file
+from tilediiif.tools.dzi import parse_dzi_file
 
 
 @pytest.mark.parametrize(

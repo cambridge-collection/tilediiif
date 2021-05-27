@@ -621,7 +621,7 @@ def capture_vips_log_messages(level=logging.WARNING):
     # Note that we can't raise while handling a vips warning log message, as vips logs
     # come from naitive code via cffi, and exceptions raised in cffi callbacks get
     # swallowed. See the test:
-    # test_tilediiif.test_dzi_generation.test_exceptions_in_cffi_callbacks_are_swallowed
+    # tests.test_dzi_generation.test_exceptions_in_cffi_callbacks_are_swallowed
     interceptor = InterceptingHandler(level=level)
     logger = logging.getLogger("pyvips")
     try:

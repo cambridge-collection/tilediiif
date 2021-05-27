@@ -8,7 +8,7 @@ import pytest
 from tilediiif.tools.infojson import DEFAULT_ID_BASE_URL
 
 PROJECT_DIR = Path(__file__).parents[1]
-DATA_DIR = PROJECT_DIR / "test_tilediiif/data"
+DATA_DIR = PROJECT_DIR / "tests/data"
 ID_BASE_URL = "https://images.cudl.lib.cam.ac.uk/iiif/"
 ID_URL = "https://images.cudl.lib.cam.ac.uk/iiif/MS-ADD-00269-000-01075"
 

@@ -5,12 +5,10 @@ import numpy as np
 import pytest
 import pyvips
 from hypothesis import given, example
-from hypothesis._strategies import sampled_from
-from hypothesis.strategies import integers, lists
+from hypothesis.strategies import integers, lists, sampled_from
 
-from integration_test.data import IMAGE_DATA, PROFILE_SRGB_PATH, PROJECT_ROOT
+from integration_tests.data import IMAGE_DATA, PROFILE_SRGB_PATH, PROJECT_ROOT
 
-IMAGE_PEARS = PROJECT_ROOT / "test_tilediiif/server/data/pears_small.jpg"
 IMAGE_SUNSET_P3 = IMAGE_DATA / "Sunset-P3.jpg"
 IMAGE_SUNSET_P3_SIZE = (397, 600)
 # Note: libvips doesn't currently support Black Point Compensation. It uses LittleCMS

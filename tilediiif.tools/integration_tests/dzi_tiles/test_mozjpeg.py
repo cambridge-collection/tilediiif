@@ -2,10 +2,12 @@ import enum
 import os
 import subprocess
 from pathlib import Path
-from signal import Signals
 
 import pytest
 
+from integration_tests.data import TEST_IMG_PEARS_SRGB_EMBEDDED
+
+PEARS_SMALL = TEST_IMG_PEARS_SRGB_EMBEDDED['path']
 
 class MozjpegSupport(enum.Enum):
     ENABLED = 'enabled'
@@ -24,8 +26,6 @@ except ValueError as e:
         f"{' or '.join(repr(x.value) for x in MozjpegSupport)}"
     ) from e
 
-
-PROJECT_ROOT = Path(__file__).parents[2]
 
 @pytest.fixture(
     params=[
@@ -48,7 +48,7 @@ def test_using_mozjpeg_options_without_mozjpeg_fails(
         [
             "dzi-tiles",
             cli_option_requiring_mozjpeg,
-            PROJECT_ROOT / "test_tilediiif/server/data/pears_small.jpg",
+            PEARS_SMALL,
             dzi_path,
         ],
         env={

@@ -129,7 +129,7 @@ def test_get_id_url_rejects_invalid_urls(base, id, msg):
 
 @pytest.yield_fixture
 def mock_run():
-    with patch("tilediiif.infojson.run") as mock_run:
+    with patch("tilediiif.tools.infojson.run") as mock_run:
         yield mock_run
 
 

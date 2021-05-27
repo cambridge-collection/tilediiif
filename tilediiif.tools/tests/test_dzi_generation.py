@@ -395,10 +395,10 @@ def test_ensure_mozjpeg_present_if_required(
     _libjpeg_supports_params = MagicMock(return_value=libjpeg_supports_params)
     _pyvips_supports_params = MagicMock(return_value=libvips_supports_libjpeg_params)
     with patch(
-        "tilediiif.dzi_generation.libjpeg_supports_params", _libjpeg_supports_params
+        "tilediiif.tools.dzi_generation.libjpeg_supports_params", _libjpeg_supports_params
     ):
         with patch(
-            "tilediiif.dzi_generation.pyvips_supports_params", _pyvips_supports_params
+            "tilediiif.tools.dzi_generation.pyvips_supports_params", _pyvips_supports_params
         ):
             try:
                 ensure_mozjpeg_present_if_required(jpeg_config)
@@ -484,7 +484,7 @@ def image_with_invalid_icc_profile(invalid_icc_profile):
 
 @pytest.fixture(scope="session")
 def srgb_profile_path():
-    path = Path(__file__).parent.parent / "tilediiif/data/sRGB2014.icc"
+    path = Path(__file__).parent.parent / "tilediiif/tools/data/sRGB2014.icc"
     assert path.is_file()
     return path
 

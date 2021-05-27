@@ -1,12 +1,12 @@
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parents[1]
-PROFILE_SRGB_PATH = PROJECT_ROOT / "tilediiif/data/sRGB2014.icc"
+PROFILE_SRGB_PATH = PROJECT_ROOT / "tilediiif/tools/data/sRGB2014.icc"
 DATA = Path(__file__).parents[0] / "data"
 IMAGE_DATA = DATA / "images"
 
 TEST_IMG_PEARS_SRGB_EMBEDDED = {
-    "path": PROJECT_ROOT / "test_tilediiif/server/data/pears_small.jpg",
+    "path": IMAGE_DATA / "pears_small_srgb.jpg",
     "width": 1000,
     "height": 750,
     "colour_profile": "srgb",
