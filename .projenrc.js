@@ -1,8 +1,17 @@
 const { python, ProjectType, Project } = require('projen');
+const { TaskCategory } = require('projen/tasks');
 const version = '0.1.0';
 
 const project = new Project({});
 project.gitignore.addPatterns('.python-version', '.idea');
+project.addTask('test', {
+  category: TaskCategory.TEST,
+  exec: `
+    cd tilediiif.core && poetry run pytest && cd - &&
+    cd tilediiif.tools && poetry run pytest && cd - &&
+    cd tilediiif.server && poetry run pytest
+  `,
+})
 
 const DEFAULT_POETRY_OPTIONS = {
   authors: [
@@ -45,7 +54,6 @@ const tilediiifCore = new python.PythonProject({
 });
 const tilediiifCorePyprojectToml = tilediiifCore.tryFindObjectFile('pyproject.toml');
 tilediiifCorePyprojectToml.addOverride('tool.poetry.packages', [{include: 'tilediiif'}]);
-
 
 const tilediiifTools = new python.PythonProject({
   ...DEFAULT_OPTIONS,
