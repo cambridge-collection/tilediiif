@@ -23,13 +23,13 @@ def logger():
     return logging.getLogger("tilediiif.server.resources")
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_logger_warning(logger):
     with patch.object(logger, "warning") as mock:
         yield mock
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_logger_exception(logger):
     with patch.object(logger, "exception") as mock:
         yield mock

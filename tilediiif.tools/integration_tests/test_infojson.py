@@ -13,7 +13,7 @@ ID_BASE_URL = "https://images.cudl.lib.cam.ac.uk/iiif/"
 ID_URL = "https://images.cudl.lib.cam.ac.uk/iiif/MS-ADD-00269-000-01075"
 
 
-@pytest.yield_fixture()
+@pytest.fixture
 def tmp_data_path(tmp_path):
     with TemporaryDirectory(dir=tmp_path) as path:
         yield Path(path)

@@ -17,7 +17,7 @@ def test_ensure_dir_exists_creates_same_dir_once_with_multiple_calls():
     mock_path.mkdir.assert_called_once_with(exist_ok=True)
 
 
-@pytest.yield_fixture()
+@pytest.fixture
 def mock_ensure_dir_exists():
     with patch("tilediiif.core.filesystem.ensure_dir_exists") as mock:
         yield mock

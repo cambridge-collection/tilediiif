@@ -9,19 +9,19 @@ from tilediiif.server.api import CONFIG_PATH_ENVAR, get_api
 from tilediiif.server.config import ConfigValueEnvars, ServerConfig
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_config_from_toml_file():
     with patch("tilediiif.server.config.Config.from_toml_file") as mock:
         yield mock
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_config_from_environ():
     with patch("tilediiif.server.config.Config.from_environ") as mock:
         yield mock
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_populate_routes():
     with patch(
         "tilediiif.server.api._populate_routes", side_effect=lambda api, _: api

@@ -409,7 +409,7 @@ def tile_key(tile):
     return json.dumps(tile, sort_keys=True, indent=None, separators=(",", ":"))
 
 
-@pytest.yield_fixture()
+@pytest.fixture
 def mock_create_dzi_tile_layout():
     with patch("tilediiif.tools.tilelayout.create_dzi_tile_layout") as mock:
         yield mock

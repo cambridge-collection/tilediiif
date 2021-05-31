@@ -21,7 +21,7 @@ def dzi_ms_add_path():
     return Path(__file__).parent / "data" / "MS-ADD-00269-000-01075.dzi"
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def dzi_ms_add_file(dzi_ms_add_path):
     with open(dzi_ms_add_path, "rb") as f:
         yield f

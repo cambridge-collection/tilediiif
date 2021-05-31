@@ -127,7 +127,7 @@ def test_get_id_url_rejects_invalid_urls(base, id, msg):
     assert msg in str(exc_info.value)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_run():
     with patch("tilediiif.tools.infojson.run") as mock_run:
         yield mock_run
@@ -184,7 +184,7 @@ def test_arg_parsing(argv, expected_args, mock_run):
     assert mock_run.mock_calls[0][1][0] == call_args
 
 
-@pytest.yield_fixture()
+@pytest.fixture
 def tmp_data_path(tmp_path):
     with TemporaryDirectory(dir=tmp_path) as path:
         yield Path(path)

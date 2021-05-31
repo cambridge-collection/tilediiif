@@ -109,7 +109,7 @@ def override_envars(monkeypatch, envars):
             monkeypatch.setenv(name, value)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def override_argv(argv):
     argv = argv.split() if isinstance(argv, str) else argv
     with patch("sys.argv", ["dzi-tiles"] + argv):
