@@ -1,6 +1,8 @@
 ARG MOZJPEG_VERSION=4.0.3
 ARG VIPS_VERSION=8.10.6
 ARG VIPS_USE_MOZJPEG=1
+ARG TILEDIIIF_TOOLS_VERSION
+ARG TILEDIIIF_CORE_VERSION
 
 ARG _MOZJPEG_VARIANT_ENABLED=${VIPS_USE_MOZJPEG:+with-mozjpeg}
 ARG _MOZJPEG_VARIANT=${_MOZJPEG_VARIANT_ENABLED:-without-mozjpeg}
@@ -136,3 +138,27 @@ RUN apt-get update && apt-get install -y build-essential \
 FROM tools-dev AS tools-dev-with-broken-mozjpeg
 RUN rm -rf /opt/mozjpeg /etc/ld.so.conf.d/00.mozjpeg.conf \
     && ldconfig
+
+
+FROM python-base as build-tilediiif.tools-wheel
+COPY ./tilediiif.core /opt/tilediiif/tilediiif.core
+COPY ./tilediiif.tools /opt/tilediiif/tilediiif.tools
+RUN pip install poetry
+RUN cd /opt/tilediiif/tilediiif.core && poetry build
+RUN cd /opt/tilediiif/tilediiif.tools && poetry build
+
+
+FROM base as tilediiif.tools
+ARG TILEDIIIF_TOOLS_VERSION
+ARG TILEDIIIF_CORE_VERSION
+COPY --from=build-tilediiif.tools-wheel \
+    /opt/tilediiif/tilediiif.core/dist/tilediiif.core-${TILEDIIIF_CORE_VERSION}-py3-none-any.whl \
+    /tmp/tilediiif.core-${TILEDIIIF_CORE_VERSION}-py3-none-any.whl
+COPY --from=build-tilediiif.tools-wheel \
+    /opt/tilediiif/tilediiif.tools/dist/tilediiif.tools-${TILEDIIIF_TOOLS_VERSION}-py3-none-any.whl \
+    /tmp/tilediiif.tools-${TILEDIIIF_TOOLS_VERSION}-py3-none-any.whl
+RUN pip install \
+    /tmp/tilediiif.core-${TILEDIIIF_CORE_VERSION}-py3-none-any.whl \
+    /tmp/tilediiif.tools-${TILEDIIIF_TOOLS_VERSION}-py3-none-any.whl \
+    && rm /tmp/tilediiif.core-${TILEDIIIF_CORE_VERSION}-py3-none-any.whl \
+          /tmp/tilediiif.tools-${TILEDIIIF_TOOLS_VERSION}-py3-none-any.whl
