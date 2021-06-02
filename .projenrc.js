@@ -1,6 +1,8 @@
-const { python, ProjectType, Project } = require('projen');
+const { python, ProjectType, Project, TextFile } = require('projen');
 const { TaskCategory } = require('projen/tasks');
-const version = '0.1.0';
+const TILEDIIIF_TOOLS_VERSION = '0.1.0';
+const TILEDIIIF_SERVER_VERSION = '0.1.0';
+const TILEDIIIF_CORE_VERSION = '0.1.0';
 
 const project = new Project({});
 project.gitignore.addPatterns('.python-version', '.idea');
@@ -12,6 +14,16 @@ project.addTask('test', {
     cd tilediiif.server && poetry run pytest
   `,
 })
+project.addTask('build-docker-image', {
+  category: TaskCategory.BUILD,
+  exec: `
+  docker image build \\
+    --tag camdl/tilediiif.tools:${TILEDIIIF_TOOLS_VERSION} \\
+    --build-arg TILEDIIIF_TOOLS_VERSION=${TILEDIIIF_TOOLS_VERSION} \\
+    --build-arg TILEDIIIF_CORE_VERSION=${TILEDIIIF_CORE_VERSION} \\
+    --target tilediiif.tools .
+`,
+})
 
 const DEFAULT_POETRY_OPTIONS = {
   authors: [
@@ -22,7 +34,6 @@ const DEFAULT_POETRY_OPTIONS = {
 const DEFAULT_OPTIONS = {
   parent: project,
   sample: false,
-  version: version,
   pip: false,
   setuptools: false,
   poetry: true,
@@ -40,6 +51,7 @@ const tilediiifCore = new python.PythonProject({
   ...DEFAULT_OPTIONS,
   outdir: 'tilediiif.core',
   name: 'tilediiif.core',
+  version: TILEDIIIF_CORE_VERSION,
 
   deps: [
     "docopt@^0.6.2",
@@ -59,6 +71,7 @@ const tilediiifTools = new python.PythonProject({
   ...DEFAULT_OPTIONS,
   outdir: 'tilediiif.tools',
   name: 'tilediiif.tools',
+  version: TILEDIIIF_TOOLS_VERSION,
 
   poetryOptions: {
     ...DEFAULT_POETRY_OPTIONS,
@@ -74,7 +87,7 @@ const tilediiifTools = new python.PythonProject({
     "docopt@^0.6.2",
     "pyvips@^2.1",
     "rfc3986@^1.3",
-    `tilediiif.core@=${version}`,
+    `tilediiif.core@=${TILEDIIIF_CORE_VERSION}`,
   ],
   devDeps: [
     "pytest@^6.2.4",
@@ -101,11 +114,12 @@ const tilediiifServer = new python.PythonProject({
   ...DEFAULT_OPTIONS,
   outdir: 'tilediiif.server',
   name: 'tilediiif.server',
+  version: TILEDIIIF_SERVER_VERSION,
 
   deps: [
     "python@^3.7",
     "falcon@^2.0",
-    `tilediiif.core@=${version}`,
+    `tilediiif.core@=${TILEDIIIF_CORE_VERSION}`,
   ],
   devDeps: [
     "pytest@^6.2.4",
