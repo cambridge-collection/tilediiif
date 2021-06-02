@@ -5,6 +5,7 @@ ARG VIPS_USE_MOZJPEG=1
 ARG _MOZJPEG_VARIANT_ENABLED=${VIPS_USE_MOZJPEG:+with-mozjpeg}
 ARG _MOZJPEG_VARIANT=${_MOZJPEG_VARIANT_ENABLED:-without-mozjpeg}
 
+FROM python:3.9-slim-buster as python-base
 
 FROM debian:buster-slim AS build-mozjpeg
 ARG MOZJPEG_VERSION
@@ -84,8 +85,8 @@ RUN cd vips-$VIPS_VERSION \
 RUN printf "%s\n" /opt/vips/lib > /etc/ld.so.conf.d/00.vips.conf
 
 
-FROM python:3.9-buster AS base-without-mozjpeg
-FROM python:3.9-buster AS base-with-mozjpeg
+FROM python-base AS base-without-mozjpeg
+FROM python-base AS base-with-mozjpeg
 ARG MOZJPEG_VERSION
 ENV MOZJPEG_VERSION=$MOZJPEG_VERSION \
     PATH=$PATH:/opt/mozjpeg/bin
@@ -111,7 +112,7 @@ RUN apt-get update && apt-get install -y \
     liborc-0.4-0 \
     libmatio4 \
     libcfitsio7 \
-    libwebp6 \
+    libwebpdemux2 \
     libopenexr23 \
     libopenslide0 \
     libheif1 \
