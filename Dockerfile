@@ -126,19 +126,13 @@ ENV VIPS_VERSION=$VIPS_VERSION \
     PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/vips/lib/pkgconfig
 
 
-FROM base AS dev
-
-WORKDIR /opt/project
-COPY pyproject.toml pyproject.toml
-COPY poetry.lock poetry.lock
-RUN apt-get update && apt-get install -y build-essential
-RUN pip install poetry \
-    && poetry config virtualenvs.create false \
-    && poetry install --no-interaction --extras server --extras dzigeneration
+FROM base AS tools-dev
+RUN apt-get update && apt-get install -y build-essential \
+    && pip install poetry
 
 
 # An image in which vips was built with mozjpeg, but mozjpeg is not available at runtime, so vips
 # will blow up when trying to do things requiring mozjpeg.
-FROM dev AS dev-with-broken-mozjpeg
+FROM tools-dev AS tools-dev-with-broken-mozjpeg
 RUN rm -rf /opt/mozjpeg /etc/ld.so.conf.d/00.mozjpeg.conf \
     && ldconfig

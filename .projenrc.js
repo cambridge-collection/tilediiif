@@ -70,11 +70,11 @@ const tilediiifTools = new python.PythonProject({
   },
 
   deps: [
-    "tilediiif.core",  // overriden below to point to local path
     "python@^3.7",
     "docopt@^0.6.2",
-    "rfc3986@^1.3",
     "pyvips@^2.1",
+    "rfc3986@^1.3",
+    `tilediiif.core@=${version}`,
   ],
   devDeps: [
     "pytest@^6.2.4",
@@ -94,7 +94,7 @@ const tilediiifTools = new python.PythonProject({
   ],
 });
 const tilediiifToolsPyprojectToml = tilediiifTools.tryFindObjectFile('pyproject.toml');
-tilediiifToolsPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.core', {path: '../tilediiif.core', develop: true});
+tilediiifToolsPyprojectToml.addOverride('tool.poetry.dev-dependencies.tilediiif\\.core', {path: '../tilediiif.core', develop: true});
 
 
 const tilediiifServer = new python.PythonProject({
@@ -105,7 +105,7 @@ const tilediiifServer = new python.PythonProject({
   deps: [
     "python@^3.7",
     "falcon@^2.0",
-    "tilediiif.core",
+    `tilediiif.core@=${version}`,
   ],
   devDeps: [
     "pytest@^6.2.4",
