@@ -1,7 +1,6 @@
 import enum
 import os
 import subprocess
-from pathlib import Path
 
 import pytest
 from integration_tests.data import TEST_IMG_PEARS_SRGB_EMBEDDED
@@ -73,5 +72,5 @@ def test_using_mozjpeg_options_without_mozjpeg_fails(
             "are enabled, but mozjpeg is not supported:"
             in result.stderr
         )
-        assert f"• libjpeg supports param API: False" in result.stderr
-        assert f"• libvips supports libjpeg params: False" in result.stderr
+        assert "• libjpeg supports param API: False" in result.stderr
+        assert "• libvips supports libjpeg params: False" in result.stderr

@@ -4,9 +4,9 @@ import struct
 import numpy as np
 import pytest
 import pyvips
-from hypothesis import example, given
-from hypothesis.strategies import integers, lists, sampled_from
-from integration_tests.data import IMAGE_DATA, PROFILE_SRGB_PATH, PROJECT_ROOT
+from hypothesis import given
+from hypothesis.strategies import integers, sampled_from
+from integration_tests.data import IMAGE_DATA, PROFILE_SRGB_PATH
 
 IMAGE_SUNSET_P3 = IMAGE_DATA / "Sunset-P3.jpg"
 IMAGE_SUNSET_P3_SIZE = (397, 600)

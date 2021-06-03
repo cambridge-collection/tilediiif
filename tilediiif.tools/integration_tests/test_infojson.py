@@ -143,7 +143,7 @@ def test_infojson_generates_expected_output_on_stdout(dzi_path, info_json):
             DATA_DIR / "MS-ADD-00269-000-01075.dzi",
             DATA_DIR / "MS-ADD-00269-000-01075.info.json",
             "some-dir/b1/71/foo_info.json",
-            f"https://example/foo",
+            "https://example/foo",
         ],
     ],
 )

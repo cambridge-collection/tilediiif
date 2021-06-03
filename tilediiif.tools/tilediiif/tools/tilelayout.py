@@ -198,7 +198,7 @@ def get_templated_dest_path(
     path = Path(template.render(bindings_for_tile(tile)))
 
     if not path.parts:
-        raise InvalidPath(f"generated path is empty")
+        raise InvalidPath("generated path is empty")
     if path.is_absolute():
         raise InvalidPath(f"generated path is not relative: {path}")
     if ".." in path.parts:
@@ -330,8 +330,8 @@ def run(args):
 
         if not allow_existing_dest:
             raise CommandError(
-                f"<dest-directory> exists, refusing to write "
-                f"into it without --allow-existing-dest"
+                "<dest-directory> exists, refusing to write into it without"
+                " --allow-existing-dest"
             )
 
     if not dzi_path.name[-4:].lower() == ".dzi":

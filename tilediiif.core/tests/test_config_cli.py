@@ -71,7 +71,7 @@ def test_cli_value_raises_usage_error_on_conflicting_arguments():
 
     assert (
         str(exc_info.value)
-        == f"conflicting arguments, at most one can be specified of: --foo = 'a', -f = 'b'"
+        == "conflicting arguments, at most one can be specified of: --foo = 'a', -f = 'b'"
     )
 
 

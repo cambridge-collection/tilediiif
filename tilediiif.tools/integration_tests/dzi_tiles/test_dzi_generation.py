@@ -66,9 +66,9 @@ def test_dzi_tiles_generates_a_dzi(dzi_path, test_img, cli_options, expected):
 
     largest_dzi_level = math.ceil(math.log2(max(test_img["width"], test_img["height"])))
     files_path = dzi_path.parent / (dzi_path.name + "_files")
-    assert all(p.is_dir() for p in files_path.iterdir())
-    assert {p.name for p in files_path.iterdir()} == set(
-        str(l) for l in range(largest_dzi_level + 1)
+    assert all(path.is_dir() for path in files_path.iterdir())
+    assert {path.name for path in files_path.iterdir()} == set(
+        str(level) for level in range(largest_dzi_level + 1)
     )
 
     assert get_image_size(files_path / str(largest_dzi_level) / "0_0.jpg") == (

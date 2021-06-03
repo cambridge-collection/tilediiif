@@ -180,7 +180,7 @@ def indent(lines, *, by):
     if isinstance(by, int):
         by = " " * by
 
-    return "\n".join(by + l if l else l for l in lines.split("\n"))
+    return "\n".join(by + line if line else line for line in lines.split("\n"))
 
 
 validate_colour_sources = all_validator(
@@ -955,7 +955,7 @@ class ApplyColourProfileImageOperation:
             else image.get(VIPS_META_ICC_PROFILE)
         )
         if not (isinstance(profile, bytes) and len(profile) > 0):
-            raise ValueError(f"image has no ICC profile attached")
+            raise ValueError("image has no ICC profile attached")
 
     def __call__(self, image: pyvips.Image) -> pyvips.Image:
         self.ensure_image_has_attached_profile(image)
