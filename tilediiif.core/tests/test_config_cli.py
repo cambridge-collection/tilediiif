@@ -69,8 +69,9 @@ def test_cli_value_raises_usage_error_on_conflicting_arguments():
     with pytest.raises(InvalidCLIUsageConfigError) as exc_info:
         cli_value.extract({"--foo": "a", "-f": "b"})
 
-    assert str(exc_info.value) == (
-        f"conflicting arguments, at most one can be specified of: --foo = 'a', -f = 'b'"
+    assert (
+        str(exc_info.value)
+        == f"conflicting arguments, at most one can be specified of: --foo = 'a', -f = 'b'"
     )
 
 
@@ -221,8 +222,8 @@ def test_from_cli_args(example_config_cls, example_usage, argv, expected):
 def test_cli_flag_must_have_at_least_one_name(enable_names, disable_names):
     with pytest.raises(ValueError) as exc_info:
         CLIFlag(enable_names, disable_names)
-    assert str(exc_info.value) == (
-        "at least one enable or disable name must be specified"
+    assert (
+        str(exc_info.value) == "at least one enable or disable name must be specified"
     )
 
 

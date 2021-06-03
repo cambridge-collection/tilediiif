@@ -81,8 +81,9 @@ def test_io_config_validation_rejects_invalid_dzi_paths():
     with pytest.raises(ConfigValidationError) as exc_info:
         IOConfig(src_image="blah.jpg", dest_dzi="some/dir/")
 
-    assert str(exc_info.value) == (
-        "value for 'dest_dzi' is invalid: path ends with a /, but the path should "
+    assert (
+        str(exc_info.value)
+        == "value for 'dest_dzi' is invalid: path ends with a /, but the path should "
         "identify a path under a directory"
     )
 
@@ -152,7 +153,8 @@ def override_argv(argv):
                 },
                 "io": {
                     "values": dict(
-                        src_image="some/path/image.tif", dest_dzi="some/path/image.tif",
+                        src_image="some/path/image.tif",
+                        dest_dzi="some/path/image.tif",
                     ),
                     "undefined": [],
                 },
@@ -209,7 +211,8 @@ def override_argv(argv):
                 },
                 "io": {
                     "values": dict(
-                        src_image="some/path/image.tif", dest_dzi="some/path/image.tif",
+                        src_image="some/path/image.tif",
+                        dest_dzi="some/path/image.tif",
                     ),
                     "undefined": [],
                 },
@@ -251,7 +254,8 @@ def override_argv(argv):
                 },
                 "io": {
                     "values": dict(
-                        src_image="some/path/image.tif", dest_dzi="some/path/image.tif",
+                        src_image="some/path/image.tif",
+                        dest_dzi="some/path/image.tif",
                     ),
                     "undefined": [],
                 },
@@ -306,7 +310,8 @@ def override_argv(argv):
                 },
                 "io": {
                     "values": dict(
-                        src_image="some/path/image.tif", dest_dzi="some/path/image.tif",
+                        src_image="some/path/image.tif",
+                        dest_dzi="some/path/image.tif",
                     ),
                     "undefined": [],
                 },
@@ -395,10 +400,12 @@ def test_ensure_mozjpeg_present_if_required(
     _libjpeg_supports_params = MagicMock(return_value=libjpeg_supports_params)
     _pyvips_supports_params = MagicMock(return_value=libvips_supports_libjpeg_params)
     with patch(
-        "tilediiif.tools.dzi_generation.libjpeg_supports_params", _libjpeg_supports_params
+        "tilediiif.tools.dzi_generation.libjpeg_supports_params",
+        _libjpeg_supports_params,
     ):
         with patch(
-            "tilediiif.tools.dzi_generation.pyvips_supports_params", _pyvips_supports_params
+            "tilediiif.tools.dzi_generation.pyvips_supports_params",
+            _pyvips_supports_params,
         ):
             try:
                 ensure_mozjpeg_present_if_required(jpeg_config)
@@ -525,7 +532,8 @@ def test_assume_srgb_colour_source_rejects_non_srgb_images(
     indirect=True,
 )
 def test_embedded_profile_vips_colour_source_loads_image_with_embedded_profile(
-    image, srgb_profile,
+    image,
+    srgb_profile,
 ):
     assert image.get(VIPS_META_ICC_PROFILE) == srgb_profile
     assert image.interpretation in {
@@ -569,7 +577,8 @@ def test_assign_profile_vips_colour_source_assigns_profile_from_path(
     image, icc_profile, icc_profile_path, expected_profile
 ):
     colour_source = AssignProfileVIPSColourSource(
-        icc_profile=icc_profile, icc_profile_path=icc_profile_path,
+        icc_profile=icc_profile,
+        icc_profile_path=icc_profile_path,
     )
     assert colour_source.icc_profile == expected_profile
 
@@ -786,7 +795,8 @@ def test_apply_colour_profile_image_operation(
     "image", ["srgb_image", "generic_multiband_8bit_image"], indirect=True
 )
 def test_apply_colour_profile_image_operation_requires_input_image_to_have_profile(
-    image, srgb_profile_path,
+    image,
+    srgb_profile_path,
 ):
     image_op = ApplyColourProfileImageOperation(
         icc_profile_path=srgb_profile_path, intent=pyvips.Intent.RELATIVE
@@ -803,7 +813,8 @@ def test_apply_colour_profile_image_operation_raises_error_on_failed_conversion(
 ):
     with pytest.raises(DZIGenerationError) as exc_info:
         ApplyColourProfileImageOperation(
-            icc_profile_path=srgb_profile_path, intent=pyvips.Intent.RELATIVE,
+            icc_profile_path=srgb_profile_path,
+            intent=pyvips.Intent.RELATIVE,
         )(image_with_invalid_icc_profile)
 
     assert "icc_transform() failed: unable to call icc_transform" in str(exc_info.value)
@@ -923,7 +934,10 @@ def empty_file(tmp_data_path):
     [
         [
             pytest.lazy_fixture("unreadable_file"),
-            re.compile(r"\Aunable to load src image: ", re.MULTILINE | re.DOTALL,),
+            re.compile(
+                r"\Aunable to load src image: ",
+                re.MULTILINE | re.DOTALL,
+            ),
         ],
         [
             pytest.lazy_fixture("empty_file"),
@@ -1227,8 +1241,7 @@ def test_save_dzi_cleans_up_if_dzsave_fails(
             level,
             level_threshold,
             should_capture,
-            id=f"{logging.getLevelName(level)}_"
-            f"{logging.getLevelName(level_threshold)}",
+            id=f"{logging.getLevelName(level)}_{logging.getLevelName(level_threshold)}",
         )
         for level, level_threshold, should_capture in [
             [logging.ERROR, None, True],

@@ -51,7 +51,7 @@ def test_image_resource_base_redirects_to_info_json(client: testing.TestClient, 
         [
             ServerConfig(
                 file_transmission=FileTransmissionType.INDIRECT,
-                info_json_path_template="{identifier-shard}/{identifier}/" "info.json",
+                info_json_path_template="{identifier-shard}/{identifier}/info.json",
                 data_path="/var/images",
             ),
             "X-Accel-Redirect",
@@ -148,7 +148,7 @@ def test_requests_resolving_to_parent_paths_are_rejected(client, mock_logger_war
     mock_logger_warning.assert_called_once()
     log_args = mock_logger_warning.mock_calls[0][1]
     assert log_args[0:2] == (
-        "rejected info.json request for invalid path; " "identifier=%r, cause: %s",
+        "rejected info.json request for invalid path; identifier=%r, cause: %s",
         ".",
     )
     assert isinstance(log_args[2], Exception)

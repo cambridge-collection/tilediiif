@@ -6,16 +6,16 @@ import tempfile
 from collections import Counter, abc
 from functools import partial
 from pathlib import Path, PurePath
-from typing import ContextManager, Callable
+from typing import Callable, ContextManager
 from unittest.mock import Mock, call, patch
 
 import pytest
 from hypothesis import assume, given, settings
-from hypothesis.strategies import lists, composite, integers, sampled_from, text
-
+from hypothesis.strategies import composite, integers, lists, sampled_from, text
 from tests import test_dzi
 from tests.test_dzi import dzi_metadata
 from tests.test_infojson import image_dimensions
+
 from tilediiif.tools.dzi import get_dzi_tile_path
 from tilediiif.tools.infojson import power2_image_pyramid_scale_factors
 from tilediiif.tools.tilelayout import (

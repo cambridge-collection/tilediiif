@@ -96,8 +96,7 @@ def test_infojson_generates_expected_output_on_stdout(dzi_path, info_json):
 
 @pytest.mark.parametrize("chdir", [True, False])
 @pytest.mark.parametrize(
-    "options, dzi_path, expected_content, expected_path, \
-expected_id_attr",
+    "options, dzi_path, expected_content, expected_path, expected_id_attr",
     [
         [
             ["--id-base-url", ID_BASE_URL],

@@ -61,8 +61,9 @@ def test_config_str(config_cls_a):
 def test_config_repr(config_cls_a):
     assert repr(config_cls_a({})) == "ConfigA({})"
     assert repr(config_cls_a({"foo": 42})) == "ConfigA({'foo': 42})"
-    assert repr(config_cls_a({"foo": 42, "bar": "hi"})) == (
-        "ConfigA({'foo': 42, 'bar': 'hi'})"
+    assert (
+        repr(config_cls_a({"foo": 42, "bar": "hi"}))
+        == "ConfigA({'foo': 42, 'bar': 'hi'})"
     )
 
 
@@ -196,8 +197,9 @@ def test_json_config_classes_require_json_schema_attr():
             property_definitions = []
             pass
 
-    assert str(exc_info.value) == (
-        "test_json_config_classes_require_json_schema_attr.<locals>.BadConfig must "
+    assert (
+        str(exc_info.value)
+        == "test_json_config_classes_require_json_schema_attr.<locals>.BadConfig must "
         "have a 'json_schema' attribute containing the schema to use in from_json()"
     )
 
@@ -208,8 +210,9 @@ def test_config_classes_must_have_property_definitions_attribute():
         class BadConfig(BaseConfig):
             pass
 
-    assert str(exc_info.value) == (
-        "test_config_classes_must_have_property_definitions_attribute.<locals>"
+    assert (
+        str(exc_info.value)
+        == "test_config_classes_must_have_property_definitions_attribute.<locals>"
         ".BadConfig must have a 'property_definitions' attribute containing a list of "
         "ConfigProperty instances"
     )
@@ -312,15 +315,17 @@ def test_config_property_validator():
 
     with pytest.raises(ConfigError) as exc_info:
         ExampleConfig({"foo": "blah"})
-    assert str(exc_info.value) == (
-        "value for 'foo' is invalid: expected int but got str: 'blah'"
+    assert (
+        str(exc_info.value)
+        == "value for 'foo' is invalid: expected int but got str: 'blah'"
     )
 
     config = ExampleConfig({"foo": 42})
     with pytest.raises(ConfigError) as exc_info:
         config.foo = "abc"
-    assert str(exc_info.value) == (
-        "value for 'foo' is invalid: expected int but got str: 'abc'"
+    assert (
+        str(exc_info.value)
+        == "value for 'foo' is invalid: expected int but got str: 'abc'"
     )
 
 
@@ -342,8 +347,9 @@ def test_config_property_parsing():
     # bar has no default parser, so uses the string value
     with pytest.raises(ConfigError) as exc_info:
         assert ExampleConfig.parse({"bar": "42"})
-    assert str(exc_info.value) == (
-        "value for 'bar' is invalid: expected int but got str: '42'"
+    assert (
+        str(exc_info.value)
+        == "value for 'bar' is invalid: expected int but got str: '42'"
     )
 
     # But bar does have a custom parser

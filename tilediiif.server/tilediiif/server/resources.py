@@ -59,8 +59,7 @@ class IIIFImageMetadataResource:
             info_json_path = self.get_info_json_path(identifier)
         except ValueError as e:
             LOG.warning(
-                "rejected info.json request for invalid path; "
-                "identifier=%r, cause: %s",
+                "rejected info.json request for invalid path; identifier=%r, cause: %s",
                 identifier,
                 e,
             )

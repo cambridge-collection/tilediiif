@@ -32,10 +32,7 @@ template_chunk = re.compile(
 def render_placeholder(name, bindings):
     value = bindings.get(name)
     if not isinstance(value, str):
-        raise TemplateError(
-            f"\
-No value for {name!r} exists in bound values: {bindings}"
-        )
+        raise TemplateError(f"No value for {name!r} exists in bound values: {bindings}")
     return value
 
 
@@ -52,9 +49,8 @@ class Template:
         if bindings.keys() < self.var_names:
             missing = ", ".join(f"{v!r}" for v in self.var_names - bindings.keys())
             raise TemplateError(
-                f"\
-Variables for placeholders {missing} \
-are missing from bound values: {bindings}"
+                f"Variables for placeholders {missing} are missing from bound values:"
+                f" {bindings}"
             )
 
         return "".join(c(bindings) for c in self.chunks)
@@ -267,8 +263,7 @@ def _parse_template_with_placeholders(
     if not template.var_names <= placeholders:
         unexpected_placeholders = ",".join(template.var_names - placeholders)
         raise TemplateError(
-            f"template contains unexpected placeholders: "
-            f"{unexpected_placeholders!r}"
+            f"template contains unexpected placeholders: {unexpected_placeholders!r}"
         )
     return template
 

@@ -6,11 +6,14 @@ from pathlib import Path
 
 from docopt import docopt
 
+from tilediiif.core.filesystem import (
+    ensure_sub_directories_exist,
+    validate_relative_path,
+)
+from tilediiif.core.templates import Template, parse_template
 from tilediiif.tools.dzi import get_dzi_tile_path, parse_dzi_file
 from tilediiif.tools.exceptions import CommandError
-from tilediiif.core.filesystem import ensure_sub_directories_exist, validate_relative_path
 from tilediiif.tools.infojson import power2_image_pyramid_scale_factors
-from tilediiif.core.templates import Template, parse_template
 from tilediiif.tools.validation import require_positive_non_zero_int
 from tilediiif.tools.version import __version__
 
@@ -312,9 +315,8 @@ def run(args):
         create_file = create_file_methods[file_creation_method_name]
     except KeyError:
         raise CommandError(
-            f'\
-Invalid --file-creation-method {file_creation_method_name!r}. \
-Possible values are {", ".join(sorted(create_file_methods.keys()))}'
+            f"Invalid --file-creation-method {file_creation_method_name!r}. Possible"
+            f' values are {", ".join(sorted(create_file_methods.keys()))}'
         )
 
     try:
@@ -324,7 +326,7 @@ Possible values are {", ".join(sorted(create_file_methods.keys()))}'
 
     if dest_dir.exists():
         if not dest_dir.is_dir():
-            raise CommandError("<dest-directory> exists and is not a " "directory")
+            raise CommandError("<dest-directory> exists and is not a directory")
 
         if not allow_existing_dest:
             raise CommandError(
@@ -333,11 +335,11 @@ Possible values are {", ".join(sorted(create_file_methods.keys()))}'
             )
 
     if not dzi_path.name[-4:].lower() == ".dzi":
-        raise CommandError(f"<dzi_file> {dzi_path} does not have a .dzi " f"extension")
+        raise CommandError(f"<dzi_file> {dzi_path} does not have a .dzi extension")
     if not dzi_path.is_file():
         if dzi_path.exists():
             raise CommandError(
-                f"<dzi-file> {dzi_path} exists but is not a " f"regular file"
+                f"<dzi-file> {dzi_path} exists but is not a regular file"
             )
         else:
             raise CommandError(f"<dzi-file> {dzi_path} does not exist")
@@ -361,7 +363,7 @@ Possible values are {", ".join(sorted(create_file_methods.keys()))}'
         dest_dir.mkdir(parents=True, exist_ok=True)
     except Exception as e:
         raise CommandError(
-            f"Unable to create <dest-directory> {dest_dir} " f"because: {e}"
+            f"Unable to create <dest-directory> {dest_dir} because: {e}"
         ) from e
 
     create_dzi_tile_layout(

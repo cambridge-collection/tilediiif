@@ -46,7 +46,7 @@ class ServerConfig(Config):
             default="X-Accel-Redirect",
             envar_name=ConfigValueEnvars.SENDFILE_HEADER_NAME.value,
             json_path=(
-                "tilediiif.server.indirect-file-transmission" ".sendfile-header-name"
+                "tilediiif.server.indirect-file-transmission.sendfile-header-name"
             ),
         ),
         ConfigProperty(

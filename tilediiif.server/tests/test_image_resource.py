@@ -70,8 +70,10 @@ def test_non_normalised_requests_are_redirected_to_normalised(
         [
             INDIRECT_CONFIG.merged_with(
                 ServerConfig(
-                    image_path_template="{identifier-shard}/{identifier}/{image-shard}/"
-                    "{region}-{size}-{rotation}-{quality}.{format}"
+                    image_path_template=(
+                        "{identifier-shard}/{identifier}/{image-shard}/"
+                        "{region}-{size}-{rotation}-{quality}.{format}"
+                    )
                 )
             ),
             "/imgid/full/full/0/default.jpg",

@@ -9,9 +9,9 @@ import rfc3986
 from rfc3986.exceptions import ValidationError
 from rfc3986.validators import Validator
 
-from tilediiif.tools.dzi import DZIError, parse_dzi_file
 from tilediiif.core.filesystem import ensure_sub_directories_exist
 from tilediiif.core.templates import TemplateError, get_info_json_path_renderer
+from tilediiif.tools.dzi import DZIError, parse_dzi_file
 from tilediiif.tools.version import __version__
 
 # math.log2(2**49) == math.log2(2**49 + 1) so anything above 2**49 won't work
@@ -86,8 +86,7 @@ def info_json_from_dzi(dzi_data, *, id_url):
         )
     except ValueError as e:
         raise DZIError(
-            f"\
-Unable to create iiif:Image metadata from DZI metadata: {e}"
+            f"Unable to create iiif:Image metadata from DZI metadata: {e}"
         ) from e
 
 
@@ -134,13 +133,11 @@ def iiif_image_metadata_with_pow2_tiles(
 def _validate_image_dimensions(width, height, tile_size):
     if not 1 <= width <= MAX_IMAGE_DIMENSION:
         raise ValueError(
-            f"\
-width must be >= 1 and <= {MAX_IMAGE_DIMENSION_DESC}: {width}"
+            f"width must be >= 1 and <= {MAX_IMAGE_DIMENSION_DESC}: {width}"
         )
     if not 1 <= height <= MAX_IMAGE_DIMENSION:
         raise ValueError(
-            f"\
-height must be >= 1 and <= {MAX_IMAGE_DIMENSION_DESC}: {height}"
+            f"height must be >= 1 and <= {MAX_IMAGE_DIMENSION_DESC}: {height}"
         )
     if tile_size < 1:
         raise ValueError(f"tile_size is < 1: {tile_size}")
@@ -308,7 +305,7 @@ def _get_default_id(dzi_path):
         issue = f"{str(dzi_path)!r} is not like *.dzi"
 
     raise CLIError(
-        f"no --id is specified so --id is derived from <dzi-file>, "
+        "no --id is specified so --id is derived from <dzi-file>, "
         f"but {issue}; nothing to generate @id attribute from"
     )
 

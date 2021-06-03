@@ -12,7 +12,9 @@ def tmp_data_path(tmp_path):
 
 @pytest.fixture(scope="session")
 def session_tmp_data_path():
-    with TemporaryDirectory(prefix=f"pytest-{__name__}-",) as path:
+    with TemporaryDirectory(
+        prefix=f"pytest-{__name__}-",
+    ) as path:
         yield Path(path)
 
 

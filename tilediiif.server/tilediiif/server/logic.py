@@ -209,10 +209,7 @@ class IIIFImageRequest:
     format: str
 
     def __str__(self):
-        return (
-            f"{self.region}/{self.size}/{self.rotation}/"
-            f"{self.quality}.{self.format}"
-        )
+        return f"{self.region}/{self.size}/{self.rotation}/{self.quality}.{self.format}"
 
     def canonical(self, *, image_info=None):
         _ensure_image_info_not_specified(image_info)

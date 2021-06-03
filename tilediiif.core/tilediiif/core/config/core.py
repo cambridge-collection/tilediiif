@@ -353,7 +353,7 @@ class BaseConfig(metaclass=ConfigMeta):
             if not isinstance(getattr(cls, "property_definitions", None), list):
                 raise TypeError(
                     f"{cls.__qualname__} must have a 'property_definitions' attribute "
-                    f"containing a list of ConfigProperty instances"
+                    "containing a list of ConfigProperty instances"
                 )
 
             for property in cls.property_definitions:
@@ -514,7 +514,7 @@ class JSONConfigMixin(BaseConfig):
         if not hasattr(cls, "json_schema"):
             raise TypeError(
                 f"{cls.__qualname__} must have a 'json_schema' attribute containing "
-                f"the schema to use in from_json()"
+                "the schema to use in from_json()"
             )
 
     @classmethod
@@ -522,8 +522,8 @@ class JSONConfigMixin(BaseConfig):
         if cls.json_schema is None:
             raise TypeError(
                 f"{cls.__name__}.from_json() is disabled because {cls.__name__}"
-                f".json_schema is None. Set json_schema to True to enable from_json() "
-                f"without schema validation."
+                ".json_schema is None. Set json_schema to True to enable from_json() "
+                "without schema validation."
             )
         try:
             validate(obj, schema=cls.json_schema)
@@ -556,7 +556,10 @@ class JSONConfigMixin(BaseConfig):
     @staticmethod
     @delegating_parser(property=True)
     def parse_jsonpath_default(
-        value: List[DatumInContext], *, next, property: ConfigProperty,
+        value: List[DatumInContext],
+        *,
+        next,
+        property: ConfigProperty,
     ):
         if len(value) == 0:
             return ParseResult.NONE
@@ -648,7 +651,7 @@ class BaseCLIValue(ABC):
         elif len(values) > 1:
             values_found = ", ".join(f"{name} = {value!r}" for name, value in values)
             raise InvalidCLIUsageConfigError(
-                f"conflicting arguments, at most one can be specified of: "
+                "conflicting arguments, at most one can be specified of: "
                 f"{values_found}"
             )
         return values[0]
@@ -796,7 +799,10 @@ class CommandLineArgConfigMixin(BaseConfig):
 
 
 class Config(
-    CommandLineArgConfigMixin, EnvironmentConfigMixin, TOMLConfigMixin, BaseConfig,
+    CommandLineArgConfigMixin,
+    EnvironmentConfigMixin,
+    TOMLConfigMixin,
+    BaseConfig,
 ):
     is_abstract_config_cls = True
 

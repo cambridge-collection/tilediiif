@@ -15,9 +15,18 @@ from typing import Iterable, List, Tuple, Union
 import pyvips
 from docopt import docopt
 
-from tilediiif.core.config import BaseConfig, Config, ConfigProperty, EnvironmentConfigMixin
+from tilediiif.core.config import (
+    BaseConfig,
+    Config,
+    ConfigProperty,
+    EnvironmentConfigMixin,
+)
 from tilediiif.core.config.exceptions import ConfigError, ConfigValidationError
-from tilediiif.core.config.parsing import delegating_parser, enum_list_parser, simple_parser
+from tilediiif.core.config.parsing import (
+    delegating_parser,
+    enum_list_parser,
+    simple_parser,
+)
 from tilediiif.core.config.properties import (
     BoolConfigProperty,
     EnumConfigProperty,
@@ -358,8 +367,7 @@ class DZIConfig(Config):
 def validate_dzi_path(path: Union[str, Path]):
     if str(path).endswith("/"):
         raise ConfigValidationError(
-            "path ends with a /, but the path should identify a path under a "
-            "directory"
+            "path ends with a /, but the path should identify a path under a directory"
         )
 
 
@@ -394,7 +402,10 @@ class IOConfig(Config):
 
 class MetaConfig(EnvironmentConfigMixin, BaseConfig):
     property_definitions = [
-        PathConfigProperty("config_file", envar_name="DZI_TILES_CONFIG_FILE",),
+        PathConfigProperty(
+            "config_file",
+            envar_name="DZI_TILES_CONFIG_FILE",
+        ),
         BoolConfigProperty(
             "ignore_missing_config_file",
             default=False,
@@ -736,7 +747,7 @@ class ColourSourceNotAvailable(LookupError):
 def get_image_colour_source(vips_image: pyvips.Image):
     if VIPS_META_TILEDIIIF_COLOUR_SOURCE not in vips_image.get_fields():
         raise KeyError(
-            f"Unable to determine colour source: image has no metadata value for "
+            "Unable to determine colour source: image has no metadata value for "
             f"key {VIPS_META_TILEDIIIF_COLOUR_SOURCE!r}"
         )
     try:
@@ -759,7 +770,7 @@ class BaseColourSource(ABC):
     def get_image_colour_source(vips_image: pyvips.Image):
         if VIPS_META_TILEDIIIF_COLOUR_SOURCE not in vips_image.get_fields():
             raise ValueError(
-                f"Unable to determine colour source: image has no metadata value for "
+                "Unable to determine colour source: image has no metadata value for "
                 f"key {VIPS_META_TILEDIIIF_COLOUR_SOURCE!r}"
             )
         try:
@@ -887,7 +898,7 @@ class LoadColoursImageOperation:
             isinstance(cs, ColourSource) for cs in colour_sources
         ):
             raise ValueError(
-                f"colour_sources must contain one or more ColourSource objects, got: "
+                "colour_sources must contain one or more ColourSource objects, got: "
                 f"{self.colour_sources}"
             )
 
@@ -984,7 +995,7 @@ class ColourManagedImageLoader:
             if ColourConfig.input_external_profile_path not in config.values:
                 raise DZIGenerationError(
                     f"the {ColourSource.EXTERNAL_PROFILE.label!r} colour source is in "
-                    f"input_sources but no input_external_profile_path is specified"
+                    "input_sources but no input_external_profile_path is specified"
                 )
             try:
                 icc_profile = read_icc_profile(

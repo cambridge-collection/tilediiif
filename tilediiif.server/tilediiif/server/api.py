@@ -4,6 +4,11 @@ from pathlib import Path
 import falcon
 
 from tilediiif.core.config import ConfigError
+from tilediiif.core.templates import (
+    TemplateError,
+    get_image_path_renderer,
+    get_info_json_path_renderer,
+)
 from tilediiif.server.config import FileTransmissionType, ServerConfig
 from tilediiif.server.resources import (
     DirectFileTransmitter,
@@ -12,11 +17,6 @@ from tilediiif.server.resources import (
     IndirectFileTransmitter,
 )
 from tilediiif.server.uris import IIIF_IMAGE, IIIF_IMAGE_INFO, IIIF_IMAGE_INFO_BASE
-from tilediiif.core.templates import (
-    TemplateError,
-    get_image_path_renderer,
-    get_info_json_path_renderer,
-)
 
 CONFIG_PATH_ENVAR = "TILEDIIIF_SERVER_CONFIG"
 

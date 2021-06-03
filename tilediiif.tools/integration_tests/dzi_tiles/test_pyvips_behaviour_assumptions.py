@@ -1,9 +1,10 @@
 import struct
-
-from hypothesis import given, strategies as st
 from pathlib import Path
+
 import pytest
 import pyvips
+from hypothesis import given
+from hypothesis import strategies as st
 
 from tilediiif.tools.dzi_generation import VIPS_META_ICC_PROFILE
 

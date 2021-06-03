@@ -13,7 +13,8 @@ class IntConfigProperty(ConfigProperty):
         if validator is not None:
             _validator = all_validator(_validator, validator)
         super().__init__(
-            name, **{"parse": simple_parser(int), **kwargs, "validator": _validator},
+            name,
+            **{"parse": simple_parser(int), **kwargs, "validator": _validator},
         )
 
 

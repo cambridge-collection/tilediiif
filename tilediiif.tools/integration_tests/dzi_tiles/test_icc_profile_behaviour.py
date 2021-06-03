@@ -4,9 +4,8 @@ import struct
 import numpy as np
 import pytest
 import pyvips
-from hypothesis import given, example
+from hypothesis import example, given
 from hypothesis.strategies import integers, lists, sampled_from
-
 from integration_tests.data import IMAGE_DATA, PROFILE_SRGB_PATH, PROJECT_ROOT
 
 IMAGE_SUNSET_P3 = IMAGE_DATA / "Sunset-P3.jpg"
@@ -28,8 +27,10 @@ IMAGE_SUNSET_P3_AS_SSRGB_PERCEPTUAL_NOBPC = (
         pytest.param(
             "import-export",
             marks=pytest.mark.xfail(
-                reason="converting with icc_import() followed by icc_export() seems to "
-                "introduce inaccuracies"
+                reason=(
+                    "converting with icc_import() followed by icc_export() seems to "
+                    "introduce inaccuracies"
+                )
             ),
         ),
         "transform",

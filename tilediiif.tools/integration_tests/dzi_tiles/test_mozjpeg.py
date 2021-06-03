@@ -4,24 +4,26 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from integration_tests.data import TEST_IMG_PEARS_SRGB_EMBEDDED
 
-PEARS_SMALL = TEST_IMG_PEARS_SRGB_EMBEDDED['path']
+PEARS_SMALL = TEST_IMG_PEARS_SRGB_EMBEDDED["path"]
+
 
 class MozjpegSupport(enum.Enum):
-    ENABLED = 'enabled'
-    BROKEN = 'broken'
-    DISABLED = 'disabled'
+    ENABLED = "enabled"
+    BROKEN = "broken"
+    DISABLED = "disabled"
+
 
 try:
     EXPECT_MOZJPEG_SUPPORT = MozjpegSupport(
-        os.environ['EXPECT_MOZJPEG_SUPPORT'] or 'enabled')
+        os.environ["EXPECT_MOZJPEG_SUPPORT"] or "enabled"
+    )
 except KeyError:
     EXPECT_MOZJPEG_SUPPORT = MozjpegSupport.ENABLED
 except ValueError as e:
     raise ValueError(
-        'Invalid value for environment variable EXPECT_MOZJPEG_SUPPORT: '
+        "Invalid value for environment variable EXPECT_MOZJPEG_SUPPORT: "
         f'{os.environ["EXPECT_MOZJPEG_SUPPORT"]}, expected one of '
         f"{' or '.join(repr(x.value) for x in MozjpegSupport)}"
     ) from e
@@ -39,7 +41,7 @@ def cli_option_requiring_mozjpeg(request):
     return request.param
 
 
-@pytest.mark.skipif('EXPECT_MOZJPEG_SUPPORT == MozjpegSupport.ENABLED')
+@pytest.mark.skipif("EXPECT_MOZJPEG_SUPPORT == MozjpegSupport.ENABLED")
 def test_using_mozjpeg_options_without_mozjpeg_fails(
     dzi_path,
     cli_option_requiring_mozjpeg,
@@ -68,10 +70,8 @@ def test_using_mozjpeg_options_without_mozjpeg_fails(
         assert result.stdout == ""
         assert (
             "Error: DZI generation failed: JPEG compression options requiring mozjpeg "
-            "are enabled, but mozjpeg is not supported:" in result.stderr
-        )
-        assert f"• libjpeg supports param API: False" in result.stderr
-        assert (
-            f"• libvips supports libjpeg params: False"
+            "are enabled, but mozjpeg is not supported:"
             in result.stderr
         )
+        assert f"• libjpeg supports param API: False" in result.stderr
+        assert f"• libvips supports libjpeg params: False" in result.stderr

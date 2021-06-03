@@ -4,7 +4,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tilediiif.core.config.core import BaseConfig, ConfigParseError, ConfigValidationError
+from tilediiif.core.config.core import (
+    BaseConfig,
+    ConfigParseError,
+    ConfigValidationError,
+)
 from tilediiif.core.config.properties import (
     BoolConfigProperty,
     EnumConfigProperty,

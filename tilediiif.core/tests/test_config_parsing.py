@@ -50,8 +50,9 @@ def test_parse_bool_strict_rejects_invalid_values(value):
     with pytest.raises(ConfigParseError) as exc_info:
         parse_bool_strict(value)
 
-    assert str(exc_info.value) == (
-        f"boolean value must be 'true' or 'false', got: {value!r}"
+    assert (
+        str(exc_info.value)
+        == f"boolean value must be 'true' or 'false', got: {value!r}"
     )
 
 

@@ -7,7 +7,11 @@ from typing import TYPE_CHECKING, Any, Callable, List, Type, TypeVar, Union
 from tilediiif.core.config.exceptions import ConfigParseError
 
 if TYPE_CHECKING:
-    from tilediiif.core.config.core import ConfigProperty, DefaultParsers, NormalisedVariant
+    from tilediiif.core.config.core import (
+        ConfigProperty,
+        DefaultParsers,
+        NormalisedVariant,
+    )
 
 
 def simple_parser(parse_func: Callable[[Any], Any]):
