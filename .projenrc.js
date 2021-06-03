@@ -1,29 +1,10 @@
-const { python, ProjectType, Project, TextFile } = require('projen');
+const { python, ProjectType, TextFile } = require('projen');
+const { PROJEN_MARKER } = require('projen/common');
 const { TaskCategory } = require('projen/tasks');
+
 const TILEDIIIF_TOOLS_VERSION = '0.1.0';
 const TILEDIIIF_SERVER_VERSION = '0.1.0';
 const TILEDIIIF_CORE_VERSION = '0.1.0';
-
-const project = new Project({});
-project.gitignore.addPatterns('.python-version', '.idea');
-project.addTask('test', {
-  category: TaskCategory.TEST,
-  exec: `
-    cd tilediiif.core && poetry run pytest && cd - &&
-    cd tilediiif.tools && poetry run pytest && cd - &&
-    cd tilediiif.server && poetry run pytest
-  `,
-})
-project.addTask('build-docker-image', {
-  category: TaskCategory.BUILD,
-  exec: `
-  docker image build \\
-    --tag camdl/tilediiif.tools:${TILEDIIIF_TOOLS_VERSION} \\
-    --build-arg TILEDIIIF_TOOLS_VERSION=${TILEDIIIF_TOOLS_VERSION} \\
-    --build-arg TILEDIIIF_CORE_VERSION=${TILEDIIIF_CORE_VERSION} \\
-    --target tilediiif.tools .
-`,
-})
 
 const DEFAULT_POETRY_OPTIONS = {
   authors: [
@@ -32,7 +13,6 @@ const DEFAULT_POETRY_OPTIONS = {
   packages: [{include: 'tilediiif'}],
 }
 const DEFAULT_OPTIONS = {
-  parent: project,
   sample: false,
   pip: false,
   setuptools: false,
@@ -46,9 +26,78 @@ const DEFAULT_OPTIONS = {
   },
 }
 
+const PROJECT_DIR_NAMES = ['tilediiif.tools', 'tilediiif.server', 'tilediiif.core'];
+const PROJECT_PATHS = PROJECT_DIR_NAMES.join(' ');
+
+
+const rootProject = new python.PythonProject({
+  ...DEFAULT_OPTIONS,
+  outdir: '.',
+  name: 'root',
+  description: 'Internal Poetry config to hold development tools for tilediiif',
+  version: '0.0.0',
+  projectType: ProjectType.UNKNOWN,
+  pytest: false,
+
+  deps: [
+    "Python@^3.6.6",
+  ],
+  devDeps: [
+    "black@^21.5b2",
+    "flake8@^3.9.2",
+    "isort@^5.8.0",
+    "mypy@^0.812",
+  ],
+});
+rootProject.gitignore.addPatterns('.python-version', '.idea');
+rootProject.addTask('test', {
+  category: TaskCategory.TEST,
+  exec: PROJECT_DIR_NAMES.map(dir => `cd ${dir} && poetry run pytest`).join(' && cd - && '),
+})
+rootProject.addTask('build-docker-image', {
+  category: TaskCategory.BUILD,
+  exec: `
+  docker image build \\
+    --tag camdl/tilediiif.tools:${TILEDIIIF_TOOLS_VERSION} \\
+    --build-arg TILEDIIIF_TOOLS_VERSION=${TILEDIIIF_TOOLS_VERSION} \\
+    --build-arg TILEDIIIF_CORE_VERSION=${TILEDIIIF_CORE_VERSION} \\
+    --target tilediiif.tools .
+`,
+});
+rootProject.addTask('format-python-code', {
+  category: TaskCategory.MAINTAIN,
+  cwd: __dirname,
+  description: '(Re)format Python code using Black',
+  exec: `poetry run isort ${PROJECT_PATHS} ; poetry run black ${PROJECT_PATHS} ; poetry run flake8`
+});
+rootProject.addTask('typecheck-python-code', {
+  category: TaskCategory.MAINTAIN,
+  cwd: __dirname,
+  description: 'Check Python types',
+  exec: `poetry run mypy ${PROJECT_PATHS}`,
+});
+
+
+new TextFile(rootProject, '.flake8', {
+  lines: `\
+; ${PROJEN_MARKER}. To modify, edit .projenrc.js and run "npx projen".
+[flake8]
+max-line-length = 80
+select = C,E,F,W,B,B950
+ignore = E203, E501, W503
+exclude = .*,__*,dist
+`.split('\n')
+});
+
+const pyprojectToml = rootProject.tryFindObjectFile('pyproject.toml');
+pyprojectToml.addOverride('tool.black.experimental-string-processing', true);
+pyprojectToml.addOverride('tool.isort.profile', 'black');
+pyprojectToml.addOverride('tool.isort.multi_line_output', 3);
+
 
 const tilediiifCore = new python.PythonProject({
   ...DEFAULT_OPTIONS,
+  parent: rootProject,
   outdir: 'tilediiif.core',
   name: 'tilediiif.core',
   version: TILEDIIIF_CORE_VERSION,
@@ -69,6 +118,7 @@ tilediiifCorePyprojectToml.addOverride('tool.poetry.packages', [{include: 'tiled
 
 const tilediiifTools = new python.PythonProject({
   ...DEFAULT_OPTIONS,
+  parent: rootProject,
   outdir: 'tilediiif.tools',
   name: 'tilediiif.tools',
   version: TILEDIIIF_TOOLS_VERSION,
@@ -112,6 +162,7 @@ tilediiifToolsPyprojectToml.addOverride('tool.poetry.dev-dependencies.tilediiif\
 
 const tilediiifServer = new python.PythonProject({
   ...DEFAULT_OPTIONS,
+  parent: rootProject,
   outdir: 'tilediiif.server',
   name: 'tilediiif.server',
   version: TILEDIIIF_SERVER_VERSION,
@@ -129,4 +180,4 @@ const tilediiifServerPyprojectToml = tilediiifServer.tryFindObjectFile('pyprojec
 tilediiifServerPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.core', {path: '../tilediiif.core',  develop: true});
 
 
-project.synth();
+rootProject.synth();
