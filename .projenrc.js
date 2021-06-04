@@ -49,7 +49,7 @@ const rootProject = new python.PythonProject({
     "mypy@^0.812",
   ],
 });
-rootProject.gitignore.addPatterns('.python-version', '.idea');
+rootProject.gitignore.addPatterns('.python-version', '.idea', '*.iml');
 rootProject.addTask('test', {
   category: TaskCategory.TEST,
   exec: PROJECT_DIR_NAMES.map(dir => `cd ${dir} && poetry run pytest`).join(' && cd - && '),

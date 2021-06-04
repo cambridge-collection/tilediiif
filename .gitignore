@@ -4,6 +4,7 @@
 *.cover
 *.egg
 *.egg-info/
+*.iml
 *.log
 *.manifest
 *.mo
