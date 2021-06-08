@@ -79,4 +79,5 @@ venv/
 wheels/
 !/.projen/deps.json
 !/.projen/tasks.json
+!/package.json
 !/pyproject.toml
