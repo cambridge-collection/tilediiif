@@ -196,7 +196,7 @@ async function constructProject() {
   tilediiifServerPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.core', {path: '../tilediiif.core',  develop: true});
 
 
-  rootProject.gitignore.addPatterns('.python-version', '.idea', '*.iml');
+  rootProject.gitignore.addPatterns('.python-version', '.idea', '*.iml', '.vscode');
   rootProject.addTask('test', {
     category: TaskCategory.TEST,
     exec: PROJECT_DIR_NAMES.map(dir => `cd ${dir} && poetry run pytest`).join(' && cd - && '),

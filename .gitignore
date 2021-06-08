@@ -38,6 +38,7 @@
 .spyproject
 .tox/
 .venv
+.vscode
 .webassets-cache
 /poetry.toml
 /site
