@@ -1,0 +1,8 @@
+{
+  "version": "0.1.0",
+  "standard-version": {
+    "scripts": {
+      "precommit": "(cd .. && npx projen && git add .)"
+    }
+  }
+}

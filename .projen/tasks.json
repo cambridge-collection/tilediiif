@@ -73,6 +73,39 @@
         }
       ]
     },
+    "create-release-tilediiif.core": {
+      "name": "create-release-tilediiif.core",
+      "category": "20.release",
+      "description": "Generate a tagged release commit for tilediiif.core using standard-version",
+      "steps": [
+        {
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.core-v\""
+        }
+      ],
+      "cwd": "tilediiif.core"
+    },
+    "create-release-tilediiif.tools": {
+      "name": "create-release-tilediiif.tools",
+      "category": "20.release",
+      "description": "Generate a tagged release commit for tilediiif.tools using standard-version",
+      "steps": [
+        {
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.tools-v\""
+        }
+      ],
+      "cwd": "tilediiif.tools"
+    },
+    "create-release-tilediiif.server": {
+      "name": "create-release-tilediiif.server",
+      "category": "20.release",
+      "description": "Generate a tagged release commit for tilediiif.server using standard-version",
+      "steps": [
+        {
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.server-v\""
+        }
+      ],
+      "cwd": "tilediiif.server"
+    },
     "test": {
       "name": "test",
       "category": "10.test",
@@ -82,14 +115,15 @@
         }
       ]
     },
-    "build-docker-image": {
-      "name": "build-docker-image",
+    "build-release-docker-image-tilediiif.tools": {
+      "name": "build-release-docker-image-tilediiif.tools",
       "category": "00.build",
       "steps": [
         {
-          "exec": "\n  docker image build \\\n    --tag camdl/tilediiif.tools:0.1.0 \\\n    --build-arg TILEDIIIF_TOOLS_VERSION=0.1.0 \\\n    --build-arg TILEDIIIF_CORE_VERSION=0.1.0 \\\n    --target tilediiif.tools .\n"
+          "exec": "\n    docker image build \\\n      --label \"org.opencontainers.image.version=0.1.0\" \\\n      --label \"org.opencontainers.image.revision=$(git rev-parse HEAD)\" \\\n      --tag camdl/tilediiif.tools:0.1.0 \\\n      --build-arg TILEDIIIF_TOOLS_VERSION=0.1.0 \\\n      --build-arg TILEDIIIF_CORE_VERSION=0.1.0 \\\n      --target tilediiif.tools .\n  "
         }
-      ]
+      ],
+      "condition": "test \"$(git rev-parse HEAD)\" == \"$(git rev-parse tags/tilediiif.tools-v0.1.0^{commit})\""
     },
     "format-python-code": {
       "name": "format-python-code",
