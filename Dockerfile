@@ -151,6 +151,9 @@ RUN cd /opt/tilediiif/tilediiif.tools && poetry build
 FROM base as tilediiif.tools
 ARG TILEDIIIF_TOOLS_VERSION
 ARG TILEDIIIF_CORE_VERSION
+LABEL org.opencontainers.image.title="camdl/tilediiif.tools"
+LABEL org.opencontainers.image.source="https://github.com/cambridge-collection/tilediiif"
+
 COPY --from=build-tilediiif.tools-wheel \
     /opt/tilediiif/tilediiif.core/dist/tilediiif.core-${TILEDIIIF_CORE_VERSION}-py3-none-any.whl \
     /tmp/tilediiif.core-${TILEDIIIF_CORE_VERSION}-py3-none-any.whl
