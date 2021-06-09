@@ -1,4 +1,4 @@
-const { python, ProjectType, TextFile, JsonFile, Project } = require('projen');
+const { python, ProjectType, TextFile, JsonFile, Project, IniFile } = require('projen');
 const { PROJEN_MARKER } = require('projen/common');
 const { TaskCategory } = require('projen/tasks');
 const fsp = require('fs/promises');
@@ -26,9 +26,6 @@ const DEFAULT_OPTIONS = {
 
 const DEFAULT_VERSION = '0.1.0';
 
-const PROJECT_DIR_NAMES = ['tilediiif.tools', 'tilediiif.server', 'tilediiif.core'];
-const PROJECT_PATHS = PROJECT_DIR_NAMES.join(' ');
-
 async function getVersion(name) {
   const versionFilePath = path.join(name, 'package.json');
   let version;
@@ -52,14 +49,18 @@ class TilediiifProject extends python.PythonProject {
    * @param {string} name
    * @param {import('projen/python').PythonProjectOptions} options
    */
-  constructor(rootProject, name, options) {
+  constructor(rootProject, name, {testPackages, ...options}) {
     super({
       ...DEFAULT_OPTIONS,
       parent: rootProject,
       outdir: name,
       name,
+      moduleName: name,
       ...options,
     });
+    this.addDevDependency("mypy@^0.901");
+
+    this.testPackages = [...(testPackages || [])];
 
     const versionFile = this.tryFindObjectFile('package.json') || new JsonFile(this, 'package.json', {
       obj: {},
@@ -77,7 +78,18 @@ class TilediiifProject extends python.PythonProject {
       category: TaskCategory.RELEASE,
       cwd: name,
       description: `Generate a tagged release commit for ${name} using standard-version`,
+      condition: 'test "$(git status --porcelain)" == ""',
       exec: `npx standard-version --commit-all --path . --tag-prefix "${name}-v"`
+    });
+
+    rootProject.addTask(`typecheck-python-${this.moduleName}`, {
+      category: TaskCategory.MAINTAIN,
+      description: `Typecheck ${this.moduleName} with mypy`,
+      exec: `\\
+        cd "${this.outdir}" \\
+        && poetry run mypy --namespace-packages \\
+          -p ${this.moduleName} \\
+          ${this.testPackages.map(p => `-p ${p}`).join(' ')}`
     });
   }
 
@@ -108,7 +120,6 @@ async function constructProject() {
       "black@^21.5b2",
       "flake8@^3.9.2",
       "isort@^5.8.0",
-      "mypy@^0.812",
     ],
   });
 
@@ -129,6 +140,7 @@ async function constructProject() {
   pyprojectToml.addOverride('tool.isort.multi_line_output', 3);
 
   const tilediiifCore = await TilediiifProject.create(rootProject, 'tilediiif.core', {
+    testPackages: ['tests'],
     deps: [
       "docopt@^0.6.2",
       "jsonpath-rw@^1.4",
@@ -138,6 +150,9 @@ async function constructProject() {
     devDeps: [
       "pytest@^6.2.4",
       "hypothesis@^4.36",
+      "types-pkg_resources@^0.1.2",
+      "types-pytz@^0.1.0",
+      "types-toml@^0.1.1",
     ],
   });
   const tilediiifCorePyprojectToml = tilediiifCore.tryFindObjectFile(`pyproject.toml`);
@@ -145,6 +160,7 @@ async function constructProject() {
 
 
   const tilediiifTools = await TilediiifProject.create(rootProject, 'tilediiif.tools', {
+    testPackages: ['tests', 'integration_tests'],
     poetryOptions: {
       ...DEFAULT_POETRY_OPTIONS,
       scripts: {
@@ -183,6 +199,7 @@ async function constructProject() {
 
 
   const tilediiifServer = await TilediiifProject.create(rootProject, 'tilediiif.server', {
+    testPackages: ['tests'],
     deps: [
       "python@^3.7",
       "falcon@^2.0",
@@ -195,11 +212,13 @@ async function constructProject() {
   const tilediiifServerPyprojectToml = tilediiifServer.tryFindObjectFile('pyproject.toml');
   tilediiifServerPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.core', {path: '../tilediiif.core',  develop: true});
 
+  const pythonProjects = [tilediiifCore, tilediiifTools, tilediiifServer];
+  const pythonProjectPaths = pythonProjects.map(proj => proj.outdir).join(' ');
 
   rootProject.gitignore.addPatterns('.python-version', '.idea', '*.iml', '.vscode');
   rootProject.addTask('test', {
     category: TaskCategory.TEST,
-    exec: PROJECT_DIR_NAMES.map(dir => `cd ${dir} && poetry run pytest`).join(' && cd - && '),
+    exec: pythonProjects.map(proj => `cd ${proj.outdir} && poetry run pytest`).join(' && cd - && '),
   })
   rootProject.addTask('build-release-docker-image-tilediiif.tools', {
     category: TaskCategory.BUILD,
@@ -218,13 +237,22 @@ async function constructProject() {
     category: TaskCategory.MAINTAIN,
     cwd: __dirname,
     description: '(Re)format Python code using Black',
-    exec: `poetry run isort ${PROJECT_PATHS} ; poetry run black ${PROJECT_PATHS} ; poetry run flake8`
+    exec: `poetry run isort ${pythonProjectPaths} ; poetry run black ${pythonProjectPaths} ; poetry run flake8`
   });
-  rootProject.addTask('typecheck-python-code', {
+  // pythonProjects.forEach(proj => );
+  const typecheckTask = rootProject.addTask('typecheck-python', {
     category: TaskCategory.MAINTAIN,
     cwd: __dirname,
     description: 'Check Python types',
-    exec: `poetry run mypy ${PROJECT_PATHS}`,
+  });
+  pythonProjects.forEach(proj => typecheckTask.spawn(rootProject.tasks.tryFind(`typecheck-python-${proj.moduleName}`)));
+
+  new IniFile(rootProject, 'mypy.ini', {
+    obj: {
+      mypy: {
+        exclude: '/dist/'
+      }
+    }
   });
 
   return rootProject;
