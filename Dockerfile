@@ -7,7 +7,7 @@ ARG TILEDIIIF_CORE_VERSION
 ARG _MOZJPEG_VARIANT_ENABLED=${VIPS_USE_MOZJPEG:+with-mozjpeg}
 ARG _MOZJPEG_VARIANT=${_MOZJPEG_VARIANT_ENABLED:-without-mozjpeg}
 
-FROM python:3.9-slim-buster as python-base
+FROM python:3.9-slim-buster AS python-base
 
 FROM debian:buster-slim AS build-mozjpeg
 ARG MOZJPEG_VERSION
@@ -140,7 +140,7 @@ RUN rm -rf /opt/mozjpeg /etc/ld.so.conf.d/00.mozjpeg.conf \
     && ldconfig
 
 
-FROM python-base as build-tilediiif.tools-wheel
+FROM python-base AS build-tilediiif.tools-wheel
 COPY ./tilediiif.core /opt/tilediiif/tilediiif.core
 COPY ./tilediiif.tools /opt/tilediiif/tilediiif.tools
 RUN pip install poetry
@@ -148,7 +148,7 @@ RUN cd /opt/tilediiif/tilediiif.core && poetry build
 RUN cd /opt/tilediiif/tilediiif.tools && poetry build
 
 
-FROM base as tilediiif.tools
+FROM base AS tilediiif.tools
 ARG TILEDIIIF_TOOLS_VERSION
 ARG TILEDIIIF_CORE_VERSION
 LABEL org.opencontainers.image.title="camdl/tilediiif.tools"
