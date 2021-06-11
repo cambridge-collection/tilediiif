@@ -165,3 +165,9 @@ RUN pip install \
     /tmp/tilediiif.tools-${TILEDIIIF_TOOLS_VERSION}-py3-none-any.whl \
     && rm /tmp/tilediiif.core-${TILEDIIIF_CORE_VERSION}-py3-none-any.whl \
           /tmp/tilediiif.tools-${TILEDIIIF_TOOLS_VERSION}-py3-none-any.whl
+
+
+FROM tilediiif.tools AS tilediiif.tools-parallel
+RUN apt-get update \
+    && apt-get install -y parallel \
+    && rm -rf /var/lib/apt/lists/*
