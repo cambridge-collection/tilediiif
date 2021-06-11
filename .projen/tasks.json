@@ -82,7 +82,18 @@
           "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.core-v\""
         }
       ],
+      "condition": "test \"$(git status --porcelain)\" == \"\"",
       "cwd": "tilediiif.core"
+    },
+    "typecheck-python-tilediiif.core": {
+      "name": "typecheck-python-tilediiif.core",
+      "category": "30.maintain",
+      "description": "Typecheck tilediiif.core with mypy",
+      "steps": [
+        {
+          "exec": "\\\n        cd \"/Users/hal/Documents/projects/cudl/tilediiif/tilediiif.core\" \\\n        && poetry run mypy --namespace-packages \\\n          -p tilediiif.core \\\n          -p tests"
+        }
+      ]
     },
     "create-release-tilediiif.tools": {
       "name": "create-release-tilediiif.tools",
@@ -93,7 +104,18 @@
           "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.tools-v\""
         }
       ],
+      "condition": "test \"$(git status --porcelain)\" == \"\"",
       "cwd": "tilediiif.tools"
+    },
+    "typecheck-python-tilediiif.tools": {
+      "name": "typecheck-python-tilediiif.tools",
+      "category": "30.maintain",
+      "description": "Typecheck tilediiif.tools with mypy",
+      "steps": [
+        {
+          "exec": "\\\n        cd \"/Users/hal/Documents/projects/cudl/tilediiif/tilediiif.tools\" \\\n        && poetry run mypy --namespace-packages \\\n          -p tilediiif.tools \\\n          -p tests -p integration_tests"
+        }
+      ]
     },
     "create-release-tilediiif.server": {
       "name": "create-release-tilediiif.server",
@@ -104,14 +126,25 @@
           "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.server-v\""
         }
       ],
+      "condition": "test \"$(git status --porcelain)\" == \"\"",
       "cwd": "tilediiif.server"
+    },
+    "typecheck-python-tilediiif.server": {
+      "name": "typecheck-python-tilediiif.server",
+      "category": "30.maintain",
+      "description": "Typecheck tilediiif.server with mypy",
+      "steps": [
+        {
+          "exec": "\\\n        cd \"/Users/hal/Documents/projects/cudl/tilediiif/tilediiif.server\" \\\n        && poetry run mypy --namespace-packages \\\n          -p tilediiif.server \\\n          -p tests"
+        }
+      ]
     },
     "test": {
       "name": "test",
       "category": "10.test",
       "steps": [
         {
-          "exec": "cd tilediiif.tools && poetry run pytest && cd - && cd tilediiif.server && poetry run pytest && cd - && cd tilediiif.core && poetry run pytest"
+          "exec": "cd /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.core && poetry run pytest && cd - && cd /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.tools && poetry run pytest && cd - && cd /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.server && poetry run pytest"
         }
       ]
     },
@@ -120,10 +153,10 @@
       "category": "00.build",
       "steps": [
         {
-          "exec": "\n    docker image build \\\n      --label \"org.opencontainers.image.version=0.1.0\" \\\n      --label \"org.opencontainers.image.revision=$(git rev-parse HEAD)\" \\\n      --tag camdl/tilediiif.tools:0.1.0 \\\n      --build-arg TILEDIIIF_TOOLS_VERSION=0.1.0 \\\n      --build-arg TILEDIIIF_CORE_VERSION=0.1.0 \\\n      --target tilediiif.tools .\n  "
+          "exec": "\n    docker image build \\\n      --label \"org.opencontainers.image.version=0.1.1\" \\\n      --label \"org.opencontainers.image.revision=$(git rev-parse HEAD)\" \\\n      --tag camdl/tilediiif.tools:0.1.1 \\\n      --build-arg TILEDIIIF_TOOLS_VERSION=0.1.1 \\\n      --build-arg TILEDIIIF_CORE_VERSION=0.1.0 \\\n      --target tilediiif.tools .\n  "
         }
       ],
-      "condition": "test \"$(git rev-parse HEAD)\" == \"$(git rev-parse tags/tilediiif.tools-v0.1.0^{commit})\""
+      "condition": "test \"$(git rev-parse HEAD)\" == \"$(git rev-parse tags/tilediiif.tools-v0.1.1^{commit})\""
     },
     "format-python-code": {
       "name": "format-python-code",
@@ -131,18 +164,24 @@
       "description": "(Re)format Python code using Black",
       "steps": [
         {
-          "exec": "poetry run isort tilediiif.tools tilediiif.server tilediiif.core ; poetry run black tilediiif.tools tilediiif.server tilediiif.core ; poetry run flake8"
+          "exec": "poetry run isort /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.core /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.tools /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.server ; poetry run black /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.core /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.tools /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.server ; poetry run flake8"
         }
       ],
       "cwd": "/Users/hal/Documents/projects/cudl/tilediiif"
     },
-    "typecheck-python-code": {
-      "name": "typecheck-python-code",
+    "typecheck-python": {
+      "name": "typecheck-python",
       "category": "30.maintain",
       "description": "Check Python types",
       "steps": [
         {
-          "exec": "poetry run mypy tilediiif.tools tilediiif.server tilediiif.core"
+          "spawn": "typecheck-python-tilediiif.core"
+        },
+        {
+          "spawn": "typecheck-python-tilediiif.tools"
+        },
+        {
+          "spawn": "typecheck-python-tilediiif.server"
         }
       ],
       "cwd": "/Users/hal/Documents/projects/cudl/tilediiif"

@@ -1,6 +1,11 @@
 {
   "dependencies": [
     {
+      "name": "mypy",
+      "version": "^0.901",
+      "type": "devenv"
+    },
+    {
       "name": "pytest",
       "version": "^6.2.4",
       "type": "devenv"

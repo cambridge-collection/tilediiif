@@ -6,6 +6,11 @@
       "type": "devenv"
     },
     {
+      "name": "mypy",
+      "version": "^0.901",
+      "type": "devenv"
+    },
+    {
       "name": "pytest",
       "version": "^6.2.4",
       "type": "devenv"
@@ -13,6 +18,21 @@
     {
       "name": "pytest",
       "version": "6.2.1",
+      "type": "devenv"
+    },
+    {
+      "name": "types-pkg_resources",
+      "version": "^0.1.2",
+      "type": "devenv"
+    },
+    {
+      "name": "types-pytz",
+      "version": "^0.1.0",
+      "type": "devenv"
+    },
+    {
+      "name": "types-toml",
+      "version": "^0.1.1",
       "type": "devenv"
     },
     {

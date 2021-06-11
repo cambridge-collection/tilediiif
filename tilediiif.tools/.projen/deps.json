@@ -36,6 +36,11 @@
       "type": "devenv"
     },
     {
+      "name": "mypy",
+      "version": "^0.901",
+      "type": "devenv"
+    },
+    {
       "name": "numpy",
       "version": "^1.17",
       "type": "devenv"

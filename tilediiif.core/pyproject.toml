@@ -23,4 +23,8 @@ readme = "README.md"
 
   [tool.poetry.dev-dependencies]
   hypothesis = "^4.36"
+  mypy = "^0.901"
   pytest = "6.2.1"
+  types-pkg_resources = "^0.1.2"
+  types-pytz = "^0.1.0"
+  types-toml = "^0.1.1"
