@@ -84,4 +84,5 @@ wheels/
 !/.flake8
 !/.projen/deps.json
 !/.projen/tasks.json
+!/mypy.ini
 !/pyproject.toml

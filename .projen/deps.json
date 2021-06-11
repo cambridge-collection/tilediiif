@@ -16,11 +16,6 @@
       "type": "devenv"
     },
     {
-      "name": "mypy",
-      "version": "^0.812",
-      "type": "devenv"
-    },
-    {
       "name": "python",
       "version": "^3.6",
       "type": "runtime"
