@@ -148,15 +148,89 @@
         }
       ]
     },
-    "build-release-docker-image-tilediiif.tools": {
-      "name": "build-release-docker-image-tilediiif.tools",
+    "ensure-checkout-is-releaseable": {
+      "name": "ensure-checkout-is-releaseable",
+      "category": "20.release",
+      "description": "fail with an error if the working copy is not a clean checkout of a release tag",
+      "steps": [
+        {
+          "exec": "      test \"$(git rev-parse HEAD)\" == \"$(git rev-parse tags/tilediiif.tools-v0.1.0^{commit})\" \\\n        && test \"$(git status --porcelain)\" == \"\" \\\n        || (echo \"Error: the git checkout must be clean and tagged\" 1>&2; exit 1)\n    "
+        }
+      ]
+    },
+    "build-release-docker-images:tilediiif.tools:slim": {
+      "name": "build-release-docker-images:tilediiif.tools:slim",
       "category": "00.build",
       "steps": [
         {
-          "exec": "\n    docker image build \\\n      --label \"org.opencontainers.image.version=0.1.1\" \\\n      --label \"org.opencontainers.image.revision=$(git rev-parse HEAD)\" \\\n      --tag camdl/tilediiif.tools:0.1.1 \\\n      --build-arg TILEDIIIF_TOOLS_VERSION=0.1.1 \\\n      --build-arg TILEDIIIF_CORE_VERSION=0.1.0 \\\n      --target tilediiif.tools .\n  "
+          "spawn": "ensure-checkout-is-releaseable"
+        },
+        {
+          "exec": "        docker image build \\\n          --label \"org.opencontainers.image.version=0.1.0-slim\" \\\n          --label \"org.opencontainers.image.revision=$(git rev-parse HEAD)\" \\\n          --tag camdl/tilediiif.tools:0.1.0-slim \\\n          --build-arg TILEDIIIF_TOOLS_VERSION=0.1.0 \\\n          --build-arg TILEDIIIF_CORE_VERSION=0.1.0 \\\n          --target \"tilediiif.tools\" .\n      "
         }
       ],
-      "condition": "test \"$(git rev-parse HEAD)\" == \"$(git rev-parse tags/tilediiif.tools-v0.1.1^{commit})\""
+      "condition": "! docker image inspect camdl/tilediiif.tools:0.1.0-slim > /dev/null 2>&1"
+    },
+    "build-release-docker-images:tilediiif.tools:default": {
+      "name": "build-release-docker-images:tilediiif.tools:default",
+      "category": "00.build",
+      "steps": [
+        {
+          "spawn": "ensure-checkout-is-releaseable"
+        },
+        {
+          "exec": "        docker image build \\\n          --label \"org.opencontainers.image.version=0.1.0\" \\\n          --label \"org.opencontainers.image.revision=$(git rev-parse HEAD)\" \\\n          --tag camdl/tilediiif.tools:0.1.0 \\\n          --build-arg TILEDIIIF_TOOLS_VERSION=0.1.0 \\\n          --build-arg TILEDIIIF_CORE_VERSION=0.1.0 \\\n          --target \"tilediiif.tools-parallel\" .\n      "
+        }
+      ],
+      "condition": "! docker image inspect camdl/tilediiif.tools:0.1.0 > /dev/null 2>&1"
+    },
+    "build-release-docker-images:tilediiif.tools": {
+      "name": "build-release-docker-images:tilediiif.tools",
+      "category": "00.build",
+      "steps": [
+        {
+          "spawn": "build-release-docker-images:tilediiif.tools:default"
+        },
+        {
+          "spawn": "build-release-docker-images:tilediiif.tools:slim"
+        }
+      ]
+    },
+    "push-release-docker-images:tilediiif.tools:slim": {
+      "name": "push-release-docker-images:tilediiif.tools:slim",
+      "category": "20.release",
+      "steps": [
+        {
+          "spawn": "build-release-docker-images:tilediiif.tools:slim"
+        },
+        {
+          "exec": "docker image push camdl/tilediiif.tools:0.1.0-slim"
+        }
+      ]
+    },
+    "push-release-docker-images:tilediiif.tools:default": {
+      "name": "push-release-docker-images:tilediiif.tools:default",
+      "category": "20.release",
+      "steps": [
+        {
+          "spawn": "build-release-docker-images:tilediiif.tools:default"
+        },
+        {
+          "exec": "docker image push camdl/tilediiif.tools:0.1.0"
+        }
+      ]
+    },
+    "push-release-docker-images:tilediiif.tools": {
+      "name": "push-release-docker-images:tilediiif.tools",
+      "category": "20.release",
+      "steps": [
+        {
+          "spawn": "push-release-docker-images:tilediiif.tools:default"
+        },
+        {
+          "spawn": "push-release-docker-images:tilediiif.tools:slim"
+        }
+      ]
     },
     "format-python-code": {
       "name": "format-python-code",
