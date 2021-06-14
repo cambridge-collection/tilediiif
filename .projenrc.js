@@ -194,8 +194,17 @@ async function constructProject() {
       "numpy@^1.17",
     ],
   });
+
   const tilediiifToolsPyprojectToml = tilediiifTools.tryFindObjectFile('pyproject.toml');
   tilediiifToolsPyprojectToml.addOverride('tool.poetry.dev-dependencies.tilediiif\\.core', {path: '../tilediiif.core', develop: true});
+
+  const tilediiifToolsVersionModule = new TextFile(tilediiifTools, 'tilediiif/tools/version.py', {
+    lines: [
+      `# ${PROJEN_MARKER}`,
+      `__version__ = "${tilediiifTools.version}"`
+    ],
+    editGitignore: false,
+  });
 
 
   const tilediiifServer = await TilediiifProject.create(rootProject, 'tilediiif.server', {
