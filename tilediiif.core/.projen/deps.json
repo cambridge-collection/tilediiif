@@ -16,11 +16,6 @@
       "type": "devenv"
     },
     {
-      "name": "pytest",
-      "version": "6.2.1",
-      "type": "devenv"
-    },
-    {
       "name": "types-pkg_resources",
       "version": "^0.1.2",
       "type": "devenv"

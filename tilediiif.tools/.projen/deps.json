@@ -61,11 +61,6 @@
       "type": "devenv"
     },
     {
-      "name": "pytest",
-      "version": "6.2.1",
-      "type": "devenv"
-    },
-    {
       "name": "toml",
       "version": "^0.10.0",
       "type": "devenv"
@@ -83,11 +78,6 @@
     {
       "name": "docopt",
       "version": "^0.6.2",
-      "type": "runtime"
-    },
-    {
-      "name": "python",
-      "version": "^3.6",
       "type": "runtime"
     },
     {
