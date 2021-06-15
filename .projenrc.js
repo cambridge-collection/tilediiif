@@ -1,8 +1,9 @@
 const { python, ProjectType, TextFile, JsonFile, Project, IniFile } = require('projen');
-const { PROJEN_MARKER } = require('projen/common');
-const { TaskCategory } = require('projen/tasks');
+const { PROJEN_MARKER } = require('projen/lib/common');
+const { TaskCategory } = require('projen/lib/tasks');
 const fsp = require('fs/promises');
 const path = require('path');
+const { DependencyType } = require('projen/lib/deps');
 
 const DEFAULT_POETRY_OPTIONS = {
   authors: [
@@ -49,7 +50,7 @@ class TilediiifProject extends python.PythonProject {
    * @param {string} name
    * @param {import('projen/python').PythonProjectOptions} options
    */
-  constructor(rootProject, name, {testPackages, ...options}) {
+  constructor(rootProject, name, {testPackages, deps, devDeps, ...options}) {
     super({
       ...DEFAULT_OPTIONS,
       parent: rootProject,
@@ -58,6 +59,12 @@ class TilediiifProject extends python.PythonProject {
       moduleName: name,
       ...options,
     });
+
+    // The Python project defines several dependencies automatically which we
+    // need to override. e.g. it depends on Python ^3.6, but black requires
+    // a slightly more specific version of 3.6, which fails unless we replace
+    // the default Python@^3.6 dep.
+    this._overrideDependencies({deps, devDeps});
     this.addDevDependency("mypy@^0.901");
 
     this.testPackages = [...(testPackages || [])];
@@ -90,6 +97,21 @@ class TilediiifProject extends python.PythonProject {
         && poetry run mypy --namespace-packages \\
           -p ${this.moduleName} \\
           ${this.testPackages.map(p => `-p ${p}`).join(' ')}`
+    });
+  }
+
+  _overrideDependencies({deps, devDeps}) {
+    [
+      ...(deps || []).map(d => [d, DependencyType.RUNTIME]),
+      ...(devDeps || []).map(d => [d, DependencyType.DEVENV]),
+    ].forEach(([depSpec, type]) => {
+      const [depName] = depSpec.split('@', 1);
+      // Remove conflicting dependencies defined by the default Python project
+      try {
+        this.deps.getDependency(depName, type);
+        this.deps.removeDependency(depName, type);
+      } catch(e) {}
+      this.deps.addDependency(depSpec, type);
     });
   }
 
