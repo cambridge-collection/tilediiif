@@ -24,4 +24,4 @@ readme = "README.md"
 
   [tool.poetry.dev-dependencies]
   mypy = "^0.901"
-  pytest = "6.2.1"
+  pytest = "^6.2.4"
