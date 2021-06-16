@@ -60,6 +60,8 @@ class TilediiifProject extends python.PythonProject {
       ...options,
     });
 
+    this.relativeOutdir = path.relative(rootProject.outdir, this.outdir);
+
     // The Python project defines several dependencies automatically which we
     // need to override. e.g. it depends on Python ^3.6, but black requires
     // a slightly more specific version of 3.6, which fails unless we replace
@@ -93,7 +95,7 @@ class TilediiifProject extends python.PythonProject {
       category: TaskCategory.MAINTAIN,
       description: `Typecheck ${this.moduleName} with mypy`,
       exec: `\\
-        cd "${this.outdir}" \\
+        cd "${this.relativeOutdir}" \\
         && poetry run mypy --namespace-packages \\
           -p ${this.moduleName} \\
           ${this.testPackages.map(p => `-p ${p}`).join(' ')}`
@@ -244,12 +246,12 @@ async function constructProject() {
   tilediiifServerPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.core', {path: '../tilediiif.core',  develop: true});
 
   const pythonProjects = [tilediiifCore, tilediiifTools, tilediiifServer];
-  const pythonProjectPaths = pythonProjects.map(proj => proj.outdir).join(' ');
+  const pythonProjectPaths = pythonProjects.map(proj => proj.relativeOutdir).join(' ');
 
   rootProject.gitignore.addPatterns('.python-version', '.idea', '*.iml', '.vscode');
   rootProject.addTask('test', {
     category: TaskCategory.TEST,
-    exec: pythonProjects.map(proj => `cd ${proj.outdir} && poetry run pytest`).join(' && cd - && '),
+    exec: pythonProjects.map(proj => `cd ${proj.relativeOutdir} && poetry run pytest`).join(' && cd - && '),
   })
 
   const ensureReleaseable = rootProject.addTask('ensure-checkout-is-releaseable', {
