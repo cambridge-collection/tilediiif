@@ -129,9 +129,16 @@ ENV VIPS_VERSION=$VIPS_VERSION \
 
 
 FROM base AS tools-dev
-RUN apt-get update && apt-get install -y build-essential \
-    && pip install poetry
-
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    # required to install node from nodesource
+    curl
+# node & npm required for npx projen ... commands
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
+RUN apt-get install -y nodejs
+# not required, but speeds up npx projen ... commands
+RUN npm install -g projen
+RUN pip install poetry
 
 # An image in which vips was built with mozjpeg, but mozjpeg is not available at runtime, so vips
 # will blow up when trying to do things requiring mozjpeg.
@@ -140,31 +147,48 @@ RUN rm -rf /opt/mozjpeg /etc/ld.so.conf.d/00.mozjpeg.conf \
     && ldconfig
 
 
-FROM python-base AS build-tilediiif.tools-wheel
-COPY ./tilediiif.core /opt/tilediiif/tilediiif.core
-COPY ./tilediiif.tools /opt/tilediiif/tilediiif.tools
-RUN pip install poetry
-RUN cd /opt/tilediiif/tilediiif.core && poetry build
-RUN cd /opt/tilediiif/tilediiif.tools && poetry build
+FROM python-base AS build-tilediiif-wheel-base
+RUN apt-get update && apt-get install -y git && pip install poetry
+WORKDIR /tmp/build-tilediiif/
+COPY .git tilediiif.git
+RUN git init tilediiif && cd tilediiif && git remote add origin ../tilediiif.git
+WORKDIR /tmp/build-tilediiif/tilediiif
+
+
+FROM build-tilediiif-wheel-base AS build-tilediiif.tools-wheel
+ARG TILEDIIIF_TOOLS_SHA
+RUN git fetch origin && git reset --hard "${TILEDIIIF_TOOLS_SHA}"
+RUN cd tilediiif.tools \
+    && poetry build \
+    && mkdir /tmp/wheels \
+    && cp dist/tilediiif.tools-*.whl /tmp/wheels/
+
+
+FROM build-tilediiif-wheel-base AS build-tilediiif.core-wheel
+ARG TILEDIIIF_CORE_SHA
+RUN git fetch origin && git reset --hard "${TILEDIIIF_CORE_SHA}"
+RUN cd tilediiif.core \
+    && poetry build \
+    && mkdir /tmp/wheels \
+    && cp dist/tilediiif.core-*.whl /tmp/wheels/
 
 
 FROM base AS tilediiif.tools
-ARG TILEDIIIF_TOOLS_VERSION
-ARG TILEDIIIF_CORE_VERSION
+ARG TILEDIIIF_TOOLS_SHA
+ARG TILEDIIIF_CORE_SHA
 LABEL org.opencontainers.image.title="camdl/tilediiif.tools"
 LABEL org.opencontainers.image.source="https://github.com/cambridge-collection/tilediiif"
 
 COPY --from=build-tilediiif.tools-wheel \
-    /opt/tilediiif/tilediiif.core/dist/tilediiif.core-${TILEDIIIF_CORE_VERSION}-py3-none-any.whl \
-    /tmp/tilediiif.core-${TILEDIIIF_CORE_VERSION}-py3-none-any.whl
-COPY --from=build-tilediiif.tools-wheel \
-    /opt/tilediiif/tilediiif.tools/dist/tilediiif.tools-${TILEDIIIF_TOOLS_VERSION}-py3-none-any.whl \
-    /tmp/tilediiif.tools-${TILEDIIIF_TOOLS_VERSION}-py3-none-any.whl
+    /tmp/wheels/* \
+    /tmp/wheels/
+COPY --from=build-tilediiif.core-wheel \
+    /tmp/wheels/* \
+    /tmp/wheels/
 RUN pip install \
-    /tmp/tilediiif.core-${TILEDIIIF_CORE_VERSION}-py3-none-any.whl \
-    /tmp/tilediiif.tools-${TILEDIIIF_TOOLS_VERSION}-py3-none-any.whl \
-    && rm /tmp/tilediiif.core-${TILEDIIIF_CORE_VERSION}-py3-none-any.whl \
-          /tmp/tilediiif.tools-${TILEDIIIF_TOOLS_VERSION}-py3-none-any.whl
+    /tmp/wheels/tilediiif.core-*.whl \
+    /tmp/wheels/tilediiif.tools-*.whl \
+    && rm -rf /tmp/wheels
 
 
 FROM tilediiif.tools AS tilediiif.tools-parallel
