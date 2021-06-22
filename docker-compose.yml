@@ -1,6 +1,17 @@
 version: "3.8"
 
 services:
+    ci:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: tools-dev
+        volumes:
+            - .:/opt/tilediiif
+            - venv-ci:/root/.cache/pypoetry/virtualenvs
+        working_dir: /opt/tilediiif
+        command: npx projen test
+
     tools-dev:
         build:
             context: .
@@ -43,7 +54,8 @@ services:
             EXPECT_MOZJPEG_SUPPORT: disabled
         command: sh -c "poetry install && poetry run pytest -vv integration_tests/dzi_tiles/test_mozjpeg.py"
 
-volumes: 
+volumes:
+    venv-ci:
     venv-tools-dev:
     venv-tools-dev-with-broken-mozjpeg:
     venv-tools-dev-without-mozjpeg:
