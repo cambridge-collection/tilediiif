@@ -1,9 +1,12 @@
-const { python, ProjectType, TextFile, JsonFile, Project, IniFile } = require('projen');
+const { python, ProjectType, TextFile, TextFileOptions, JsonFile, Project, IniFile } = require('projen');
 const { PROJEN_MARKER } = require('projen/lib/common');
 const { TaskCategory } = require('projen/lib/tasks');
 const fsp = require('fs/promises');
 const path = require('path');
 const { DependencyType } = require('projen/lib/deps');
+const { JobPermission } = require('projen/lib/github/workflows-model');
+const { Component } = require('projen/lib/component');
+const { PythonProject } = require('projen/lib/python');
 
 const DEFAULT_POETRY_OPTIONS = {
   authors: [
@@ -43,9 +46,112 @@ async function getVersion(name) {
   return version;
 }
 
-class TilediiifProject extends python.PythonProject {
+class RootProject extends Project {
+  constructor(options) {
+    super(options);
+
+    this.gitignore.addPatterns('.python-version', '.idea', '*.iml', '.vscode');
+
+    this.testTask = this.addTask('test', {
+      category: TaskCategory.TEST,
+      description: 'Run tests for tilediiif.* packages.'
+    });
+    this.typecheckTask = this.addTask('typecheck-python', {
+      category: TaskCategory.MAINTAIN,
+      description: 'Check Python types for tilediiif.* packages.',
+    });
+    this.formatPythonTask = this.addTask('format-python-code', {
+      category: TaskCategory.MAINTAIN,
+      description: 'Format Python code of tilediiif.* packages.',
+    });
+  }
+}
+
+/**
+ * Causes `poetry install` to be run when synthesizing a Poetry Python project.
+ *
+ * By default only `poetry update` is run, which doesn't make the project's
+ * script commands available for execution in a shell.
+ */
+class PoetryInstallAction extends Component {
   /**
-   *
+   * @param {PythonProject} project
+   */
+  constructor(project) {
+    super(project);
+    const installTask = project.tasks.tryFind('install');
+    if(!installTask) {
+      throw new Error(`project has no 'install' task`);
+    }
+
+    installTask.exec('poetry install');
+  }
+}
+
+class StandardVersionPackageJson extends Component {
+  constructor(project, {directoryPath, version}) {
+    super(project);
+    const packageJsonPath = path.join(directoryPath, 'package.json');
+    const projenRootPath = path.relative(directoryPath, '.');
+    const versionFile = project.tryFindObjectFile(packageJsonPath) || new JsonFile(project, packageJsonPath, {
+      obj: {},
+      readonly: false,
+    });
+    versionFile.addOverride('version', version);
+    versionFile.addOverride('standard-version', {
+      scripts: {
+        // re-synth projen to update things referencing version numbers
+        postchangelog: `(cd ${projenRootPath} && npx projen && git add .)`
+      }
+    });
+  }
+}
+
+/**
+ * Maintain a semver version number for a directory.
+ *
+ * The version number is stored in a package.json file, and a summary of version
+ * changes in a CHANGELOG.md. Both are automatically updated based on commits
+ * touching the directory which follow the conventional-commits format.
+ *
+ * A create-release:<name> projen task invokes standard-version to update the
+ * package.json and CHANGELOG.md.
+ */
+class StandardVersionedDirectory extends Component {
+  /**
+   * @param {string} directoryPath
+   * @returns {Promise<string>}
+   */
+  static async getVersion(directoryPath) {
+    return await getVersion(directoryPath) ?? DEFAULT_VERSION;
+  }
+
+  constructor(project, {name, directoryPath, version, tagName}) {
+    super(project);
+    tagName = tagName ?? name;
+    new StandardVersionPackageJson(project, {directoryPath, version});
+
+    project.addTask(`create-release:${name}`, {
+      category: TaskCategory.RELEASE,
+      cwd: directoryPath,
+      description: `Generate a tagged release commit for ${name} using standard-version`,
+      condition: 'test "$(git status --porcelain)" == ""',
+      exec: `npx standard-version --commit-all --path . --tag-prefix "${tagName}-v"`
+    });
+  }
+}
+
+class TilediiifProject extends python.PythonProject {
+  static async create(rootProject, name, options) {
+    const version = await getVersion(name) || DEFAULT_VERSION;
+    const project = new TilediiifProject(rootProject, name, {
+      version,
+      ...options
+    });
+    return project;
+  }
+
+  /**
    * @param {Project} rootProject
    * @param {string} name
    * @param {import('projen/python').PythonProjectOptions} options
@@ -62,44 +168,106 @@ class TilediiifProject extends python.PythonProject {
 
     this.relativeOutdir = path.relative(rootProject.outdir, this.outdir);
 
+    // run `poetry install` during synth to make project scripts executable on $PATH
+    new PoetryInstallAction(this);
+
     // The Python project defines several dependencies automatically which we
     // need to override. e.g. it depends on Python ^3.6, but black requires
     // a slightly more specific version of 3.6, which fails unless we replace
     // the default Python@^3.6 dep.
     this._overrideDependencies({deps, devDeps});
+    this.addDevDependency("black@^21.6b0");
+    this.addDevDependency("flake8@^3.9.2");
+    this.addDevDependency("isort@^5.8.0");
     this.addDevDependency("mypy@^0.901");
 
     this.testPackages = [...(testPackages || [])];
 
-    const versionFile = this.tryFindObjectFile('package.json') || new JsonFile(this, 'package.json', {
-      obj: {},
-      readonly: false,
-    });
-    versionFile.addOverride('version', options.version);
-    versionFile.addOverride('standard-version', {
-      scripts: {
-        // re-synth projen to update things referencing version numbers
-        precommit: `(cd .. && npx projen && git add .)`
-      }
+    new StandardVersionedDirectory(rootProject, {
+      name,
+      directoryPath: this.relativeOutdir,
+      version: options.version,
     });
 
-    rootProject.addTask(`create-release-${name}`, {
+    this.ensureReleaseableTask = rootProject.addTask(`ensure-checkout-is-releaseable:${name}`, {
       category: TaskCategory.RELEASE,
-      cwd: name,
-      description: `Generate a tagged release commit for ${name} using standard-version`,
-      condition: 'test "$(git status --porcelain)" == ""',
-      exec: `npx standard-version --commit-all --path . --tag-prefix "${name}-v"`
+      description: `Fail with an error if the working copy is not a clean checkout of a ${name} release tag.`,
+      exec: `\
+        test "$(git rev-parse HEAD)" == "$(git rev-parse tags/${name}-v${this.version}^{commit})" \\
+          && test "$(git status --porcelain)" == "" \\
+          || (echo "Error: the git checkout must be clean and tagged as ${name}-v${this.version}" 1>&2; exit 1)
+      `,
     });
 
-    rootProject.addTask(`typecheck-python-${this.moduleName}`, {
+    rootProject.typecheckTask.spawn(rootProject.addTask(`typecheck-python:${name}`, {
       category: TaskCategory.MAINTAIN,
-      description: `Typecheck ${this.moduleName} with mypy`,
+      description: `Typecheck ${name} with mypy`,
       exec: `\\
         cd "${this.relativeOutdir}" \\
         && poetry run mypy --namespace-packages \\
-          -p ${this.moduleName} \\
+          -p ${name} \\
           ${this.testPackages.map(p => `-p ${p}`).join(' ')}`
+    }));
+    new IniFile(this, 'mypy.ini', {
+      obj: {
+        mypy: {
+          exclude: '/dist/'
+        }
+      }
     });
+
+    rootProject.formatPythonTask.spawn(rootProject.addTask(`format-python-code:${name}`, {
+      category: TaskCategory.MAINTAIN,
+      description: `Format Python code of ${name}.`,
+      exec: `cd "${this.relativeOutdir}" && poetry run isort . ; poetry run black . ; poetry run flake8`
+    }));
+    const pyprojectToml = this.tryFindObjectFile('pyproject.toml');
+    pyprojectToml.addOverride('tool.black.experimental-string-processing', true);
+    pyprojectToml.addOverride('tool.isort.profile', 'black');
+    pyprojectToml.addOverride('tool.isort.multi_line_output', 3);
+    new TextFile(this, '.flake8', {
+      lines: `\
+    ; ${PROJEN_MARKER}. To modify, edit .projenrc.js and run "npx projen".
+    [flake8]
+    max-line-length = 80
+    select = C,E,F,W,B,B950
+    ignore = E203, E501, W503
+    exclude = .*,__*,dist
+    `.split('\n')
+    });
+
+    rootProject.testTask.spawn(rootProject.addTask(`test:${name}`, {
+      category: TaskCategory.TEST,
+      exec: `cd "${this.relativeOutdir}" && poetry run pytest`
+    }));
+
+    this.buildWorkflow = this._createBuildWorkflow(rootProject.github);
+    // this.releaseWorkflow = rootProject.github.addWorkflow(`build-${name}`);
+  }
+
+  _createBuildWorkflow(github) {
+    const workflow = github.addWorkflow(`build-${this.moduleName}`);
+
+    workflow.on({
+      pullRequest: { }
+    });
+
+    workflow.addJobs({
+      build: {
+        permissions: {
+          contents: JobPermission.READ
+        },
+        runsOn: 'ubuntu-latest',
+        steps: [
+          { name: 'Checkout', uses: 'actions/checkout@v2' },
+          {  }
+        ]
+      }
+    })
+
+
+
+    return workflow;
   }
 
   _overrideDependencies({deps, devDeps}) {
@@ -116,19 +284,170 @@ class TilediiifProject extends python.PythonProject {
       this.deps.addDependency(depSpec, type);
     });
   }
+}
 
-  static async create(rootProject, name, options) {
-    const version = await getVersion(name) || DEFAULT_VERSION;
-    const project = new TilediiifProject(rootProject, name, {
-      version,
-      ...options
+/**
+ * Create a file containing the concatenation of existing files.
+ *
+ * @param {Project} project
+ * @param {string} filePath
+ * @param {Array<string>} fragmentPaths The paths of files to concatenate.
+ * @param {TextFileOptions} [textFileOptions]
+ * @returns {Promise<TextFile>}
+ */
+async function dockerfileFromFragments(project, filePath, fragmentPaths, textFileOptions) {
+  const loadedFragments = await Promise.all(
+    fragmentPaths.map(async p => ({
+      path: p,
+      content: await fsp.readFile(p, {encoding: 'utf-8'})
+    })));
+  return new TextFile(project, filePath, {
+    editGitignore: false,
+    ...(textFileOptions ?? {}),
+    lines: [
+      `# ${PROJEN_MARKER}. To modify, edit .projenrc.js and run "npx projen".`,
+      ...loadedFragments.flatMap(({path, content}) => [
+        '',
+        `# ${path}`,
+        content
+      ]).slice(1),
+    ],
+  });
+}
+
+/**
+ * @typedef {Object} DockerImageTargetOptions
+ * @property {string} [target]
+ * @property {string | string[]} tag
+ * @param {Object<string, string>} buildArgs
+ * @param {Object<string, string>} labels
+ */
+
+/**
+ * @typedef {Object} DockerImageOptions
+ * @param {string} options.directoryPath The path of the Dockerfile's directory.
+ * @param {string} options.version The version of the image.
+ * @param {string} options.nickName A short name for the image, used to form projen task names
+ * @param {string} options.imageName The part before the : of the image name.
+ * @param {Array<DockerImageTargetOptions>} targets
+ */
+
+/**
+ * @callback DockerImageCreateCb
+ * @param {string} version
+ * @returns {Promise<DockerImageOptions>|DockerImageOptions}
+ */
+
+/**
+ * Build and publish docker images from a Dockerfile.
+ */
+class DockerImage extends Component {
+  /**
+   *
+   * @param {Project} project
+   * @param {DockerImageOptions} options
+   * @param {DockerImageCreateCb} optionsCallback
+   * @returns {Promise<DockerFile>}
+   */
+  static async create(project, options, optionsCallback) {
+    optionsCallback = optionsCallback ?? ((options) => options);
+    const version = await StandardVersionedDirectory.getVersion(options.directoryPath);
+    return new DockerImage(project, {...(await optionsCallback({...options, version}))});
+  }
+
+  /**
+   * @param {Project} project
+   * @param {DockerImageOptions} options
+   */
+  constructor(project, {directoryPath, version, nickName, imageName, targets}) {
+    super(project);
+    targets = targets.map(({target, tag, buildArgs, labels}) => ({
+      target,
+      tag: typeof tag === 'string' ? [tag] : [...tag],
+      buildArgs,
+      labels
+    }));
+    const dockerfilePath = path.join(directoryPath, 'Dockerfile');
+
+    new StandardVersionedDirectory(project, {
+      name: `docker:${nickName}`,
+      tagName: `docker/${nickName}`,
+      directoryPath,
+      version: version,
     });
-    return project;
+    // the git revision the image is built from
+    const commitIsh = `docker/${nickName}-v${version}`;
+
+    // const fullImageNames = targets.flatMap(target => target.tag.map(tag => `${imageName}:${tag}`));
+    // const notAllTagsExist = `! docker image inspect ${fullImageNames.join(' ')} > /dev/null 2>&1`;
+    // this.buildTask = project.addTask(`build-docker-image:${nickName}`, {
+    //   category: TaskCategory.BUILD,
+    //   condition: notAllTagsExist,
+    // });
+
+    // TODO: generate build commands from options.targets
+    const buildCommands = targets.map(({target, tag, buildArgs, labels}) => {
+      tag = typeof tag === 'string' ? [tag] : Array.from(tag);
+
+      const tagArguments = tag.map(t => `--tag "${imageName}:${t}"`).join(' ');
+      const buildArgArguments = Object.entries(buildArgs ?? {})
+        .map(([n, v]) => `--build-arg "${n}=${v}"`).join(' ');
+      const labelArguments = Object.entries(labels ?? {})
+        .map(([n, v]) => `--label "${n}=${v}"`).join(' ');
+
+        return `\
+&& docker image build \\
+  --file "${dockerfilePath}" \\
+  ${tagArguments} \\
+  ${buildArgArguments} \\
+  ${labelArguments} \\
+  ${target ? `--target "${target}"` : ''} \\
+  "$CONTEXT_DIR"`;
+    }).join('\n');
+
+    const fullImageNames = targets.flatMap(target => target.tag.map(tag => `${imageName}:${tag}`));
+    const notAllTagsExist = `! docker image inspect ${fullImageNames.join(' ')} > /dev/null 2>&1`;
+
+    this.buildTask = project.addTask(`build-docker-image:${nickName}`, {
+      category: TaskCategory.BUILD,
+      condition: notAllTagsExist,
+      env: {
+        CONTEXT_DIR: '$(mktemp -d)',
+      },
+      exec: `\
+git worktree add --detach "$CONTEXT_DIR" "${commitIsh}" \\
+&& cd "$CONTEXT_DIR" \\
+${buildCommands} \\
+&& cd - \\
+&& git worktree remove "$CONTEXT_DIR"`,
+    });
+
+    this.pushTask = project.addTask(`push-docker-image:${nickName}`, {
+      category: TaskCategory.RELEASE,
+      exec: `docker image push ${fullImageNames.join(' ')}`,
+    });
+    this.pushTask.prependSpawn(this.buildTask);
   }
 }
 
+/**
+ * Split a semver verison number into 3 decreasingly-specific version strings.
+ *
+ * @param {string} version A semver version, e.g. 1.2.3 or 1.2.3-foo+bar
+ * @returns {Array<string>} The version with 0, 1 and 2 right-most components excluded.
+ * @example splitSemverComponents('1.2.3') // ['1.2.3', '1.2', '1']
+ */
+function splitSemverComponents(version) {
+  const match = /(\d+)\.(\d+)\.(\d+)/.exec(version);
+  if(!match) {
+    throw new Error(`Unable to parse version: ${version}`);
+  }
+  const numbers = match.slice(1, 4);
+  return [3, 2, 1].map(count => numbers.slice(0, count).join('.'));
+}
+
 async function constructProject() {
-  const rootProject = new python.PythonProject({
+  const rootProject = new RootProject({
     ...DEFAULT_OPTIONS,
     outdir: '.',
     name: 'root',
@@ -136,32 +455,11 @@ async function constructProject() {
     version: '0.0.0',
     projectType: ProjectType.UNKNOWN,
     pytest: false,
+    mergify: true,
 
-    deps: [
-      "Python@^3.6.6",
-    ],
-    devDeps: [
-      "black@^21.5b2",
-      "flake8@^3.9.2",
-      "isort@^5.8.0",
-    ],
+    deps: [],
+    devDeps: [],
   });
-
-  new TextFile(rootProject, '.flake8', {
-    lines: `\
-  ; ${PROJEN_MARKER}. To modify, edit .projenrc.js and run "npx projen".
-  [flake8]
-  max-line-length = 80
-  select = C,E,F,W,B,B950
-  ignore = E203, E501, W503
-  exclude = .*,__*,dist
-  `.split('\n')
-  });
-
-  const pyprojectToml = rootProject.tryFindObjectFile('pyproject.toml');
-  pyprojectToml.addOverride('tool.black.experimental-string-processing', true);
-  pyprojectToml.addOverride('tool.isort.profile', 'black');
-  pyprojectToml.addOverride('tool.isort.multi_line_output', 3);
 
   const tilediiifCore = await TilediiifProject.create(rootProject, 'tilediiif.core', {
     testPackages: ['tests'],
@@ -169,11 +467,12 @@ async function constructProject() {
       "docopt@^0.6.2",
       "jsonpath-rw@^1.4",
       "jsonschema@^3.0",
+      "python@^3.7",
       "toml@^0.10.0",
     ],
     devDeps: [
-      "pytest@^6.2.4",
       "hypothesis@^4.36",
+      "pytest@^6.2.4",
       "types-pkg_resources@^0.1.2",
       "types-pytz@^0.1.0",
       "types-toml@^0.1.1",
@@ -195,27 +494,24 @@ async function constructProject() {
     },
 
     deps: [
-      "python@^3.7",
       "docopt@^0.6.2",
+      "python@^3.7",
       "pyvips@^2.1",
       "rfc3986@^1.3",
       `tilediiif.core@=${tilediiifCore.version}`,
     ],
     devDeps: [
-      "pytest@^6.2.4",
+      "flake8-bugbear@^19.8",
+      "httpie@^1.0",
       "hypothesis@^4.36",
+      "ipython@^7.8",
+      "numpy@^1.17",
+      "pytest-lazy-fixture@^0.6.1",
+      "pytest-subtesthack@0.1.1",
+      "pytest@^6.2.4",
       "toml@^0.10.0",
       "tox@^3.14",
-      "flake8@^3.7",
       "yappi@^1.0",
-      "pytest-subtesthack@0.1.1",
-      "ipython@^7.8",
-      "httpie@^1.0",
-      "black@^21.5b1",
-      "flake8-bugbear@^19.8",
-      "isort@^4.3",
-      "pytest-lazy-fixture@^0.6.1",
-      "numpy@^1.17",
     ],
   });
 
@@ -234,8 +530,8 @@ async function constructProject() {
   const tilediiifServer = await TilediiifProject.create(rootProject, 'tilediiif.server', {
     testPackages: ['tests'],
     deps: [
-      "python@^3.7",
       "falcon@^2.0",
+      "python@^3.7",
       `tilediiif.core@=${tilediiifCore.version}`,
     ],
     devDeps: [
@@ -245,23 +541,94 @@ async function constructProject() {
   const tilediiifServerPyprojectToml = tilediiifServer.tryFindObjectFile('pyproject.toml');
   tilediiifServerPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.core', {path: '../tilediiif.core',  develop: true});
 
-  const pythonProjects = [tilediiifCore, tilediiifTools, tilediiifServer];
-  const pythonProjectPaths = pythonProjects.map(proj => proj.relativeOutdir).join(' ');
+  // const pythonProjects = [tilediiifCore, tilediiifTools, tilediiifServer];
+  // const pythonProjectPaths = pythonProjects.map(proj => proj.relativeOutdir).join(' ');
 
-  rootProject.gitignore.addPatterns('.python-version', '.idea', '*.iml', '.vscode');
-  rootProject.addTask('test', {
-    category: TaskCategory.TEST,
-    exec: pythonProjects.map(proj => `cd ${proj.relativeOutdir} && poetry run pytest`).join(' && cd - && '),
-  })
+  // const ensureReleaseable = rootProject.addTask('ensure-checkout-is-releaseable', {
+  //   category: TaskCategory.RELEASE,
+  //   description: 'Fail with an error if the working copy is not a clean checkout of a release tag.',
+  //   exec: `\
+  //     test "$(git rev-parse HEAD)" == "$(git rev-parse tags/tilediiif.tools-v${tilediiifTools.version}^{commit})" \\
+  //       && test "$(git status --porcelain)" == "" \\
+  //       || (echo "Error: the git checkout must be clean and tagged" 1>&2; exit 1)
+  //   `,
+  // });
 
-  const ensureReleaseable = rootProject.addTask('ensure-checkout-is-releaseable', {
-    category: TaskCategory.RELEASE,
-    description: 'fail with an error if the working copy is not a clean checkout of a release tag',
-    exec: `\
-      test "$(git rev-parse HEAD)" == "$(git rev-parse tags/tilediiif.tools-v${tilediiifTools.version}^{commit})" \\
-        && test "$(git status --porcelain)" == "" \\
-        || (echo "Error: the git checkout must be clean and tagged" 1>&2; exit 1)
-    `,
+  const dockerfileFragments = Object.fromEntries(Object.entries({
+    base: 'base',
+    buildMozjpeg: 'build-mozjpeg',
+    buildTilediiifWheelBase: 'build-tilediiif-wheel-base',
+    buildTilediiifCoreWheel: 'build-tilediiif.core-wheel',
+    buildTilediiifToolsWheel: 'build-tilediiif.tools-wheel',
+    buildVips: 'build-vips',
+    dev: 'dev',
+    pythonBase: 'python-base',
+    tilediiifToolsParallel: 'tilediiif.tools-parallel',
+    tilediiifTools: 'tilediiif.tools',
+  }).map(([key, name]) => [key, path.join('docker/fragments', `${name}.Dockerfile`)]));
+
+  const dockerFiles = {
+    dev: await dockerfileFromFragments(rootProject, 'docker/images/dev/Dockerfile', [
+      dockerfileFragments.buildMozjpeg,
+      dockerfileFragments.buildVips,
+      dockerfileFragments.pythonBase,
+      dockerfileFragments.base,
+      dockerfileFragments.dev,
+    ]),
+    tilediiifTools: await dockerfileFromFragments(rootProject, 'docker/images/tilediiif.tools/Dockerfile', [
+      dockerfileFragments.buildMozjpeg,
+      dockerfileFragments.buildVips,
+      dockerfileFragments.pythonBase,
+      dockerfileFragments.base,
+      dockerfileFragments.buildTilediiifWheelBase,
+      dockerfileFragments.buildTilediiifCoreWheel,
+      dockerfileFragments.buildTilediiifToolsWheel,
+      dockerfileFragments.tilediiifTools,
+    ]),
+    tilediiifToolsParallel: await dockerfileFromFragments(rootProject, 'docker/images/tilediiif.tools-parallel/Dockerfile', [
+      dockerfileFragments.buildMozjpeg,
+      dockerfileFragments.buildVips,
+      dockerfileFragments.pythonBase,
+      dockerfileFragments.base,
+      dockerfileFragments.buildTilediiifWheelBase,
+      dockerfileFragments.buildTilediiifCoreWheel,
+      dockerfileFragments.buildTilediiifToolsWheel,
+      dockerfileFragments.tilediiifTools,
+      dockerfileFragments.tilediiifToolsParallel,
+    ]),
+  };
+
+
+  await DockerImage.create(rootProject, {
+    directoryPath: 'docker/images/tilediiif.tools',
+  }, ({version, ...options}) => ({
+    ...options,
+    version,
+    nickName: 'tilediiif.tools',
+    imageName: 'camdl/tilediiif.tools',
+    targets: [
+      {
+        tag: [
+          // Tag separately for tools version and image version
+          ...splitSemverComponents(tilediiifTools.version),
+          ...splitSemverComponents(version).map(ver => `image${ver}`),
+        ]
+      }
+    ],
+  }));
+
+
+  // new DockerImage(rootProject, {
+  //   name: 'tilediiif.tools',
+  //   dockerfile: dockerFiles.tilediiifTools.path,
+  //   tags: [
+  //     `camdl/tilediiif.tools:${tilediiifTools.version}`,
+  //     `camdl/tilediiif.tools:${tilediiifTools.version}-$(git log -1 --pretty=format:%h -- ${dockerFiles.tilediiifTools.path})`,
+  //   ],
+  // });
+
+  rootProject.addTask('foobar', {
+    exec: 'echo $(git log -1 --pretty=format:%h -- .projenrc.js) a b c',
   });
 
   const toolsDockerImageName = 'camdl/tilediiif.tools'
@@ -270,66 +637,42 @@ async function constructProject() {
     {name: 'default', target: 'tilediiif.tools-parallel', tag: tilediiifTools.version},
   ]
 
-  const buildToolsReleaseDockerImageTasks = toolsReleaseDockerImages.map(({name, target, tag}) => {
-    const task = rootProject.addTask(`build-release-docker-images:tilediiif.tools:${name}`, {
-      category: TaskCategory.BUILD,
-      // only build if the tag doesn't already point to an image
-      condition: `! docker image inspect ${toolsDockerImageName}:${tag} > /dev/null 2>&1`,
-      exec: `\
-        docker image build \\
-          --label "org.opencontainers.image.version=${tag}" \\
-          --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \\
-          --tag ${toolsDockerImageName}:${tag} \\
-          --build-arg TILEDIIIF_TOOLS_VERSION=${tilediiifTools.version} \\
-          --build-arg TILEDIIIF_CORE_VERSION=${tilediiifCore.version} \\
-          --target "${target}" .
-      `,
-    });
-    task.prependSpawn(ensureReleaseable);
-    return task;
-  });
+  // const buildToolsReleaseDockerImageTasks = toolsReleaseDockerImages.map(({name, target, tag}) => {
+  //   const task = rootProject.addTask(`build-release-docker-images:tilediiif.tools:${name}`, {
+  //     category: TaskCategory.BUILD,
+  //     // only build if the tag doesn't already point to an image
+  //     condition: `! docker image inspect ${toolsDockerImageName}:${tag} > /dev/null 2>&1`,
+  //     exec: `\
+  //       docker image build \\
+  //         --label "org.opencontainers.image.version=${tag}" \\
+  //         --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \\
+  //         --tag ${toolsDockerImageName}:${tag} \\
+  //         --build-arg TILEDIIIF_TOOLS_VERSION=${tilediiifTools.version} \\
+  //         --build-arg TILEDIIIF_CORE_VERSION=${tilediiifCore.version} \\
+  //         --target "${target}" .
+  //     `,
+  //   });
+  //   task.prependSpawn(ensureReleaseable);
+  //   return task;
+  // });
 
-  const buildToolsReleaseDockerImageTask = rootProject.addTask('build-release-docker-images:tilediiif.tools', {
-    category: TaskCategory.BUILD
-  });
-  buildToolsReleaseDockerImageTasks.forEach(task => buildToolsReleaseDockerImageTask.prependSpawn(task));
+  // const buildToolsReleaseDockerImageTask = rootProject.addTask('build-release-docker-images:tilediiif.tools', {
+  //   category: TaskCategory.BUILD
+  // });
+  // buildToolsReleaseDockerImageTasks.forEach(task => buildToolsReleaseDockerImageTask.prependSpawn(task));
 
-  const pushToolsReleaseDockerImageTasks = toolsReleaseDockerImages.map(({name, target, tag}, i) => {
-    const task = rootProject.addTask(`push-release-docker-images:tilediiif.tools:${name}`, {
-      category: TaskCategory.RELEASE,
-    });
-    task.spawn(buildToolsReleaseDockerImageTasks[i]);
-    task.exec(`docker image push ${toolsDockerImageName}:${tag}`);
-    return task;
-  });
-  const pushToolsReleaseDockerImageTask = rootProject.addTask('push-release-docker-images:tilediiif.tools', {
-    category: TaskCategory.RELEASE
-  });
-  pushToolsReleaseDockerImageTasks.forEach(task => pushToolsReleaseDockerImageTask.prependSpawn(task));
-
-
-
-  rootProject.addTask('format-python-code', {
-    category: TaskCategory.MAINTAIN,
-    cwd: __dirname,
-    description: '(Re)format Python code using Black',
-    exec: `poetry run isort ${pythonProjectPaths} ; poetry run black ${pythonProjectPaths} ; poetry run flake8`
-  });
-  // pythonProjects.forEach(proj => );
-  const typecheckTask = rootProject.addTask('typecheck-python', {
-    category: TaskCategory.MAINTAIN,
-    cwd: __dirname,
-    description: 'Check Python types',
-  });
-  pythonProjects.forEach(proj => typecheckTask.spawn(rootProject.tasks.tryFind(`typecheck-python-${proj.moduleName}`)));
-
-  new IniFile(rootProject, 'mypy.ini', {
-    obj: {
-      mypy: {
-        exclude: '/dist/'
-      }
-    }
-  });
+  // const pushToolsReleaseDockerImageTasks = toolsReleaseDockerImages.map(({name, target, tag}, i) => {
+  //   const task = rootProject.addTask(`push-release-docker-images:tilediiif.tools:${name}`, {
+  //     category: TaskCategory.RELEASE,
+  //   });
+  //   task.spawn(buildToolsReleaseDockerImageTasks[i]);
+  //   task.exec(`docker image push ${toolsDockerImageName}:${tag}`);
+  //   return task;
+  // });
+  // const pushToolsReleaseDockerImageTask = rootProject.addTask('push-release-docker-images:tilediiif.tools', {
+  //   category: TaskCategory.RELEASE
+  // });
+  // pushToolsReleaseDockerImageTasks.forEach(task => pushToolsReleaseDockerImageTask.prependSpawn(task));
 
   return rootProject;
 }
