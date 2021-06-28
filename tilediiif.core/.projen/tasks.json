@@ -48,6 +48,9 @@
       "steps": [
         {
           "exec": "poetry update"
+        },
+        {
+          "exec": "poetry install"
         }
       ]
     },

@@ -1,8 +1,23 @@
 {
   "dependencies": [
     {
+      "name": "black",
+      "version": "^21.6b0",
+      "type": "devenv"
+    },
+    {
+      "name": "flake8",
+      "version": "^3.9.2",
+      "type": "devenv"
+    },
+    {
       "name": "hypothesis",
       "version": "^4.36",
+      "type": "devenv"
+    },
+    {
+      "name": "isort",
+      "version": "^5.8.0",
       "type": "devenv"
     },
     {
@@ -47,7 +62,7 @@
     },
     {
       "name": "python",
-      "version": "^3.6",
+      "version": "^3.7",
       "type": "runtime"
     },
     {

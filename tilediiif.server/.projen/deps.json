@@ -1,6 +1,21 @@
 {
   "dependencies": [
     {
+      "name": "black",
+      "version": "^21.6b0",
+      "type": "devenv"
+    },
+    {
+      "name": "flake8",
+      "version": "^3.9.2",
+      "type": "devenv"
+    },
+    {
+      "name": "isort",
+      "version": "^5.8.0",
+      "type": "devenv"
+    },
+    {
       "name": "mypy",
       "version": "^0.901",
       "type": "devenv"

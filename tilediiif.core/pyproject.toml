@@ -18,13 +18,23 @@ readme = "README.md"
   docopt = "^0.6.2"
   jsonpath-rw = "^1.4"
   jsonschema = "^3.0"
-  python = "^3.6"
+  python = "^3.7"
   toml = "^0.10.0"
 
   [tool.poetry.dev-dependencies]
+  black = "^21.6b0"
+  flake8 = "^3.9.2"
   hypothesis = "^4.36"
+  isort = "^5.8.0"
   mypy = "^0.901"
   pytest = "^6.2.4"
   types-pkg_resources = "^0.1.2"
   types-pytz = "^0.1.0"
   types-toml = "^0.1.1"
+
+[tool.black]
+experimental-string-processing = true
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
