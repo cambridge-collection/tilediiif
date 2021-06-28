@@ -23,5 +23,15 @@ readme = "README.md"
     develop = true
 
   [tool.poetry.dev-dependencies]
+  black = "^21.6b0"
+  flake8 = "^3.9.2"
+  isort = "^5.8.0"
   mypy = "^0.901"
   pytest = "^6.2.4"
+
+[tool.black]
+experimental-string-processing = true
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3

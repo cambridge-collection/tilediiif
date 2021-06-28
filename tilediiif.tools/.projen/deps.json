@@ -2,7 +2,7 @@
   "dependencies": [
     {
       "name": "black",
-      "version": "^21.5b1",
+      "version": "^21.6b0",
       "type": "devenv"
     },
     {
@@ -12,7 +12,7 @@
     },
     {
       "name": "flake8",
-      "version": "^3.7",
+      "version": "^3.9.2",
       "type": "devenv"
     },
     {
@@ -32,7 +32,7 @@
     },
     {
       "name": "isort",
-      "version": "^4.3",
+      "version": "^5.8.0",
       "type": "devenv"
     },
     {

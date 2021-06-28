@@ -33,56 +33,56 @@
       ],
       "condition": "git diff --exit-code > /dev/null"
     },
-    "default": {
-      "name": "default",
+    "test": {
+      "name": "test",
+      "category": "10.test",
+      "description": "Run tests for tilediiif.* packages.",
       "steps": [
         {
-          "exec": "node .projenrc.js"
+          "spawn": "test:tilediiif.core"
+        },
+        {
+          "spawn": "test:tilediiif.tools"
+        },
+        {
+          "spawn": "test:tilediiif.server"
         }
       ]
     },
-    "install": {
-      "name": "install",
-      "category": "00.build",
-      "description": "Install and upgrade dependencies",
+    "typecheck-python": {
+      "name": "typecheck-python",
+      "category": "30.maintain",
+      "description": "Check Python types for tilediiif.* packages.",
       "steps": [
         {
-          "exec": "poetry update"
+          "spawn": "typecheck-python:tilediiif.core"
+        },
+        {
+          "spawn": "typecheck-python:tilediiif.tools"
+        },
+        {
+          "spawn": "typecheck-python:tilediiif.server"
         }
       ]
     },
-    "package": {
-      "name": "package",
-      "category": "20.release",
-      "description": "Creates source archive and wheel for distribution.",
+    "format-python-code": {
+      "name": "format-python-code",
+      "category": "30.maintain",
+      "description": "Format Python code of tilediiif.* packages.",
       "steps": [
         {
-          "exec": "poetry build"
+          "spawn": "format-python-code:tilediiif.core"
+        },
+        {
+          "spawn": "format-python-code:tilediiif.tools"
+        },
+        {
+          "spawn": "format-python-code:tilediiif.server"
         }
       ]
     },
-    "publish:test": {
-      "name": "publish:test",
-      "category": "20.release",
-      "description": "Uploads the package against a test PyPI endpoint.",
-      "steps": [
-        {
-          "exec": "poetry publish -r testpypi"
-        }
-      ]
-    },
-    "publish": {
-      "name": "publish",
-      "category": "20.release",
-      "description": "Uploads the package to PyPI.",
-      "steps": [
-        {
-          "exec": "poetry publish"
-        }
-      ]
-    },
-    "create-release-tilediiif.core": {
-      "name": "create-release-tilediiif.core",
+    "create-release:tilediiif.core": {
+      "name": "create-release:tilediiif.core",
       "category": "20.release",
       "description": "Generate a tagged release commit for tilediiif.core using standard-version",
       "steps": [
@@ -93,18 +93,47 @@
       "condition": "test \"$(git status --porcelain)\" == \"\"",
       "cwd": "tilediiif.core"
     },
-    "typecheck-python-tilediiif.core": {
-      "name": "typecheck-python-tilediiif.core",
+    "ensure-checkout-is-releaseable:tilediiif.core": {
+      "name": "ensure-checkout-is-releaseable:tilediiif.core",
+      "category": "20.release",
+      "description": "Fail with an error if the working copy is not a clean checkout of a tilediiif.core release tag.",
+      "steps": [
+        {
+          "exec": "        test \"$(git rev-parse HEAD)\" == \"$(git rev-parse tags/tilediiif.core-v0.1.0^{commit})\" \\\n          && test \"$(git status --porcelain)\" == \"\" \\\n          || (echo \"Error: the git checkout must be clean and tagged as tilediiif.core-v0.1.0\" 1>&2; exit 1)\n      "
+        }
+      ]
+    },
+    "typecheck-python:tilediiif.core": {
+      "name": "typecheck-python:tilediiif.core",
       "category": "30.maintain",
       "description": "Typecheck tilediiif.core with mypy",
       "steps": [
         {
-          "exec": "\\\n        cd \"/Users/hal/Documents/projects/cudl/tilediiif/tilediiif.core\" \\\n        && poetry run mypy --namespace-packages \\\n          -p tilediiif.core \\\n          -p tests"
+          "exec": "\\\n        cd \"tilediiif.core\" \\\n        && poetry run mypy --namespace-packages \\\n          -p tilediiif.core \\\n          -p tests"
         }
       ]
     },
-    "create-release-tilediiif.tools": {
-      "name": "create-release-tilediiif.tools",
+    "format-python-code:tilediiif.core": {
+      "name": "format-python-code:tilediiif.core",
+      "category": "30.maintain",
+      "description": "Format Python code of tilediiif.core.",
+      "steps": [
+        {
+          "exec": "cd \"tilediiif.core\" && poetry run isort . ; poetry run black . ; poetry run flake8"
+        }
+      ]
+    },
+    "test:tilediiif.core": {
+      "name": "test:tilediiif.core",
+      "category": "10.test",
+      "steps": [
+        {
+          "exec": "cd \"tilediiif.core\" && poetry run pytest"
+        }
+      ]
+    },
+    "create-release:tilediiif.tools": {
+      "name": "create-release:tilediiif.tools",
       "category": "20.release",
       "description": "Generate a tagged release commit for tilediiif.tools using standard-version",
       "steps": [
@@ -115,18 +144,47 @@
       "condition": "test \"$(git status --porcelain)\" == \"\"",
       "cwd": "tilediiif.tools"
     },
-    "typecheck-python-tilediiif.tools": {
-      "name": "typecheck-python-tilediiif.tools",
+    "ensure-checkout-is-releaseable:tilediiif.tools": {
+      "name": "ensure-checkout-is-releaseable:tilediiif.tools",
+      "category": "20.release",
+      "description": "Fail with an error if the working copy is not a clean checkout of a tilediiif.tools release tag.",
+      "steps": [
+        {
+          "exec": "        test \"$(git rev-parse HEAD)\" == \"$(git rev-parse tags/tilediiif.tools-v0.1.0^{commit})\" \\\n          && test \"$(git status --porcelain)\" == \"\" \\\n          || (echo \"Error: the git checkout must be clean and tagged as tilediiif.tools-v0.1.0\" 1>&2; exit 1)\n      "
+        }
+      ]
+    },
+    "typecheck-python:tilediiif.tools": {
+      "name": "typecheck-python:tilediiif.tools",
       "category": "30.maintain",
       "description": "Typecheck tilediiif.tools with mypy",
       "steps": [
         {
-          "exec": "\\\n        cd \"/Users/hal/Documents/projects/cudl/tilediiif/tilediiif.tools\" \\\n        && poetry run mypy --namespace-packages \\\n          -p tilediiif.tools \\\n          -p tests -p integration_tests"
+          "exec": "\\\n        cd \"tilediiif.tools\" \\\n        && poetry run mypy --namespace-packages \\\n          -p tilediiif.tools \\\n          -p tests -p integration_tests"
         }
       ]
     },
-    "create-release-tilediiif.server": {
-      "name": "create-release-tilediiif.server",
+    "format-python-code:tilediiif.tools": {
+      "name": "format-python-code:tilediiif.tools",
+      "category": "30.maintain",
+      "description": "Format Python code of tilediiif.tools.",
+      "steps": [
+        {
+          "exec": "cd \"tilediiif.tools\" && poetry run isort . ; poetry run black . ; poetry run flake8"
+        }
+      ]
+    },
+    "test:tilediiif.tools": {
+      "name": "test:tilediiif.tools",
+      "category": "10.test",
+      "steps": [
+        {
+          "exec": "cd \"tilediiif.tools\" && poetry run pytest"
+        }
+      ]
+    },
+    "create-release:tilediiif.server": {
+      "name": "create-release:tilediiif.server",
       "category": "20.release",
       "description": "Generate a tagged release commit for tilediiif.server using standard-version",
       "steps": [
@@ -137,141 +195,90 @@
       "condition": "test \"$(git status --porcelain)\" == \"\"",
       "cwd": "tilediiif.server"
     },
-    "typecheck-python-tilediiif.server": {
-      "name": "typecheck-python-tilediiif.server",
+    "ensure-checkout-is-releaseable:tilediiif.server": {
+      "name": "ensure-checkout-is-releaseable:tilediiif.server",
+      "category": "20.release",
+      "description": "Fail with an error if the working copy is not a clean checkout of a tilediiif.server release tag.",
+      "steps": [
+        {
+          "exec": "        test \"$(git rev-parse HEAD)\" == \"$(git rev-parse tags/tilediiif.server-v0.1.0^{commit})\" \\\n          && test \"$(git status --porcelain)\" == \"\" \\\n          || (echo \"Error: the git checkout must be clean and tagged as tilediiif.server-v0.1.0\" 1>&2; exit 1)\n      "
+        }
+      ]
+    },
+    "typecheck-python:tilediiif.server": {
+      "name": "typecheck-python:tilediiif.server",
       "category": "30.maintain",
       "description": "Typecheck tilediiif.server with mypy",
       "steps": [
         {
-          "exec": "\\\n        cd \"/Users/hal/Documents/projects/cudl/tilediiif/tilediiif.server\" \\\n        && poetry run mypy --namespace-packages \\\n          -p tilediiif.server \\\n          -p tests"
+          "exec": "\\\n        cd \"tilediiif.server\" \\\n        && poetry run mypy --namespace-packages \\\n          -p tilediiif.server \\\n          -p tests"
         }
       ]
     },
-    "test": {
-      "name": "test",
+    "format-python-code:tilediiif.server": {
+      "name": "format-python-code:tilediiif.server",
+      "category": "30.maintain",
+      "description": "Format Python code of tilediiif.server.",
+      "steps": [
+        {
+          "exec": "cd \"tilediiif.server\" && poetry run isort . ; poetry run black . ; poetry run flake8"
+        }
+      ]
+    },
+    "test:tilediiif.server": {
+      "name": "test:tilediiif.server",
       "category": "10.test",
       "steps": [
         {
-          "exec": "cd /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.core && poetry run pytest && cd - && cd /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.tools && poetry run pytest && cd - && cd /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.server && poetry run pytest"
+          "exec": "cd \"tilediiif.server\" && poetry run pytest"
         }
       ]
     },
-    "ensure-checkout-is-releaseable": {
-      "name": "ensure-checkout-is-releaseable",
+    "create-release:docker:tilediiif.tools": {
+      "name": "create-release:docker:tilediiif.tools",
       "category": "20.release",
-      "description": "fail with an error if the working copy is not a clean checkout of a release tag",
+      "description": "Generate a tagged release commit for docker:tilediiif.tools using standard-version",
       "steps": [
         {
-          "exec": "      test \"$(git rev-parse HEAD)\" == \"$(git rev-parse tags/tilediiif.tools-v0.1.0^{commit})\" \\\n        && test \"$(git status --porcelain)\" == \"\" \\\n        || (echo \"Error: the git checkout must be clean and tagged\" 1>&2; exit 1)\n    "
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif.tools-v\""
         }
-      ]
+      ],
+      "condition": "test \"$(git status --porcelain)\" == \"\"",
+      "cwd": "docker/images/tilediiif.tools"
     },
-    "build-release-docker-images:tilediiif.tools:slim": {
-      "name": "build-release-docker-images:tilediiif.tools:slim",
+    "build-docker-image:tilediiif.tools": {
+      "name": "build-docker-image:tilediiif.tools",
       "category": "00.build",
+      "env": {
+        "CONTEXT_DIR": "$(mktemp -d)"
+      },
       "steps": [
         {
-          "spawn": "ensure-checkout-is-releaseable"
-        },
-        {
-          "exec": "        docker image build \\\n          --label \"org.opencontainers.image.version=0.1.0-slim\" \\\n          --label \"org.opencontainers.image.revision=$(git rev-parse HEAD)\" \\\n          --tag camdl/tilediiif.tools:0.1.0-slim \\\n          --build-arg TILEDIIIF_TOOLS_VERSION=0.1.0 \\\n          --build-arg TILEDIIIF_CORE_VERSION=0.1.0 \\\n          --target \"tilediiif.tools\" .\n      "
+          "exec": "git worktree add --detach \"$CONTEXT_DIR\" \"docker/tilediiif.tools-v0.1.0\" \\\n&& cd \"$CONTEXT_DIR\" \\\n&& docker image build \\\n  --file \"docker/images/tilediiif.tools/Dockerfile\" \\\n  --tag \"camdl/tilediiif.tools:0.1.0\" --tag \"camdl/tilediiif.tools:0.1\" --tag \"camdl/tilediiif.tools:0\" --tag \"camdl/tilediiif.tools:image0.1.0\" --tag \"camdl/tilediiif.tools:image0.1\" --tag \"camdl/tilediiif.tools:image0\" \\\n   \\\n   \\\n   \\\n  \"$CONTEXT_DIR\" \\\n&& cd - \\\n&& git worktree remove \"$CONTEXT_DIR\""
         }
       ],
-      "condition": "! docker image inspect camdl/tilediiif.tools:0.1.0-slim > /dev/null 2>&1"
+      "condition": "! docker image inspect camdl/tilediiif.tools:0.1.0 camdl/tilediiif.tools:0.1 camdl/tilediiif.tools:0 camdl/tilediiif.tools:image0.1.0 camdl/tilediiif.tools:image0.1 camdl/tilediiif.tools:image0 > /dev/null 2>&1"
     },
-    "build-release-docker-images:tilediiif.tools:default": {
-      "name": "build-release-docker-images:tilediiif.tools:default",
-      "category": "00.build",
-      "steps": [
-        {
-          "spawn": "ensure-checkout-is-releaseable"
-        },
-        {
-          "exec": "        docker image build \\\n          --label \"org.opencontainers.image.version=0.1.0\" \\\n          --label \"org.opencontainers.image.revision=$(git rev-parse HEAD)\" \\\n          --tag camdl/tilediiif.tools:0.1.0 \\\n          --build-arg TILEDIIIF_TOOLS_VERSION=0.1.0 \\\n          --build-arg TILEDIIIF_CORE_VERSION=0.1.0 \\\n          --target \"tilediiif.tools-parallel\" .\n      "
-        }
-      ],
-      "condition": "! docker image inspect camdl/tilediiif.tools:0.1.0 > /dev/null 2>&1"
-    },
-    "build-release-docker-images:tilediiif.tools": {
-      "name": "build-release-docker-images:tilediiif.tools",
-      "category": "00.build",
-      "steps": [
-        {
-          "spawn": "build-release-docker-images:tilediiif.tools:default"
-        },
-        {
-          "spawn": "build-release-docker-images:tilediiif.tools:slim"
-        }
-      ]
-    },
-    "push-release-docker-images:tilediiif.tools:slim": {
-      "name": "push-release-docker-images:tilediiif.tools:slim",
+    "push-docker-image:tilediiif.tools": {
+      "name": "push-docker-image:tilediiif.tools",
       "category": "20.release",
       "steps": [
         {
-          "spawn": "build-release-docker-images:tilediiif.tools:slim"
+          "spawn": "build-docker-image:tilediiif.tools"
         },
         {
-          "exec": "docker image push camdl/tilediiif.tools:0.1.0-slim"
+          "exec": "docker image push camdl/tilediiif.tools:0.1.0 camdl/tilediiif.tools:0.1 camdl/tilediiif.tools:0 camdl/tilediiif.tools:image0.1.0 camdl/tilediiif.tools:image0.1 camdl/tilediiif.tools:image0"
         }
       ]
     },
-    "push-release-docker-images:tilediiif.tools:default": {
-      "name": "push-release-docker-images:tilediiif.tools:default",
-      "category": "20.release",
+    "foobar": {
+      "name": "foobar",
       "steps": [
         {
-          "spawn": "build-release-docker-images:tilediiif.tools:default"
-        },
-        {
-          "exec": "docker image push camdl/tilediiif.tools:0.1.0"
+          "exec": "echo $(git log -1 --pretty=format:%h -- .projenrc.js) a b c"
         }
       ]
-    },
-    "push-release-docker-images:tilediiif.tools": {
-      "name": "push-release-docker-images:tilediiif.tools",
-      "category": "20.release",
-      "steps": [
-        {
-          "spawn": "push-release-docker-images:tilediiif.tools:default"
-        },
-        {
-          "spawn": "push-release-docker-images:tilediiif.tools:slim"
-        }
-      ]
-    },
-    "format-python-code": {
-      "name": "format-python-code",
-      "category": "30.maintain",
-      "description": "(Re)format Python code using Black",
-      "steps": [
-        {
-          "exec": "poetry run isort /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.core /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.tools /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.server ; poetry run black /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.core /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.tools /Users/hal/Documents/projects/cudl/tilediiif/tilediiif.server ; poetry run flake8"
-        }
-      ],
-      "cwd": "/Users/hal/Documents/projects/cudl/tilediiif"
-    },
-    "typecheck-python": {
-      "name": "typecheck-python",
-      "category": "30.maintain",
-      "description": "Check Python types",
-      "steps": [
-        {
-          "spawn": "typecheck-python-tilediiif.core"
-        },
-        {
-          "spawn": "typecheck-python-tilediiif.tools"
-        },
-        {
-          "spawn": "typecheck-python-tilediiif.server"
-        }
-      ],
-      "cwd": "/Users/hal/Documents/projects/cudl/tilediiif"
     }
-  },
-  "env": {
-    "VIRTUAL_ENV": "$(poetry env info -p)",
-    "PATH": "$(echo $(poetry env info -p)/bin:$PATH)"
   },
   "//": "~~ Generated by projen. To modify, edit .projenrc.js and run \"npx projen\"."
 }
