@@ -287,7 +287,7 @@ class TilediiifProject extends python.PythonProject {
 }
 
 /**
- * Create a file containing the concatenation of existing files.
+ * Create a dockerfile containing the concatenation of multiple dockerfiles.
  *
  * @param {Project} project
  * @param {string} filePath
@@ -299,20 +299,49 @@ async function dockerfileFromFragments(project, filePath, fragmentPaths, textFil
   const loadedFragments = await Promise.all(
     fragmentPaths.map(async p => ({
       path: p,
-      content: await fsp.readFile(p, {encoding: 'utf-8'})
+      content: splitDockerfileGlobalArgs(await fsp.readFile(p, {encoding: 'utf-8'})),
     })));
-  return new TextFile(project, filePath, {
+
+    return new TextFile(project, filePath, {
     editGitignore: false,
     ...(textFileOptions ?? {}),
     lines: [
       `# ${PROJEN_MARKER}. To modify, edit .projenrc.js and run "npx projen".`,
-      ...loadedFragments.flatMap(({path, content}) => [
-        '',
-        `# ${path}`,
-        content
-      ]).slice(1),
+      ...[
+        // global ARG section of all fragments
+        ...loadedFragments.flatMap(({path, content}) => content.head ? [
+          '',
+          `# header: ${path}`,
+          content.head.trim(),
+        ] : []),
+        // bodies of all fragments
+        ...loadedFragments.flatMap(({path, content}) => [
+          '',
+          `# body: ${path}`,
+          content.body.trim(),
+        ]),
+      ].slice(1),
     ],
   });
+}
+
+/**
+ * Split a dockerfile in two at the start of the first "FROM ..." line.
+ *
+ * @typedef {Object} ParsedDockerfile
+ * @property {string} head The portion before the FROM ...
+ * @property {string} body The portion starting from the first FROM ...
+ *
+ * @param {string} dockerfile The text of the Dockerfile to split
+ * @returns {ParsedDockerfile} The head (containing any global ARG lines), and
+ *    the rest of the file.
+ */
+function splitDockerfileGlobalArgs(dockerfile) {
+  const {index} = (/(?<=^\s*)FROM\b/m).exec(dockerfile)
+  return {
+    head: dockerfile.slice(0, index ?? 0),
+    body: dockerfile.slice(index ?? 0),
+  };
 }
 
 /**
