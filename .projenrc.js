@@ -647,10 +647,8 @@ async function constructProject() {
           ...splitSemverComponents(version).map(ver => `image-v${ver}-slim`),
         ],
         buildArgs: {
-          // TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${tilediiifTools.version}`,
-          // TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${tilediiifCore.version}`,
-          TILEDIIIF_TOOLS_SHA: `tags/sample-tag`,
-          TILEDIIIF_CORE_SHA: `tags/sample-tag`,
+          TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${tilediiifTools.version}`,
+          TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${tilediiifCore.version}`,
         },
       }
     ],
@@ -672,10 +670,8 @@ async function constructProject() {
           ...splitSemverComponents(version).map(ver => `image-v${ver}`),
         ],
         buildArgs: {
-          // TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${tilediiifTools.version}`,
-          // TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${tilediiifCore.version}`,
-          TILEDIIIF_TOOLS_SHA: `tags/sample-tag`,
-          TILEDIIIF_CORE_SHA: `tags/sample-tag`,
+          TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${tilediiifTools.version}`,
+          TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${tilediiifCore.version}`,
         },
       }
     ],
