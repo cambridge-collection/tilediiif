@@ -355,6 +355,8 @@ function splitDockerfileGlobalArgs(dockerfile) {
 /**
  * @typedef {Object} DockerImageOptions
  * @param {string} options.directoryPath The path of the Dockerfile's directory.
+ * @param {string} options.contextPath The path to use as the build context. Can reference environment variables
+ *   `$GIT_DIR` and `$VERSION_CHECKOUT`. Default value: `$VERSION_CHECKOUT`.
  * @param {string} options.version The version of the image.
  * @param {string} options.nickName A short name for the image, used to form projen task names
  * @param {string} options.imageName The part before the : of the image name.
@@ -388,7 +390,7 @@ class DockerImage extends Component {
    * @param {Project} project
    * @param {DockerImageOptions} options
    */
-  constructor(project, {directoryPath, version, nickName, imageName, targets}) {
+  constructor(project, {directoryPath, contextPath, version, nickName, imageName, targets}) {
     super(project);
     targets = targets.map(({target, tag, buildArgs, labels}) => ({
       target,
@@ -431,7 +433,7 @@ class DockerImage extends Component {
   ${buildArgArguments} \\
   ${labelArguments} \\
   ${target ? `--target "${target}"` : ''} \\
-  "$CONTEXT_DIR"`;
+  "${contextPath ?? '$VERSION_CHECKOUT'}"`;
     }).join('\n');
 
     const fullImageNames = targets.flatMap(target => target.tag.map(tag => `${imageName}:${tag}`));
@@ -441,14 +443,15 @@ class DockerImage extends Component {
       category: TaskCategory.BUILD,
       condition: notAllTagsExist,
       env: {
-        CONTEXT_DIR: '$(mktemp -d)',
+        GIT_DIR: '$(git rev-parse --git-common-dir)',
+        VERSION_CHECKOUT: '$(mktemp -d)',
       },
       exec: `\
-git worktree add --detach "$CONTEXT_DIR" "${commitIsh}" \\
-&& cd "$CONTEXT_DIR" \\
+git worktree add --detach "$VERSION_CHECKOUT" "${commitIsh}" \\
+&& cd "$VERSION_CHECKOUT" \\
 ${buildCommands} \\
 && cd - \\
-&& git worktree remove "$CONTEXT_DIR"`,
+&& git worktree remove "$VERSION_CHECKOUT"`,
     });
 
     this.pushTask = project.addTask(`push-docker-image:${nickName}`, {
@@ -632,6 +635,7 @@ async function constructProject() {
     directoryPath: 'docker/images/tilediiif.tools',
   }, ({version, ...options}) => ({
     ...options,
+    contextPath: '$GIT_DIR',
     version,
     nickName: 'tilediiif.tools',
     imageName: 'camdl/tilediiif.tools',
