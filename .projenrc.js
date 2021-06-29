@@ -434,7 +434,7 @@ class DockerImage extends Component {
   ${labelArguments} \\
   ${target ? `--target "${target}"` : ''} \\
   "${contextPath ?? '$VERSION_CHECKOUT'}"`;
-    }).join('\n');
+    }).join(' \\\n');
 
     const fullImageNames = targets.flatMap(target => target.tag.map(tag => `${imageName}:${tag}`));
     const notAllTagsExist = `! docker image inspect ${fullImageNames.join(' ')} > /dev/null 2>&1`;
@@ -681,6 +681,37 @@ async function constructProject() {
     ],
   }));
 
+  await DockerImage.create(rootProject, {
+    directoryPath: 'docker/images/dev',
+  }, ({version, ...options}) => ({
+    ...options,
+    version,
+    nickName: 'tilediiif-dev',
+    imageName: 'camdl/tilediiif-dev-env',
+    targets: [
+      {
+        target: 'tools-dev',
+        tag: [
+          ...splitSemverComponents(version).map(ver => `v${ver}-tools`),
+        ],
+      },
+      {
+        target: 'tools-dev',
+        tag: [
+          ...splitSemverComponents(version).map(ver => `v${ver}-tools-without-mozjpeg`),
+        ],
+        buildArgs: {
+          VIPS_USE_MOZJPEG: '',
+        },
+      },
+      {
+        target: 'tools-dev-with-broken-mozjpeg',
+        tag: [
+          ...splitSemverComponents(version).map(ver => `v${ver}-tools-with-broken-mozjpeg`),
+        ],
+      },
+    ],
+  }));
 
   // new DockerImage(rootProject, {
   //   name: 'tilediiif.tools',

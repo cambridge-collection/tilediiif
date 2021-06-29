@@ -310,6 +310,44 @@
         }
       ]
     },
+    "create-release:docker:tilediiif-dev": {
+      "name": "create-release:docker:tilediiif-dev",
+      "category": "20.release",
+      "description": "Generate a tagged release commit for docker:tilediiif-dev using standard-version",
+      "steps": [
+        {
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif-dev-v\""
+        }
+      ],
+      "condition": "test \"$(git status --porcelain)\" == \"\"",
+      "cwd": "docker/images/dev"
+    },
+    "build-docker-image:tilediiif-dev": {
+      "name": "build-docker-image:tilediiif-dev",
+      "category": "00.build",
+      "env": {
+        "GIT_DIR": "$(git rev-parse --git-common-dir)",
+        "VERSION_CHECKOUT": "$(mktemp -d)"
+      },
+      "steps": [
+        {
+          "exec": "git worktree add --detach \"$VERSION_CHECKOUT\" \"docker/tilediiif-dev-v0.1.0\" \\\n&& cd \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/dev/Dockerfile\" \\\n  --tag \"camdl/tilediiif-dev-env:v0.1.0-tools\" --tag \"camdl/tilediiif-dev-env:v0.1-tools\" --tag \"camdl/tilediiif-dev-env:v0-tools\" \\\n   \\\n   \\\n  --target \"tools-dev\" \\\n  \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/dev/Dockerfile\" \\\n  --tag \"camdl/tilediiif-dev-env:v0.1.0-tools-without-mozjpeg\" --tag \"camdl/tilediiif-dev-env:v0.1-tools-without-mozjpeg\" --tag \"camdl/tilediiif-dev-env:v0-tools-without-mozjpeg\" \\\n  --build-arg \"VIPS_USE_MOZJPEG=\" \\\n   \\\n  --target \"tools-dev\" \\\n  \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/dev/Dockerfile\" \\\n  --tag \"camdl/tilediiif-dev-env:v0.1.0-tools-with-broken-mozjpeg\" --tag \"camdl/tilediiif-dev-env:v0.1-tools-with-broken-mozjpeg\" --tag \"camdl/tilediiif-dev-env:v0-tools-with-broken-mozjpeg\" \\\n   \\\n   \\\n  --target \"tools-dev-with-broken-mozjpeg\" \\\n  \"$VERSION_CHECKOUT\" \\\n&& cd - \\\n&& git worktree remove \"$VERSION_CHECKOUT\""
+        }
+      ],
+      "condition": "! docker image inspect camdl/tilediiif-dev-env:v0.1.0-tools camdl/tilediiif-dev-env:v0.1-tools camdl/tilediiif-dev-env:v0-tools camdl/tilediiif-dev-env:v0.1.0-tools-without-mozjpeg camdl/tilediiif-dev-env:v0.1-tools-without-mozjpeg camdl/tilediiif-dev-env:v0-tools-without-mozjpeg camdl/tilediiif-dev-env:v0.1.0-tools-with-broken-mozjpeg camdl/tilediiif-dev-env:v0.1-tools-with-broken-mozjpeg camdl/tilediiif-dev-env:v0-tools-with-broken-mozjpeg > /dev/null 2>&1"
+    },
+    "push-docker-image:tilediiif-dev": {
+      "name": "push-docker-image:tilediiif-dev",
+      "category": "20.release",
+      "steps": [
+        {
+          "spawn": "build-docker-image:tilediiif-dev"
+        },
+        {
+          "exec": "docker image push camdl/tilediiif-dev-env:v0.1.0-tools camdl/tilediiif-dev-env:v0.1-tools camdl/tilediiif-dev-env:v0-tools camdl/tilediiif-dev-env:v0.1.0-tools-without-mozjpeg camdl/tilediiif-dev-env:v0.1-tools-without-mozjpeg camdl/tilediiif-dev-env:v0-tools-without-mozjpeg camdl/tilediiif-dev-env:v0.1.0-tools-with-broken-mozjpeg camdl/tilediiif-dev-env:v0.1-tools-with-broken-mozjpeg camdl/tilediiif-dev-env:v0-tools-with-broken-mozjpeg"
+        }
+      ]
+    },
     "foobar": {
       "name": "foobar",
       "steps": [
