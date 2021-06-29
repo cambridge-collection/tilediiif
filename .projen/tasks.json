@@ -250,11 +250,12 @@
       "name": "build-docker-image:tilediiif.tools",
       "category": "00.build",
       "env": {
-        "CONTEXT_DIR": "$(mktemp -d)"
+        "GIT_DIR": "$(git rev-parse --git-common-dir)",
+        "VERSION_CHECKOUT": "$(mktemp -d)"
       },
       "steps": [
         {
-          "exec": "git worktree add --detach \"$CONTEXT_DIR\" \"docker/tilediiif.tools-v0.1.0\" \\\n&& cd \"$CONTEXT_DIR\" \\\n&& docker image build \\\n  --file \"docker/images/tilediiif.tools/Dockerfile\" \\\n  --tag \"camdl/tilediiif.tools:0.1.0\" --tag \"camdl/tilediiif.tools:0.1\" --tag \"camdl/tilediiif.tools:0\" --tag \"camdl/tilediiif.tools:image0.1.0\" --tag \"camdl/tilediiif.tools:image0.1\" --tag \"camdl/tilediiif.tools:image0\" \\\n   \\\n   \\\n   \\\n  \"$CONTEXT_DIR\" \\\n&& cd - \\\n&& git worktree remove \"$CONTEXT_DIR\""
+          "exec": "git worktree add --detach \"$VERSION_CHECKOUT\" \"docker/tilediiif.tools-v0.1.0\" \\\n&& cd \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/tilediiif.tools/Dockerfile\" \\\n  --tag \"camdl/tilediiif.tools:0.1.0\" --tag \"camdl/tilediiif.tools:0.1\" --tag \"camdl/tilediiif.tools:0\" --tag \"camdl/tilediiif.tools:image0.1.0\" --tag \"camdl/tilediiif.tools:image0.1\" --tag \"camdl/tilediiif.tools:image0\" \\\n   \\\n   \\\n   \\\n  \"$GIT_DIR\" \\\n&& cd - \\\n&& git worktree remove \"$VERSION_CHECKOUT\""
         }
       ],
       "condition": "! docker image inspect camdl/tilediiif.tools:0.1.0 camdl/tilediiif.tools:0.1 camdl/tilediiif.tools:0 camdl/tilediiif.tools:image0.1.0 camdl/tilediiif.tools:image0.1 camdl/tilediiif.tools:image0 > /dev/null 2>&1"
