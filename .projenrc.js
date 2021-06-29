@@ -645,7 +645,13 @@ async function constructProject() {
           // Tag separately for tools version and image version
           ...splitSemverComponents(tilediiifTools.version),
           ...splitSemverComponents(version).map(ver => `image${ver}`),
-        ]
+        ],
+        buildArgs: {
+          // TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${tilediiifTools.version}`,
+          // TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${tilediiifCore.version}`,
+          TILEDIIIF_TOOLS_SHA: `tags/sample-tag`,
+          TILEDIIIF_CORE_SHA: `tags/sample-tag`,
+        },
       }
     ],
   }));
