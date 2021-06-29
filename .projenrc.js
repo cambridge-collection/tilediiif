@@ -643,8 +643,8 @@ async function constructProject() {
       {
         tag: [
           // Tag separately for tools version and image version
-          ...splitSemverComponents(tilediiifTools.version),
-          ...splitSemverComponents(version).map(ver => `image${ver}`),
+          ...splitSemverComponents(tilediiifTools.version).map(ver => `v${ver}`),
+          ...splitSemverComponents(version).map(ver => `image-v${ver}`),
         ],
         buildArgs: {
           // TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${tilediiifTools.version}`,
