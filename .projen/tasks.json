@@ -234,20 +234,20 @@
         }
       ]
     },
-    "create-release:docker:tilediiif.tools": {
-      "name": "create-release:docker:tilediiif.tools",
+    "create-release:docker:tilediiif.tools-slim": {
+      "name": "create-release:docker:tilediiif.tools-slim",
       "category": "20.release",
-      "description": "Generate a tagged release commit for docker:tilediiif.tools using standard-version",
+      "description": "Generate a tagged release commit for docker:tilediiif.tools-slim using standard-version",
       "steps": [
         {
-          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif.tools-v\""
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif.tools-slim-v\""
         }
       ],
       "condition": "test \"$(git status --porcelain)\" == \"\"",
-      "cwd": "docker/images/tilediiif.tools"
+      "cwd": "docker/images/tilediiif.tools-slim"
     },
-    "build-docker-image:tilediiif.tools": {
-      "name": "build-docker-image:tilediiif.tools",
+    "build-docker-image:tilediiif.tools-slim": {
+      "name": "build-docker-image:tilediiif.tools-slim",
       "category": "00.build",
       "env": {
         "GIT_DIR": "$(git rev-parse --git-common-dir)",
@@ -255,17 +255,55 @@
       },
       "steps": [
         {
-          "exec": "git worktree add --detach \"$VERSION_CHECKOUT\" \"docker/tilediiif.tools-v0.1.0\" \\\n&& cd \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/tilediiif.tools/Dockerfile\" \\\n  --tag \"camdl/tilediiif.tools:v0.1.0\" --tag \"camdl/tilediiif.tools:v0.1\" --tag \"camdl/tilediiif.tools:v0\" --tag \"camdl/tilediiif.tools:image-v0.1.0\" --tag \"camdl/tilediiif.tools:image-v0.1\" --tag \"camdl/tilediiif.tools:image-v0\" \\\n  --build-arg \"TILEDIIIF_TOOLS_SHA=tags/sample-tag\" --build-arg \"TILEDIIIF_CORE_SHA=tags/sample-tag\" \\\n   \\\n   \\\n  \"$GIT_DIR\" \\\n&& cd - \\\n&& git worktree remove \"$VERSION_CHECKOUT\""
+          "exec": "git worktree add --detach \"$VERSION_CHECKOUT\" \"docker/tilediiif.tools-slim-v0.1.0\" \\\n&& cd \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/tilediiif.tools-slim/Dockerfile\" \\\n  --tag \"camdl/tilediiif.tools:v0.1.0-slim\" --tag \"camdl/tilediiif.tools:v0.1-slim\" --tag \"camdl/tilediiif.tools:v0-slim\" --tag \"camdl/tilediiif.tools:image-v0.1.0-slim\" --tag \"camdl/tilediiif.tools:image-v0.1-slim\" --tag \"camdl/tilediiif.tools:image-v0-slim\" \\\n  --build-arg \"TILEDIIIF_TOOLS_SHA=tags/sample-tag\" --build-arg \"TILEDIIIF_CORE_SHA=tags/sample-tag\" \\\n   \\\n   \\\n  \"$GIT_DIR\" \\\n&& cd - \\\n&& git worktree remove \"$VERSION_CHECKOUT\""
+        }
+      ],
+      "condition": "! docker image inspect camdl/tilediiif.tools:v0.1.0-slim camdl/tilediiif.tools:v0.1-slim camdl/tilediiif.tools:v0-slim camdl/tilediiif.tools:image-v0.1.0-slim camdl/tilediiif.tools:image-v0.1-slim camdl/tilediiif.tools:image-v0-slim > /dev/null 2>&1"
+    },
+    "push-docker-image:tilediiif.tools-slim": {
+      "name": "push-docker-image:tilediiif.tools-slim",
+      "category": "20.release",
+      "steps": [
+        {
+          "spawn": "build-docker-image:tilediiif.tools-slim"
+        },
+        {
+          "exec": "docker image push camdl/tilediiif.tools:v0.1.0-slim camdl/tilediiif.tools:v0.1-slim camdl/tilediiif.tools:v0-slim camdl/tilediiif.tools:image-v0.1.0-slim camdl/tilediiif.tools:image-v0.1-slim camdl/tilediiif.tools:image-v0-slim"
+        }
+      ]
+    },
+    "create-release:docker:tilediiif.tools-parallel": {
+      "name": "create-release:docker:tilediiif.tools-parallel",
+      "category": "20.release",
+      "description": "Generate a tagged release commit for docker:tilediiif.tools-parallel using standard-version",
+      "steps": [
+        {
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif.tools-parallel-v\""
+        }
+      ],
+      "condition": "test \"$(git status --porcelain)\" == \"\"",
+      "cwd": "docker/images/tilediiif.tools-parallel"
+    },
+    "build-docker-image:tilediiif.tools-parallel": {
+      "name": "build-docker-image:tilediiif.tools-parallel",
+      "category": "00.build",
+      "env": {
+        "GIT_DIR": "$(git rev-parse --git-common-dir)",
+        "VERSION_CHECKOUT": "$(mktemp -d)"
+      },
+      "steps": [
+        {
+          "exec": "git worktree add --detach \"$VERSION_CHECKOUT\" \"docker/tilediiif.tools-parallel-v0.1.0\" \\\n&& cd \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/tilediiif.tools-parallel/Dockerfile\" \\\n  --tag \"camdl/tilediiif.tools:v0.1.0\" --tag \"camdl/tilediiif.tools:v0.1\" --tag \"camdl/tilediiif.tools:v0\" --tag \"camdl/tilediiif.tools:image-v0.1.0\" --tag \"camdl/tilediiif.tools:image-v0.1\" --tag \"camdl/tilediiif.tools:image-v0\" \\\n  --build-arg \"TILEDIIIF_TOOLS_SHA=tags/sample-tag\" --build-arg \"TILEDIIIF_CORE_SHA=tags/sample-tag\" \\\n   \\\n   \\\n  \"$GIT_DIR\" \\\n&& cd - \\\n&& git worktree remove \"$VERSION_CHECKOUT\""
         }
       ],
       "condition": "! docker image inspect camdl/tilediiif.tools:v0.1.0 camdl/tilediiif.tools:v0.1 camdl/tilediiif.tools:v0 camdl/tilediiif.tools:image-v0.1.0 camdl/tilediiif.tools:image-v0.1 camdl/tilediiif.tools:image-v0 > /dev/null 2>&1"
     },
-    "push-docker-image:tilediiif.tools": {
-      "name": "push-docker-image:tilediiif.tools",
+    "push-docker-image:tilediiif.tools-parallel": {
+      "name": "push-docker-image:tilediiif.tools-parallel",
       "category": "20.release",
       "steps": [
         {
-          "spawn": "build-docker-image:tilediiif.tools"
+          "spawn": "build-docker-image:tilediiif.tools-parallel"
         },
         {
           "exec": "docker image push camdl/tilediiif.tools:v0.1.0 camdl/tilediiif.tools:v0.1 camdl/tilediiif.tools:v0 camdl/tilediiif.tools:image-v0.1.0 camdl/tilediiif.tools:image-v0.1 camdl/tilediiif.tools:image-v0"

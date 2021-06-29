@@ -10,7 +10,8 @@ node_modules/
 !/.github/workflows/build-tilediiif.tools.yml
 !/.projen/deps.json
 !/.projen/tasks.json
-!/docker/images/tilediiif.tools/package.json
+!/docker/images/tilediiif.tools-parallel/package.json
+!/docker/images/tilediiif.tools-slim/package.json
 !/tilediiif.core/package.json
 !/tilediiif.server/package.json
 !/tilediiif.tools/package.json
