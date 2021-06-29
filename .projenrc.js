@@ -607,7 +607,7 @@ async function constructProject() {
       dockerfileFragments.base,
       dockerfileFragments.dev,
     ]),
-    tilediiifTools: await dockerfileFromFragments(rootProject, 'docker/images/tilediiif.tools/Dockerfile', [
+    tilediiifTools: await dockerfileFromFragments(rootProject, 'docker/images/tilediiif.tools-slim/Dockerfile', [
       dockerfileFragments.buildMozjpeg,
       dockerfileFragments.buildVips,
       dockerfileFragments.pythonBase,
@@ -632,12 +632,37 @@ async function constructProject() {
 
 
   await DockerImage.create(rootProject, {
-    directoryPath: 'docker/images/tilediiif.tools',
+    directoryPath: 'docker/images/tilediiif.tools-slim',
   }, ({version, ...options}) => ({
     ...options,
     contextPath: '$GIT_DIR',
     version,
-    nickName: 'tilediiif.tools',
+    nickName: 'tilediiif.tools-slim',
+    imageName: 'camdl/tilediiif.tools',
+    targets: [
+      {
+        tag: [
+          // Tag separately for tools version and image version
+          ...splitSemverComponents(tilediiifTools.version).map(ver => `v${ver}-slim`),
+          ...splitSemverComponents(version).map(ver => `image-v${ver}-slim`),
+        ],
+        buildArgs: {
+          // TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${tilediiifTools.version}`,
+          // TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${tilediiifCore.version}`,
+          TILEDIIIF_TOOLS_SHA: `tags/sample-tag`,
+          TILEDIIIF_CORE_SHA: `tags/sample-tag`,
+        },
+      }
+    ],
+  }));
+
+  await DockerImage.create(rootProject, {
+    directoryPath: 'docker/images/tilediiif.tools-parallel',
+  }, ({version, ...options}) => ({
+    ...options,
+    contextPath: '$GIT_DIR',
+    version,
+    nickName: 'tilediiif.tools-parallel',
     imageName: 'camdl/tilediiif.tools',
     targets: [
       {
