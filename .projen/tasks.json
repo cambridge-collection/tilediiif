@@ -255,7 +255,7 @@
       },
       "steps": [
         {
-          "exec": "git worktree add --detach \"$VERSION_CHECKOUT\" \"docker/tilediiif.tools-v0.1.0\" \\\n&& cd \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/tilediiif.tools/Dockerfile\" \\\n  --tag \"camdl/tilediiif.tools:0.1.0\" --tag \"camdl/tilediiif.tools:0.1\" --tag \"camdl/tilediiif.tools:0\" --tag \"camdl/tilediiif.tools:image0.1.0\" --tag \"camdl/tilediiif.tools:image0.1\" --tag \"camdl/tilediiif.tools:image0\" \\\n   \\\n   \\\n   \\\n  \"$GIT_DIR\" \\\n&& cd - \\\n&& git worktree remove \"$VERSION_CHECKOUT\""
+          "exec": "git worktree add --detach \"$VERSION_CHECKOUT\" \"docker/tilediiif.tools-v0.1.0\" \\\n&& cd \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/tilediiif.tools/Dockerfile\" \\\n  --tag \"camdl/tilediiif.tools:0.1.0\" --tag \"camdl/tilediiif.tools:0.1\" --tag \"camdl/tilediiif.tools:0\" --tag \"camdl/tilediiif.tools:image0.1.0\" --tag \"camdl/tilediiif.tools:image0.1\" --tag \"camdl/tilediiif.tools:image0\" \\\n  --build-arg \"TILEDIIIF_TOOLS_SHA=tags/sample-tag\" --build-arg \"TILEDIIIF_CORE_SHA=tags/sample-tag\" \\\n   \\\n   \\\n  \"$GIT_DIR\" \\\n&& cd - \\\n&& git worktree remove \"$VERSION_CHECKOUT\""
         }
       ],
       "condition": "! docker image inspect camdl/tilediiif.tools:0.1.0 camdl/tilediiif.tools:0.1 camdl/tilediiif.tools:0 camdl/tilediiif.tools:image0.1.0 camdl/tilediiif.tools:image0.1 camdl/tilediiif.tools:image0 > /dev/null 2>&1"
