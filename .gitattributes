@@ -10,6 +10,7 @@
 /.projen/deps.json                                  	linguist-generated
 /.projen/tasks.json                                 	linguist-generated
 /docker/images/dev/Dockerfile                       	linguist-generated
+/docker/images/dev/package.json                     	linguist-generated
 /docker/images/tilediiif.tools-parallel/Dockerfile  	linguist-generated
 /docker/images/tilediiif.tools-parallel/package.json	linguist-generated
 /docker/images/tilediiif.tools-slim/Dockerfile      	linguist-generated
