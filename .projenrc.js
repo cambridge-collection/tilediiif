@@ -393,8 +393,8 @@ function splitDockerfileGlobalArgs(dockerfile) {
  * @typedef {Object} DockerImageTargetOptions
  * @property {string} [target]
  * @property {string | string[]} tag
- * @param {Object<string, string>} buildArgs
- * @param {Object<string, string>} labels
+ * @param {Object<string, string>} [buildArgs]
+ * @param {Object<string, string>} [labels]
  */
 
 /**
@@ -440,8 +440,12 @@ class DockerImage extends Component {
     targets = targets.map(({target, tag, buildArgs, labels}) => ({
       target,
       tag: typeof tag === 'string' ? [tag] : [...tag],
-      buildArgs,
-      labels
+      buildArgs: buildArgs ?? {},
+      labels: {
+        'org.opencontainers.image.version': version,
+        'org.opencontainers.image.revision': '$(git rev-parse --verify HEAD)',
+        ...(labels ?? {})
+      }
     }));
     const dockerfilePath = path.join(directoryPath, 'Dockerfile');
 
@@ -449,7 +453,7 @@ class DockerImage extends Component {
       name: `docker:${nickName}`,
       tagName: `docker/${nickName}`,
       directoryPath,
-      version: version,
+      version,
     });
     // the git revision the image is built from
     const commitIsh = `docker/${nickName}-v${version}`;
@@ -466,9 +470,9 @@ class DockerImage extends Component {
       tag = typeof tag === 'string' ? [tag] : Array.from(tag);
 
       const tagArguments = tag.map(t => `--tag "${imageName}:${t}"`).join(' ');
-      const buildArgArguments = Object.entries(buildArgs ?? {})
+      const buildArgArguments = Object.entries(buildArgs)
         .map(([n, v]) => `--build-arg "${n}=${v}"`).join(' ');
-      const labelArguments = Object.entries(labels ?? {})
+      const labelArguments = Object.entries(labels)
         .map(([n, v]) => `--label "${n}=${v}"`).join(' ');
 
         return `\
@@ -704,6 +708,11 @@ async function constructProject() {
           TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${toolsSlimImagePkgJson.tilediiif.toolsVersion}`,
           TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${toolsSlimImagePkgJson.tilediiif.coreVersion}`,
         },
+        labels: {
+          'org.opencontainers.image.title': 'tilediiif.tools slim',
+          'org.opencontainers.image.description': 'The tilediiif.tools Python package.',
+          'org.opencontainers.image.version': `${version} (tilediiif.tools=${toolsSlimImagePkgJson.tilediiif.toolsVersion}, tilediiif.core=${toolsSlimImagePkgJson.tilediiif.coreVersion})`,
+        },
       }
     ],
   }));
@@ -736,6 +745,11 @@ async function constructProject() {
           TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${toolsParallelImagePkgJson.tilediiif.toolsVersion}`,
           TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${toolsParallelImagePkgJson.tilediiif.coreVersion}`,
         },
+        labels: {
+          'org.opencontainers.image.title': 'tilediiif.tools parallel',
+          'org.opencontainers.image.description': 'The tilediiif.tools Python package, plus GNU parallel.',
+          'org.opencontainers.image.version': `${version} (tilediiif.tools=${toolsParallelImagePkgJson.tilediiif.toolsVersion}, tilediiif.core=${toolsParallelImagePkgJson.tilediiif.coreVersion})`,
+        },
       }
     ],
   }));
@@ -753,6 +767,10 @@ async function constructProject() {
         tag: [
           ...splitSemverComponents(version).map(ver => `v${ver}-tools`),
         ],
+        labels: {
+          'org.opencontainers.image.title': 'tilediiif-dev-env',
+          'org.opencontainers.image.title': 'tilediiif development environment.',
+        }
       },
       {
         target: 'tools-dev',
@@ -762,12 +780,20 @@ async function constructProject() {
         buildArgs: {
           VIPS_USE_MOZJPEG: '',
         },
+        labels: {
+          'org.opencontainers.image.title': 'tilediiif-dev-env (without mozjpeg)',
+          'org.opencontainers.image.title': 'tilediiif development environment (without mozjpeg installed).',
+        }
       },
       {
         target: 'tools-dev-with-broken-mozjpeg',
         tag: [
           ...splitSemverComponents(version).map(ver => `v${ver}-tools-with-broken-mozjpeg`),
         ],
+        labels: {
+          'org.opencontainers.image.title': 'tilediiif-dev-env (broken mozjpeg)',
+          'org.opencontainers.image.description': 'tilediiif development environment (with vips built for mozjpeg, but mozjpeg unavailable).',
+        }
       },
     ],
   }));

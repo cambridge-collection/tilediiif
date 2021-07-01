@@ -7,6 +7,7 @@ COPY --from=build-mozjpeg /opt/mozjpeg /opt/mozjpeg
 COPY --from=build-mozjpeg /etc/ld.so.conf.d/00.mozjpeg.conf /etc/ld.so.conf.d/00.mozjpeg.conf
 
 FROM base-$_MOZJPEG_VARIANT AS base
+LABEL org.opencontainers.image.source https://github.com/cambridge-collection/tilediiif
 ENV DEBIAN_FRONTEND=noninteractive
 ARG VIPS_VERSION
 COPY --from=build-vips /opt/vips /opt/vips

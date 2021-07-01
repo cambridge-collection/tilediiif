@@ -99,6 +99,7 @@ COPY --from=build-mozjpeg /opt/mozjpeg /opt/mozjpeg
 COPY --from=build-mozjpeg /etc/ld.so.conf.d/00.mozjpeg.conf /etc/ld.so.conf.d/00.mozjpeg.conf
 
 FROM base-$_MOZJPEG_VARIANT AS base
+LABEL org.opencontainers.image.source https://github.com/cambridge-collection/tilediiif
 ENV DEBIAN_FRONTEND=noninteractive
 ARG VIPS_VERSION
 COPY --from=build-vips /opt/vips /opt/vips
@@ -161,8 +162,6 @@ RUN cd tilediiif.tools \
 FROM base AS tilediiif.tools
 ARG TILEDIIIF_TOOLS_SHA
 ARG TILEDIIIF_CORE_SHA
-LABEL org.opencontainers.image.title="camdl/tilediiif.tools"
-LABEL org.opencontainers.image.source="https://github.com/cambridge-collection/tilediiif"
 
 COPY --from=build-tilediiif.tools-wheel \
     /tmp/wheels/* \
