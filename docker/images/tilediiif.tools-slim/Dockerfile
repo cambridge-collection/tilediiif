@@ -143,7 +143,7 @@ WORKDIR /tmp/build-tilediiif/tilediiif
 # body: docker/fragments/build-tilediiif.core-wheel.Dockerfile
 FROM build-tilediiif-wheel-base AS build-tilediiif.core-wheel
 ARG TILEDIIIF_CORE_SHA
-RUN git fetch origin && git reset --hard "${TILEDIIIF_CORE_SHA}"
+RUN git fetch --tags origin && git reset --hard "${TILEDIIIF_CORE_SHA}"
 RUN cd tilediiif.core \
     && poetry build \
     && mkdir /tmp/wheels \
@@ -152,7 +152,7 @@ RUN cd tilediiif.core \
 # body: docker/fragments/build-tilediiif.tools-wheel.Dockerfile
 FROM build-tilediiif-wheel-base AS build-tilediiif.tools-wheel
 ARG TILEDIIIF_TOOLS_SHA
-RUN git fetch origin && git reset --hard "${TILEDIIIF_TOOLS_SHA}"
+RUN git fetch --tags origin && git reset --hard "${TILEDIIIF_TOOLS_SHA}"
 RUN cd tilediiif.tools \
     && poetry build \
     && mkdir /tmp/wheels \
