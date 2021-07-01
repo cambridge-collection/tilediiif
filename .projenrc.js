@@ -1,12 +1,14 @@
-const { python, ProjectType, TextFile, TextFileOptions, JsonFile, Project, IniFile } = require('projen');
+const { python, ProjectType, TextFile, TextFileOptions, JsonFile, JsonFileOptions, Project, IniFile, ObjectFile } = require('projen');
 const { PROJEN_MARKER } = require('projen/lib/common');
 const { TaskCategory } = require('projen/lib/tasks');
 const fsp = require('fs/promises');
+const fs = require('fs');
 const path = require('path');
 const { DependencyType } = require('projen/lib/deps');
 const { JobPermission } = require('projen/lib/github/workflows-model');
 const { Component } = require('projen/lib/component');
 const { PythonProject } = require('projen/lib/python');
+const assert = require('assert');
 
 const DEFAULT_POETRY_OPTIONS = {
   authors: [
@@ -30,21 +32,6 @@ const DEFAULT_OPTIONS = {
 
 const DEFAULT_VERSION = '0.1.0';
 
-async function getVersion(name) {
-  const versionFilePath = path.join(name, 'package.json');
-  let version;
-  try {
-    version = JSON.parse(await fsp.readFile(versionFilePath, {encoding: 'utf-8'})).version;
-    if(typeof version !== 'string' || !/\w/.test(version)) {
-      return undefined;
-    }
-  }
-  catch(e) {
-    return undefined;
-  }
-
-  return version;
-}
 
 class RootProject extends Project {
   constructor(options) {
@@ -88,22 +75,73 @@ class PoetryInstallAction extends Component {
   }
 }
 
+/**
+ * @typedef {Object} GetOrCreateJsonFileResult
+ * @property {ObjectFile} objectFile
+ * @property {Object} content
+ *
+ * @param {Project} project
+ * @param {Object} options
+ * @param {string} options.filePath
+ * @param {Object} [options.initialContent]
+ * @param {JsonFileOptions} [options.jsonFileOptions] options to use if a JsonFile needs to be created
+ * @returns {GetOrCreateJsonFileResult}
+ */
+function getOrCreateJsonFile(project, {filePath, initialContent, jsonFileOptions}) {
+  let existingContent = undefined;
+  try {
+    existingContent = fs.readFileSync(filePath, {encoding: 'utf-8'});
+  }
+  catch(e) {}
+  const content = existingContent ? JSON.parse(existingContent) : (initialContent ?? {});
+
+  const objectFile = project.tryFindObjectFile(filePath);
+  if(objectFile) {
+    return {objectFile, content};
+  }
+
+  return {
+    objectFile: new JsonFile(project, filePath, {
+      obj: content,
+      ...(jsonFileOptions ?? {
+        marker: false,
+        readonly: false,
+      }),
+    }),
+    content,
+  };
+}
+
 class StandardVersionPackageJson extends Component {
+  /**
+   * @param {Project} project
+   * @param {Object} options
+   * @param {string} options.directoryPath
+   * @param {ObjectFile} options.versionFile
+   * @param {string} options.version
+   */
   constructor(project, {directoryPath, version}) {
     super(project);
-    const packageJsonPath = path.join(directoryPath, 'package.json');
     const projenRootPath = path.relative(directoryPath, '.');
-    const versionFile = project.tryFindObjectFile(packageJsonPath) || new JsonFile(project, packageJsonPath, {
-      obj: {},
-      readonly: false,
-    });
+    const {objectFile: versionFile} = getOrCreateJsonFile(project, {filePath: path.join(directoryPath, 'package.json')});
     versionFile.addOverride('version', version);
     versionFile.addOverride('standard-version', {
       scripts: {
         // re-synth projen to update things referencing version numbers
-        postchangelog: `(cd ${projenRootPath} && npx projen && git add .)`
+        postchangelog: `(cd ${projenRootPath} && npx projen && git add .)`,
       }
     });
+  }
+}
+
+function getJsonFileContent(filePath, defaultContent) {
+  if(defaultContent !== undefined && !fs.existsSync(filePath)) {
+    return defaultContent;
+  }
+  try {
+    return JSON.parse(fs.readFileSync(filePath, {encoding: 'utf-8'}));
+  } catch(e) {
+    throw new Error(`Unable to parse JSON file (filePath: ${filePath}, error: ${e})`);
   }
 }
 
@@ -116,19 +154,30 @@ class StandardVersionPackageJson extends Component {
  *
  * A create-release:<name> projen task invokes standard-version to update the
  * package.json and CHANGELOG.md.
+ *
+ * @typedef {Object} StandardVersionedDirectoryOptions
+ * @property {string} directoryPath
+ * @property {string} [version]
  */
 class StandardVersionedDirectory extends Component {
   /**
    * @param {string} directoryPath
-   * @returns {Promise<string>}
+   * @param {string} [defaultVersion]
+   * @returns {string}
    */
-  static async getVersion(directoryPath) {
-    return await getVersion(directoryPath) ?? DEFAULT_VERSION;
+  static getVersion(directoryPath, defaultVersion = DEFAULT_VERSION) {
+    const versionFilePath = path.join(directoryPath, 'package.json');
+    const version = getJsonFileContent(versionFilePath, {}).version;
+    if(typeof version === 'string' && /\w/.test(version)) {
+      return version;
+    }
+    return defaultVersion;
   }
 
   constructor(project, {name, directoryPath, version, tagName}) {
     super(project);
     tagName = tagName ?? name;
+    version = version ?? StandardVersionedDirectory.getVersion(directoryPath);
     new StandardVersionPackageJson(project, {directoryPath, version});
 
     project.addTask(`create-release:${name}`, {
@@ -138,31 +187,27 @@ class StandardVersionedDirectory extends Component {
       condition: 'test "$(git status --porcelain)" == ""',
       exec: `npx standard-version --commit-all --path . --tag-prefix "${tagName}-v"`
     });
+
+    this.version = version;
   }
 }
 
 class TilediiifProject extends python.PythonProject {
-  static async create(rootProject, name, options) {
-    const version = await getVersion(name) || DEFAULT_VERSION;
-    const project = new TilediiifProject(rootProject, name, {
-      version,
-      ...options
-    });
-    return project;
-  }
-
   /**
    * @param {Project} rootProject
    * @param {string} name
    * @param {import('projen/python').PythonProjectOptions} options
    */
   constructor(rootProject, name, {testPackages, deps, devDeps, ...options}) {
+    const version =  StandardVersionedDirectory.getVersion(name);
+
     super({
       ...DEFAULT_OPTIONS,
       parent: rootProject,
       outdir: name,
       name,
       moduleName: name,
+      version,
       ...options,
     });
 
@@ -186,7 +231,7 @@ class TilediiifProject extends python.PythonProject {
     new StandardVersionedDirectory(rootProject, {
       name,
       directoryPath: this.relativeOutdir,
-      version: options.version,
+      version,
     });
 
     this.ensureReleaseableTask = rootProject.addTask(`ensure-checkout-is-releaseable:${name}`, {
@@ -366,7 +411,7 @@ function splitDockerfileGlobalArgs(dockerfile) {
 /**
  * @callback DockerImageCreateCb
  * @param {string} version
- * @returns {Promise<DockerImageOptions>|DockerImageOptions}
+ * @returns {DockerImageOptions}
  */
 
 /**
@@ -380,10 +425,10 @@ class DockerImage extends Component {
    * @param {DockerImageCreateCb} optionsCallback
    * @returns {Promise<DockerFile>}
    */
-  static async create(project, options, optionsCallback) {
+  static createWithVersion(project, options, optionsCallback) {
     optionsCallback = optionsCallback ?? ((options) => options);
-    const version = await StandardVersionedDirectory.getVersion(options.directoryPath);
-    return new DockerImage(project, {...(await optionsCallback({...options, version}))});
+    const version = StandardVersionedDirectory.getVersion(options.directoryPath);
+    return new DockerImage(project, {...(optionsCallback({...options, version}))});
   }
 
   /**
@@ -493,7 +538,7 @@ async function constructProject() {
     devDeps: [],
   });
 
-  const tilediiifCore = await TilediiifProject.create(rootProject, 'tilediiif.core', {
+  const tilediiifCore = new TilediiifProject(rootProject, 'tilediiif.core', {
     testPackages: ['tests'],
     deps: [
       "docopt@^0.6.2",
@@ -514,7 +559,7 @@ async function constructProject() {
   tilediiifCorePyprojectToml.addOverride('tool.poetry.packages', [{include: 'tilediiif'}]);
 
 
-  const tilediiifTools = await TilediiifProject.create(rootProject, 'tilediiif.tools', {
+  const tilediiifTools = new TilediiifProject(rootProject, 'tilediiif.tools', {
     testPackages: ['tests', 'integration_tests'],
     poetryOptions: {
       ...DEFAULT_POETRY_OPTIONS,
@@ -559,7 +604,7 @@ async function constructProject() {
   });
 
 
-  const tilediiifServer = await TilediiifProject.create(rootProject, 'tilediiif.server', {
+  const tilediiifServer = new TilediiifProject(rootProject, 'tilediiif.server', {
     testPackages: ['tests'],
     deps: [
       "falcon@^2.0",
@@ -630,8 +675,16 @@ async function constructProject() {
     ]),
   };
 
-
-  await DockerImage.create(rootProject, {
+  const {content: toolsSlimImagePkgJson} = getOrCreateJsonFile(rootProject, {
+    filePath: 'docker/images/tilediiif.tools-slim/package.json',
+    jsonFileOptions: {
+      marker: false,
+      readonly: false,
+    }
+  });
+  assert((toolsSlimImagePkgJson.tilediiif ?? {}).toolsVersion);
+  assert((toolsSlimImagePkgJson.tilediiif ?? {}).coreVersion);
+  DockerImage.createWithVersion(rootProject, {
     directoryPath: 'docker/images/tilediiif.tools-slim',
   }, ({version, ...options}) => ({
     ...options,
@@ -647,14 +700,24 @@ async function constructProject() {
           ...splitSemverComponents(version).map(ver => `image-v${ver}-slim`),
         ],
         buildArgs: {
-          TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${tilediiifTools.version}`,
-          TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${tilediiifCore.version}`,
+          // FIXME: need to pull the version from the docker/images/* dir so that changes are noticed by standard-version
+          TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${toolsSlimImagePkgJson.tilediiif.toolsVersion}`,
+          TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${toolsSlimImagePkgJson.tilediiif.coreVersion}`,
         },
       }
     ],
   }));
 
-  await DockerImage.create(rootProject, {
+  const {content: toolsParallelImagePkgJson} = getOrCreateJsonFile(rootProject, {
+    filePath: 'docker/images/tilediiif.tools-parallel/package.json',
+    jsonFileOptions: {
+      marker: false,
+      readonly: false,
+    }
+  });
+  assert.strictEqual((toolsParallelImagePkgJson.tilediiif ?? {}).toolsVersion, toolsSlimImagePkgJson.tilediiif.toolsVersion);
+  assert.strictEqual((toolsParallelImagePkgJson.tilediiif ?? {}).coreVersion, toolsSlimImagePkgJson.tilediiif.coreVersion);
+  DockerImage.createWithVersion(rootProject, {
     directoryPath: 'docker/images/tilediiif.tools-parallel',
   }, ({version, ...options}) => ({
     ...options,
@@ -670,14 +733,14 @@ async function constructProject() {
           ...splitSemverComponents(version).map(ver => `image-v${ver}`),
         ],
         buildArgs: {
-          TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${tilediiifTools.version}`,
-          TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${tilediiifCore.version}`,
+          TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${toolsParallelImagePkgJson.tilediiif.toolsVersion}`,
+          TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${toolsParallelImagePkgJson.tilediiif.coreVersion}`,
         },
       }
     ],
   }));
 
-  await DockerImage.create(rootProject, {
+  DockerImage.createWithVersion(rootProject, {
     directoryPath: 'docker/images/dev',
   }, ({version, ...options}) => ({
     ...options,
