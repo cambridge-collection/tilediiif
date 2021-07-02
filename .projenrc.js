@@ -286,7 +286,7 @@ class TilediiifProject extends python.PythonProject {
       exec: `cd "${this.relativeOutdir}" && poetry run pytest`
     }));
 
-    this.buildWorkflow = this._createBuildWorkflow(rootProject.github);
+    // this.buildWorkflow = this._createBuildWorkflow(rootProject.github);
     // this.releaseWorkflow = rootProject.github.addWorkflow(`build-${name}`);
   }
 

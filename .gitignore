@@ -5,9 +5,6 @@
 .vscode
 node_modules/
 !/.gitattributes
-!/.github/workflows/build-tilediiif.core.yml
-!/.github/workflows/build-tilediiif.server.yml
-!/.github/workflows/build-tilediiif.tools.yml
 !/.projen/deps.json
 !/.projen/tasks.json
 !/docker/images/dev/package.json

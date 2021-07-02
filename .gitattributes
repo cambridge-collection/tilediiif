@@ -2,9 +2,6 @@
 
 /.flake8                                            	linguist-generated
 /.gitattributes                                     	linguist-generated
-/.github/workflows/build-tilediiif.core.yml         	linguist-generated
-/.github/workflows/build-tilediiif.server.yml       	linguist-generated
-/.github/workflows/build-tilediiif.tools.yml        	linguist-generated
 /.gitignore                                         	linguist-generated
 /.projen/**                                         	linguist-generated
 /.projen/deps.json                                  	linguist-generated
