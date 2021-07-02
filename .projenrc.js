@@ -695,7 +695,7 @@ async function constructProject() {
     contextPath: '$GIT_DIR',
     version,
     nickName: 'tilediiif.tools-slim',
-    imageName: 'camdl/tilediiif.tools',
+    imageName: 'ghcr.io/cambridge-collection/tilediiif.tools',
     targets: [
       {
         tag: [
@@ -733,7 +733,7 @@ async function constructProject() {
     contextPath: '$GIT_DIR',
     version,
     nickName: 'tilediiif.tools-parallel',
-    imageName: 'camdl/tilediiif.tools',
+    imageName: 'ghcr.io/cambridge-collection/tilediiif.tools',
     targets: [
       {
         tag: [
@@ -760,7 +760,7 @@ async function constructProject() {
     ...options,
     version,
     nickName: 'tilediiif-dev',
-    imageName: 'camdl/tilediiif-dev-env',
+    imageName: 'ghcr.io/cambridge-collection/tilediiif/dev-environment',
     targets: [
       {
         target: 'tools-dev',
