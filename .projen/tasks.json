@@ -87,7 +87,7 @@
       "description": "Generate a tagged release commit for tilediiif.core using standard-version",
       "steps": [
         {
-          "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.core-v\""
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.core-v\" \\\n  --releaseCommitMessageFormat \"chore(release): tilediiif.core-v{{currentTag}}\""
         }
       ],
       "condition": "test \"$(git status --porcelain)\" == \"\"",
@@ -138,7 +138,7 @@
       "description": "Generate a tagged release commit for tilediiif.tools using standard-version",
       "steps": [
         {
-          "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.tools-v\""
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.tools-v\" \\\n  --releaseCommitMessageFormat \"chore(release): tilediiif.tools-v{{currentTag}}\""
         }
       ],
       "condition": "test \"$(git status --porcelain)\" == \"\"",
@@ -189,7 +189,7 @@
       "description": "Generate a tagged release commit for tilediiif.server using standard-version",
       "steps": [
         {
-          "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.server-v\""
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.server-v\" \\\n  --releaseCommitMessageFormat \"chore(release): tilediiif.server-v{{currentTag}}\""
         }
       ],
       "condition": "test \"$(git status --porcelain)\" == \"\"",
@@ -240,7 +240,7 @@
       "description": "Generate a tagged release commit for docker:tilediiif.tools-slim using standard-version",
       "steps": [
         {
-          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif.tools-slim-v\""
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif.tools-slim-v\" \\\n  --releaseCommitMessageFormat \"chore(release): docker/tilediiif.tools-slim-v{{currentTag}}\""
         }
       ],
       "condition": "test \"$(git status --porcelain)\" == \"\"",
@@ -278,7 +278,7 @@
       "description": "Generate a tagged release commit for docker:tilediiif.tools-parallel using standard-version",
       "steps": [
         {
-          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif.tools-parallel-v\""
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif.tools-parallel-v\" \\\n  --releaseCommitMessageFormat \"chore(release): docker/tilediiif.tools-parallel-v{{currentTag}}\""
         }
       ],
       "condition": "test \"$(git status --porcelain)\" == \"\"",
@@ -316,7 +316,7 @@
       "description": "Generate a tagged release commit for docker:tilediiif-dev using standard-version",
       "steps": [
         {
-          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif-dev-v\""
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif-dev-v\" \\\n  --releaseCommitMessageFormat \"chore(release): docker/tilediiif-dev-v{{currentTag}}\""
         }
       ],
       "condition": "test \"$(git status --porcelain)\" == \"\"",

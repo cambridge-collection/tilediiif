@@ -185,7 +185,9 @@ class StandardVersionedDirectory extends Component {
       cwd: directoryPath,
       description: `Generate a tagged release commit for ${name} using standard-version`,
       condition: 'test "$(git status --porcelain)" == ""',
-      exec: `npx standard-version --commit-all --path . --tag-prefix "${tagName}-v"`
+      exec: `\
+npx standard-version --commit-all --path . --tag-prefix "${tagName}-v" \\
+  --releaseCommitMessageFormat "chore(release): ${tagName}-v{{currentTag}}"`
     });
 
     this.version = version;
