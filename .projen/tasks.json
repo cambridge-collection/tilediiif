@@ -268,7 +268,22 @@
           "spawn": "build-docker-image:tilediiif.tools-slim"
         },
         {
-          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:v0.1.0-slim ghcr.io/cambridge-collection/tilediiif.tools:v0.1-slim ghcr.io/cambridge-collection/tilediiif.tools:v0-slim ghcr.io/cambridge-collection/tilediiif.tools:image-v0.1.0-slim ghcr.io/cambridge-collection/tilediiif.tools:image-v0.1-slim ghcr.io/cambridge-collection/tilediiif.tools:image-v0-slim"
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:v0.1.0-slim"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:v0.1-slim"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:v0-slim"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:image-v0.1.0-slim"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:image-v0.1-slim"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:image-v0-slim"
         }
       ]
     },
@@ -306,7 +321,22 @@
           "spawn": "build-docker-image:tilediiif.tools-parallel"
         },
         {
-          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:v0.1.0 ghcr.io/cambridge-collection/tilediiif.tools:v0.1 ghcr.io/cambridge-collection/tilediiif.tools:v0 ghcr.io/cambridge-collection/tilediiif.tools:image-v0.1.0 ghcr.io/cambridge-collection/tilediiif.tools:image-v0.1 ghcr.io/cambridge-collection/tilediiif.tools:image-v0"
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:v0.1.0"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:v0.1"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:v0"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:image-v0.1.0"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:image-v0.1"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.tools:image-v0"
         }
       ]
     },
@@ -344,7 +374,31 @@
           "spawn": "build-docker-image:tilediiif-dev"
         },
         {
-          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.0-tools ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.0-tools-without-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-without-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-without-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.0-tools-with-broken-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-with-broken-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-with-broken-mozjpeg"
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.0-tools"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.0-tools-without-mozjpeg"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-without-mozjpeg"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-without-mozjpeg"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.0-tools-with-broken-mozjpeg"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-with-broken-mozjpeg"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-with-broken-mozjpeg"
         }
       ]
     },

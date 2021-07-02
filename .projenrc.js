@@ -507,9 +507,9 @@ ${buildCommands} \\
 
     this.pushTask = project.addTask(`push-docker-image:${nickName}`, {
       category: TaskCategory.RELEASE,
-      exec: `docker image push ${fullImageNames.join(' ')}`,
     });
     this.pushTask.prependSpawn(this.buildTask);
+    fullImageNames.forEach(image => this.pushTask.exec(`docker image push ${image}`))
   }
 }
 
