@@ -1,0 +1,71 @@
+name: Test & build
+
+on: [pull_request, push]
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+  SHELLOPTS: nounset:pipefail
+
+jobs:
+  verify-projen-up-to-date:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      - run: npx projen --no-post
+      - run: >
+          test "$(git status --porcelain)" == ""
+          || (
+          echo "Error: Running projen synth produced changes - project is not up-to-date" 1>&2
+          && git status --porcelain
+          && exit 1
+          )
+  typecheck:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      - run: npx projen ci:setup
+      - run: npx projen typecheck-python
+  lint:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      - run: npx projen ci:setup
+      - run: npx projen format-python-code
+      - run: >
+          test "$(git status --porcelain)" == ""
+          || (
+          echo "Error: Running `projen format-python-code` produced changes - committed code has not been auto-formatted" 1>&2
+          && git status --porcelain
+          && exit 1
+          )
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      - run: npx projen ci:setup
+      - run: npx projen test
