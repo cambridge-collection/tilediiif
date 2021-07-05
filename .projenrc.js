@@ -468,14 +468,6 @@ class DockerImage extends Component {
     // the git revision the image is built from
     const commitIsh = `docker/${nickName}-v${version}`;
 
-    // const fullImageNames = targets.flatMap(target => target.tag.map(tag => `${imageName}:${tag}`));
-    // const notAllTagsExist = `! docker image inspect ${fullImageNames.join(' ')} > /dev/null 2>&1`;
-    // this.buildTask = project.addTask(`build-docker-image:${nickName}`, {
-    //   category: TaskCategory.BUILD,
-    //   condition: notAllTagsExist,
-    // });
-
-    // TODO: generate build commands from options.targets
     const buildCommands = targets.map(({target, tag, buildArgs, labels}) => {
       tag = typeof tag === 'string' ? [tag] : Array.from(tag);
 
@@ -631,19 +623,6 @@ async function constructProject() {
   });
   const tilediiifServerPyprojectToml = tilediiifServer.tryFindObjectFile('pyproject.toml');
   tilediiifServerPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.core', {path: '../tilediiif.core',  develop: true});
-
-  // const pythonProjects = [tilediiifCore, tilediiifTools, tilediiifServer];
-  // const pythonProjectPaths = pythonProjects.map(proj => proj.relativeOutdir).join(' ');
-
-  // const ensureReleaseable = rootProject.addTask('ensure-checkout-is-releaseable', {
-  //   category: TaskCategory.RELEASE,
-  //   description: 'Fail with an error if the working copy is not a clean checkout of a release tag.',
-  //   exec: `\
-  //     test "$(git rev-parse HEAD)" == "$(git rev-parse tags/tilediiif.tools-v${tilediiifTools.version}^{commit})" \\
-  //       && test "$(git status --porcelain)" == "" \\
-  //       || (echo "Error: the git checkout must be clean and tagged" 1>&2; exit 1)
-  //   `,
-  // });
 
   const dockerfileFragments = Object.fromEntries(Object.entries({
     base: 'base',
@@ -808,61 +787,11 @@ async function constructProject() {
     ],
   }));
 
-  // new DockerImage(rootProject, {
-  //   name: 'tilediiif.tools',
-  //   dockerfile: dockerFiles.tilediiifTools.path,
-  //   tags: [
-  //     `camdl/tilediiif.tools:${tilediiifTools.version}`,
-  //     `camdl/tilediiif.tools:${tilediiifTools.version}-$(git log -1 --pretty=format:%h -- ${dockerFiles.tilediiifTools.path})`,
-  //   ],
-  // });
-
-  rootProject.addTask('foobar', {
-    exec: 'echo $(git log -1 --pretty=format:%h -- .projenrc.js) a b c',
-  });
-
   const toolsDockerImageName = 'camdl/tilediiif.tools'
   const toolsReleaseDockerImages = [
     {name: 'slim', target: 'tilediiif.tools', tag: `${tilediiifTools.version}-slim`},
     {name: 'default', target: 'tilediiif.tools-parallel', tag: tilediiifTools.version},
   ]
-
-  // const buildToolsReleaseDockerImageTasks = toolsReleaseDockerImages.map(({name, target, tag}) => {
-  //   const task = rootProject.addTask(`build-release-docker-images:tilediiif.tools:${name}`, {
-  //     category: TaskCategory.BUILD,
-  //     // only build if the tag doesn't already point to an image
-  //     condition: `! docker image inspect ${toolsDockerImageName}:${tag} > /dev/null 2>&1`,
-  //     exec: `\
-  //       docker image build \\
-  //         --label "org.opencontainers.image.version=${tag}" \\
-  //         --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \\
-  //         --tag ${toolsDockerImageName}:${tag} \\
-  //         --build-arg TILEDIIIF_TOOLS_VERSION=${tilediiifTools.version} \\
-  //         --build-arg TILEDIIIF_CORE_VERSION=${tilediiifCore.version} \\
-  //         --target "${target}" .
-  //     `,
-  //   });
-  //   task.prependSpawn(ensureReleaseable);
-  //   return task;
-  // });
-
-  // const buildToolsReleaseDockerImageTask = rootProject.addTask('build-release-docker-images:tilediiif.tools', {
-  //   category: TaskCategory.BUILD
-  // });
-  // buildToolsReleaseDockerImageTasks.forEach(task => buildToolsReleaseDockerImageTask.prependSpawn(task));
-
-  // const pushToolsReleaseDockerImageTasks = toolsReleaseDockerImages.map(({name, target, tag}, i) => {
-  //   const task = rootProject.addTask(`push-release-docker-images:tilediiif.tools:${name}`, {
-  //     category: TaskCategory.RELEASE,
-  //   });
-  //   task.spawn(buildToolsReleaseDockerImageTasks[i]);
-  //   task.exec(`docker image push ${toolsDockerImageName}:${tag}`);
-  //   return task;
-  // });
-  // const pushToolsReleaseDockerImageTask = rootProject.addTask('push-release-docker-images:tilediiif.tools', {
-  //   category: TaskCategory.RELEASE
-  // });
-  // pushToolsReleaseDockerImageTasks.forEach(task => pushToolsReleaseDockerImageTask.prependSpawn(task));
 
   return rootProject;
 }
