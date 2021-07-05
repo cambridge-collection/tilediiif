@@ -527,6 +527,7 @@ async function constructProject() {
     projectType: ProjectType.UNKNOWN,
     pytest: false,
     mergify: true,
+    stale: false,
 
     deps: [],
     devDeps: [],
