@@ -2,7 +2,6 @@
   "tasks": {
     "clobber": {
       "name": "clobber",
-      "category": "30.maintain",
       "description": "hard resets to HEAD of origin and cleans the local repo",
       "env": {
         "BRANCH": "$(git branch --show-current)"
@@ -35,7 +34,6 @@
     },
     "test": {
       "name": "test",
-      "category": "10.test",
       "description": "Run tests for tilediiif.* packages.",
       "steps": [
         {
@@ -51,7 +49,6 @@
     },
     "typecheck-python": {
       "name": "typecheck-python",
-      "category": "30.maintain",
       "description": "Check Python types for tilediiif.* packages.",
       "steps": [
         {
@@ -67,7 +64,6 @@
     },
     "format-python-code": {
       "name": "format-python-code",
-      "category": "30.maintain",
       "description": "Format Python code of tilediiif.* packages.",
       "steps": [
         {
@@ -83,7 +79,6 @@
     },
     "ci:setup": {
       "name": "ci:setup",
-      "category": "99.misc",
       "description": "Prepare the checked out project for running CI tasks without running a projen synth, e.g. install dependencies",
       "steps": [
         {
@@ -99,7 +94,6 @@
     },
     "create-release:tilediiif.core": {
       "name": "create-release:tilediiif.core",
-      "category": "20.release",
       "description": "Generate a tagged release commit for tilediiif.core using standard-version",
       "steps": [
         {
@@ -111,7 +105,6 @@
     },
     "ensure-checkout-is-releaseable:tilediiif.core": {
       "name": "ensure-checkout-is-releaseable:tilediiif.core",
-      "category": "20.release",
       "description": "Fail with an error if the working copy is not a clean checkout of a tilediiif.core release tag.",
       "steps": [
         {
@@ -121,7 +114,6 @@
     },
     "typecheck-python:tilediiif.core": {
       "name": "typecheck-python:tilediiif.core",
-      "category": "30.maintain",
       "description": "Typecheck tilediiif.core with mypy",
       "steps": [
         {
@@ -131,7 +123,6 @@
     },
     "format-python-code:tilediiif.core": {
       "name": "format-python-code:tilediiif.core",
-      "category": "30.maintain",
       "description": "Format Python code of tilediiif.core.",
       "steps": [
         {
@@ -141,7 +132,6 @@
     },
     "test:tilediiif.core": {
       "name": "test:tilediiif.core",
-      "category": "10.test",
       "steps": [
         {
           "exec": "cd \"tilediiif.core\" && poetry run pytest"
@@ -150,7 +140,6 @@
     },
     "create-release:tilediiif.tools": {
       "name": "create-release:tilediiif.tools",
-      "category": "20.release",
       "description": "Generate a tagged release commit for tilediiif.tools using standard-version",
       "steps": [
         {
@@ -162,7 +151,6 @@
     },
     "ensure-checkout-is-releaseable:tilediiif.tools": {
       "name": "ensure-checkout-is-releaseable:tilediiif.tools",
-      "category": "20.release",
       "description": "Fail with an error if the working copy is not a clean checkout of a tilediiif.tools release tag.",
       "steps": [
         {
@@ -172,7 +160,6 @@
     },
     "typecheck-python:tilediiif.tools": {
       "name": "typecheck-python:tilediiif.tools",
-      "category": "30.maintain",
       "description": "Typecheck tilediiif.tools with mypy",
       "steps": [
         {
@@ -182,7 +169,6 @@
     },
     "format-python-code:tilediiif.tools": {
       "name": "format-python-code:tilediiif.tools",
-      "category": "30.maintain",
       "description": "Format Python code of tilediiif.tools.",
       "steps": [
         {
@@ -192,7 +178,6 @@
     },
     "test:tilediiif.tools": {
       "name": "test:tilediiif.tools",
-      "category": "10.test",
       "steps": [
         {
           "exec": "cd \"tilediiif.tools\" && poetry run pytest"
@@ -201,7 +186,6 @@
     },
     "create-release:tilediiif.server": {
       "name": "create-release:tilediiif.server",
-      "category": "20.release",
       "description": "Generate a tagged release commit for tilediiif.server using standard-version",
       "steps": [
         {
@@ -213,7 +197,6 @@
     },
     "ensure-checkout-is-releaseable:tilediiif.server": {
       "name": "ensure-checkout-is-releaseable:tilediiif.server",
-      "category": "20.release",
       "description": "Fail with an error if the working copy is not a clean checkout of a tilediiif.server release tag.",
       "steps": [
         {
@@ -223,7 +206,6 @@
     },
     "typecheck-python:tilediiif.server": {
       "name": "typecheck-python:tilediiif.server",
-      "category": "30.maintain",
       "description": "Typecheck tilediiif.server with mypy",
       "steps": [
         {
@@ -233,7 +215,6 @@
     },
     "format-python-code:tilediiif.server": {
       "name": "format-python-code:tilediiif.server",
-      "category": "30.maintain",
       "description": "Format Python code of tilediiif.server.",
       "steps": [
         {
@@ -243,7 +224,6 @@
     },
     "test:tilediiif.server": {
       "name": "test:tilediiif.server",
-      "category": "10.test",
       "steps": [
         {
           "exec": "cd \"tilediiif.server\" && poetry run pytest"
@@ -252,7 +232,6 @@
     },
     "create-release:docker:tilediiif.tools-slim": {
       "name": "create-release:docker:tilediiif.tools-slim",
-      "category": "20.release",
       "description": "Generate a tagged release commit for docker:tilediiif.tools-slim using standard-version",
       "steps": [
         {
@@ -264,7 +243,6 @@
     },
     "build-docker-image:tilediiif.tools-slim": {
       "name": "build-docker-image:tilediiif.tools-slim",
-      "category": "00.build",
       "env": {
         "GIT_DIR": "$(git rev-parse --git-common-dir)",
         "VERSION_CHECKOUT": "$(mktemp -d)"
@@ -278,7 +256,6 @@
     },
     "push-docker-image:tilediiif.tools-slim": {
       "name": "push-docker-image:tilediiif.tools-slim",
-      "category": "20.release",
       "steps": [
         {
           "spawn": "build-docker-image:tilediiif.tools-slim"
@@ -305,7 +282,6 @@
     },
     "create-release:docker:tilediiif.tools-parallel": {
       "name": "create-release:docker:tilediiif.tools-parallel",
-      "category": "20.release",
       "description": "Generate a tagged release commit for docker:tilediiif.tools-parallel using standard-version",
       "steps": [
         {
@@ -317,7 +293,6 @@
     },
     "build-docker-image:tilediiif.tools-parallel": {
       "name": "build-docker-image:tilediiif.tools-parallel",
-      "category": "00.build",
       "env": {
         "GIT_DIR": "$(git rev-parse --git-common-dir)",
         "VERSION_CHECKOUT": "$(mktemp -d)"
@@ -331,7 +306,6 @@
     },
     "push-docker-image:tilediiif.tools-parallel": {
       "name": "push-docker-image:tilediiif.tools-parallel",
-      "category": "20.release",
       "steps": [
         {
           "spawn": "build-docker-image:tilediiif.tools-parallel"
@@ -358,7 +332,6 @@
     },
     "create-release:docker:tilediiif-dev": {
       "name": "create-release:docker:tilediiif-dev",
-      "category": "20.release",
       "description": "Generate a tagged release commit for docker:tilediiif-dev using standard-version",
       "steps": [
         {
@@ -370,7 +343,6 @@
     },
     "build-docker-image:tilediiif-dev": {
       "name": "build-docker-image:tilediiif-dev",
-      "category": "00.build",
       "env": {
         "GIT_DIR": "$(git rev-parse --git-common-dir)",
         "VERSION_CHECKOUT": "$(mktemp -d)"
@@ -384,7 +356,6 @@
     },
     "push-docker-image:tilediiif-dev": {
       "name": "push-docker-image:tilediiif-dev",
-      "category": "20.release",
       "steps": [
         {
           "spawn": "build-docker-image:tilediiif-dev"
