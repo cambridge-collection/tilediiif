@@ -2,7 +2,6 @@
   "tasks": {
     "clobber": {
       "name": "clobber",
-      "category": "30.maintain",
       "description": "hard resets to HEAD of origin and cleans the local repo",
       "env": {
         "BRANCH": "$(git branch --show-current)"
@@ -43,7 +42,6 @@
     },
     "install": {
       "name": "install",
-      "category": "00.build",
       "description": "Install and upgrade dependencies",
       "steps": [
         {
@@ -56,7 +54,6 @@
     },
     "package": {
       "name": "package",
-      "category": "20.release",
       "description": "Creates source archive and wheel for distribution.",
       "steps": [
         {
@@ -66,7 +63,6 @@
     },
     "publish:test": {
       "name": "publish:test",
-      "category": "20.release",
       "description": "Uploads the package against a test PyPI endpoint.",
       "steps": [
         {
@@ -76,7 +72,6 @@
     },
     "publish": {
       "name": "publish",
-      "category": "20.release",
       "description": "Uploads the package to PyPI.",
       "steps": [
         {
@@ -86,7 +81,6 @@
     },
     "test": {
       "name": "test",
-      "category": "10.test",
       "description": "Runs tests",
       "steps": [
         {

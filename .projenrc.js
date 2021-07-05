@@ -1,6 +1,5 @@
 const { python, ProjectType, TextFile, TextFileOptions, JsonFile, JsonFileOptions, Project, IniFile, ObjectFile } = require('projen');
 const { PROJEN_MARKER } = require('projen/lib/common');
-const { TaskCategory } = require('projen/lib/tasks');
 const fsp = require('fs/promises');
 const fs = require('fs');
 const path = require('path');
@@ -40,19 +39,15 @@ class RootProject extends Project {
     this.gitignore.addPatterns('.python-version', '.idea', '*.iml', '.vscode');
 
     this.testTask = this.addTask('test', {
-      category: TaskCategory.TEST,
       description: 'Run tests for tilediiif.* packages.'
     });
     this.typecheckTask = this.addTask('typecheck-python', {
-      category: TaskCategory.MAINTAIN,
       description: 'Check Python types for tilediiif.* packages.',
     });
     this.formatPythonTask = this.addTask('format-python-code', {
-      category: TaskCategory.MAINTAIN,
       description: 'Format Python code of tilediiif.* packages.',
     });
     this.ciSetupTask = this.addTask('ci:setup', {
-      category: TaskCategory.MISC,
       description: 'Prepare the checked out project for running CI tasks without running a projen synth, e.g. install dependencies',
     });
   }
@@ -185,7 +180,6 @@ class StandardVersionedDirectory extends Component {
     new StandardVersionPackageJson(project, {directoryPath, version});
 
     project.addTask(`create-release:${name}`, {
-      category: TaskCategory.RELEASE,
       cwd: directoryPath,
       description: `Generate a tagged release commit for ${name} using standard-version`,
       condition: 'test "$(git status --porcelain)" == ""',
@@ -241,7 +235,6 @@ class TilediiifProject extends python.PythonProject {
     });
 
     this.ensureReleaseableTask = rootProject.addTask(`ensure-checkout-is-releaseable:${name}`, {
-      category: TaskCategory.RELEASE,
       description: `Fail with an error if the working copy is not a clean checkout of a ${name} release tag.`,
       exec: `\
         test "$(git rev-parse HEAD)" == "$(git rev-parse tags/${name}-v${this.version}^{commit})" \\
@@ -251,7 +244,6 @@ class TilediiifProject extends python.PythonProject {
     });
 
     rootProject.typecheckTask.spawn(rootProject.addTask(`typecheck-python:${name}`, {
-      category: TaskCategory.MAINTAIN,
       description: `Typecheck ${name} with mypy`,
       exec: `\\
         cd "${this.relativeOutdir}" \\
@@ -272,7 +264,6 @@ cd "${this.relativeOutdir}" \\
     });
 
     rootProject.formatPythonTask.spawn(rootProject.addTask(`format-python-code:${name}`, {
-      category: TaskCategory.MAINTAIN,
       description: `Format Python code of ${name}.`,
       exec: `cd "${this.relativeOutdir}" && poetry run isort . ; poetry run black . ; poetry run flake8`
     }));
@@ -292,7 +283,6 @@ cd "${this.relativeOutdir}" \\
     });
 
     rootProject.testTask.spawn(rootProject.addTask(`test:${name}`, {
-      category: TaskCategory.TEST,
       exec: `cd "${this.relativeOutdir}" && poetry run pytest`
     }));
 
@@ -491,7 +481,6 @@ class DockerImage extends Component {
     const notAllTagsExist = `! docker image inspect ${fullImageNames.join(' ')} > /dev/null 2>&1`;
 
     this.buildTask = project.addTask(`build-docker-image:${nickName}`, {
-      category: TaskCategory.BUILD,
       condition: notAllTagsExist,
       env: {
         GIT_DIR: '$(git rev-parse --git-common-dir)',
@@ -506,7 +495,6 @@ ${buildCommands} \\
     });
 
     this.pushTask = project.addTask(`push-docker-image:${nickName}`, {
-      category: TaskCategory.RELEASE,
     });
     this.pushTask.prependSpawn(this.buildTask);
     fullImageNames.forEach(image => this.pushTask.exec(`docker image push ${image}`))
