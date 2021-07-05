@@ -51,6 +51,10 @@ class RootProject extends Project {
       category: TaskCategory.MAINTAIN,
       description: 'Format Python code of tilediiif.* packages.',
     });
+    this.ciSetupTask = this.addTask('ci:setup', {
+      category: TaskCategory.MISC,
+      description: 'Prepare the checked out project for running CI tasks without running a projen synth, e.g. install dependencies',
+    });
   }
 }
 
@@ -255,6 +259,10 @@ class TilediiifProject extends python.PythonProject {
           -p ${name} \\
           ${this.testPackages.map(p => `-p ${p}`).join(' ')}`
     }));
+    rootProject.ciSetupTask.exec(`\
+cd "${this.relativeOutdir}" \\
+&& poetry install`);
+
     new IniFile(this, 'mypy.ini', {
       obj: {
         mypy: {
