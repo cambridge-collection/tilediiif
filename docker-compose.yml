@@ -2,21 +2,15 @@ version: "3.8"
 
 services:
     ci:
-        build:
-            context: .
-            dockerfile: Dockerfile
-            target: tools-dev
+        image: ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools
         volumes:
             - .:/opt/tilediiif
             - venv-ci:/root/.cache/pypoetry/virtualenvs
         working_dir: /opt/tilediiif
-        command: npx projen test
+        command: npx projen ci-setup && npx projen test
 
     tools-dev:
-        build:
-            context: .
-            dockerfile: Dockerfile
-            target: tools-dev
+        image: ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools
         volumes:
             - ./tilediiif.tools:/opt/tilediiif/tilediiif.tools
             - ./tilediiif.core:/opt/tilediiif/tilediiif.core
@@ -25,10 +19,7 @@ services:
         command: sh -c "poetry install && poetry run pytest tests integration_tests"
 
     tools-dev-with-broken-mozjpeg:
-        build:
-            context: .
-            dockerfile: Dockerfile
-            target: tools-dev-with-broken-mozjpeg
+        image: ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-with-broken-mozjpeg
         volumes:
             - ./tilediiif.tools:/opt/tilediiif/tilediiif.tools
             - ./tilediiif.core:/opt/tilediiif/tilediiif.core
@@ -39,12 +30,7 @@ services:
         command: sh -c "poetry install && poetry run pytest -vv integration_tests/dzi_tiles/test_mozjpeg.py"
 
     tools-dev-without-mozjpeg:
-        build:
-            context: .
-            dockerfile: Dockerfile
-            target: tools-dev
-            args:
-                VIPS_USE_MOZJPEG:
+        image: ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-without-mozjpeg
         volumes:
             - ./tilediiif.tools:/opt/tilediiif/tilediiif.tools
             - ./tilediiif.core:/opt/tilediiif/tilediiif.core

@@ -81,6 +81,22 @@
         }
       ]
     },
+    "ci:setup": {
+      "name": "ci:setup",
+      "category": "99.misc",
+      "description": "Prepare the checked out project for running CI tasks without running a projen synth, e.g. install dependencies",
+      "steps": [
+        {
+          "exec": "cd \"tilediiif.core\" \\\n&& poetry install"
+        },
+        {
+          "exec": "cd \"tilediiif.tools\" \\\n&& poetry install"
+        },
+        {
+          "exec": "cd \"tilediiif.server\" \\\n&& poetry install"
+        }
+      ]
+    },
     "create-release:tilediiif.core": {
       "name": "create-release:tilediiif.core",
       "category": "20.release",
