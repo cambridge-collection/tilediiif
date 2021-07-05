@@ -2,7 +2,8 @@ FROM base AS tools-dev
 RUN apt-get update && apt-get install -y \
     build-essential \
     # required to install node from nodesource
-    curl
+    curl \
+    git
 # node & npm required for npx projen ... commands
 RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
 RUN apt-get install -y nodejs
