@@ -5,12 +5,12 @@ from functools import partial
 from pathlib import Path
 
 from docopt import docopt
-
 from tilediiif.core.filesystem import (
     ensure_sub_directories_exist,
     validate_relative_path,
 )
 from tilediiif.core.templates import Template, parse_template
+
 from tilediiif.tools.dzi import get_dzi_tile_path, parse_dzi_file
 from tilediiif.tools.exceptions import CommandError
 from tilediiif.tools.infojson import power2_image_pyramid_scale_factors

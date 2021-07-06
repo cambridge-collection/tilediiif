@@ -2,13 +2,13 @@ import os
 from pathlib import Path
 
 import falcon
-
 from tilediiif.core.config import ConfigError
 from tilediiif.core.templates import (
     TemplateError,
     get_image_path_renderer,
     get_info_json_path_renderer,
 )
+
 from tilediiif.server.config import FileTransmissionType, ServerConfig
 from tilediiif.server.resources import (
     DirectFileTransmitter,

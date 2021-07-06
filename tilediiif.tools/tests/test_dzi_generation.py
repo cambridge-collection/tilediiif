@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import pyvips
-
 from tilediiif.core.config.exceptions import ConfigValidationError
+
 from tilediiif.tools.dzi_generation import (
     DEFAULT_OUTPUT_PROFILE,
     VIPS_META_ICC_PROFILE,
@@ -844,8 +844,8 @@ def test_apply_colour_profile_image_operation_raises_error_on_failed_conversion(
                 optimize_scans=True,
                 quant_table=JPEGQuantTable.IMAGEMAGICK,
             ),
-            "Q=50,optimize_coding,interlace,no_subsample,trellis_quant,overshoot_deringing,"
-            "optimize_scans,quant_table=3",
+            "Q=50,optimize_coding,interlace,no_subsample,trellis_quant,"
+            "overshoot_deringing,optimize_scans,quant_table=3",
         ],
     ],
 )
