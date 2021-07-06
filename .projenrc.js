@@ -593,7 +593,8 @@ async function constructProject() {
   const tilediiifToolsVersionModule = new TextFile(tilediiifTools, 'tilediiif/tools/version.py', {
     lines: [
       `# ${PROJEN_MARKER}`,
-      `__version__ = "${tilediiifTools.version}"`
+      `__version__ = "${tilediiifTools.version}"`,
+      '',
     ],
     editGitignore: false,
   });
