@@ -3,6 +3,7 @@ import os
 import subprocess
 
 import pytest
+
 from integration_tests.data import TEST_IMG_PEARS_SRGB_EMBEDDED
 
 PEARS_SMALL = TEST_IMG_PEARS_SRGB_EMBEDDED["path"]

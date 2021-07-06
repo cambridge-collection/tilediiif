@@ -3,8 +3,8 @@ from unittest.mock import patch, sentinel
 
 import falcon
 import pytest
-
 from tilediiif.core.config import ConfigError
+
 from tilediiif.server.api import CONFIG_PATH_ENVAR, get_api
 from tilediiif.server.config import ConfigValueEnvars, ServerConfig
 

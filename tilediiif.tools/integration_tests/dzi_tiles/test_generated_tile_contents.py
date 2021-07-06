@@ -7,6 +7,7 @@ import pytest
 import pyvips
 from hypothesis import given
 from hypothesis.strategies import data, integers
+
 from integration_tests.data import (
     TEST_IMG_PEARS_ADOBERGB1998_EMBEDDED,
     TEST_IMG_PEARS_ADOBERGB1998_STRIPPED,
@@ -14,7 +15,6 @@ from integration_tests.data import (
     TEST_IMG_PEARS_SRGB_STRIPPED,
 )
 from integration_tests.dzi_tiles.test_icc_profile_behaviour import image_as_ndarray
-
 from tilediiif.tools.dzi import parse_dzi_file
 
 from .test_icc_profile_behaviour import PROFILE_SRGB_PATH

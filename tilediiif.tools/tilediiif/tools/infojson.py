@@ -8,9 +8,9 @@ import docopt
 import rfc3986
 from rfc3986.exceptions import ValidationError
 from rfc3986.validators import Validator
-
 from tilediiif.core.filesystem import ensure_sub_directories_exist
 from tilediiif.core.templates import TemplateError, get_info_json_path_renderer
+
 from tilediiif.tools.dzi import DZIError, parse_dzi_file
 from tilediiif.tools.version import __version__
 

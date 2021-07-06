@@ -12,10 +12,10 @@ from unittest.mock import Mock, call, patch
 import pytest
 from hypothesis import assume, given, settings
 from hypothesis.strategies import composite, integers, lists, sampled_from, text
+
 from tests import test_dzi
 from tests.test_dzi import dzi_metadata
 from tests.test_infojson import image_dimensions
-
 from tilediiif.tools.dzi import get_dzi_tile_path
 from tilediiif.tools.infojson import power2_image_pyramid_scale_factors
 from tilediiif.tools.tilelayout import (

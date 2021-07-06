@@ -6,6 +6,7 @@ import pytest
 import pyvips
 from hypothesis import given
 from hypothesis.strategies import integers, sampled_from
+
 from integration_tests.data import IMAGE_DATA, PROFILE_SRGB_PATH
 
 IMAGE_SUNSET_P3 = IMAGE_DATA / "Sunset-P3.jpg"

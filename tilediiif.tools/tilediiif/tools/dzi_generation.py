@@ -14,7 +14,6 @@ from typing import Iterable, List, Tuple, Union
 
 import pyvips
 from docopt import docopt
-
 from tilediiif.core.config import (
     BaseConfig,
     Config,
@@ -42,6 +41,7 @@ from tilediiif.core.config.validation import (
     validate_no_duplicates,
     validate_string,
 )
+
 from tilediiif.tools.exceptions import CommandError
 
 from .version import __version__

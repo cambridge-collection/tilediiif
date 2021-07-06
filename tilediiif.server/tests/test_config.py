@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 import pytest
 import toml
-
 from tilediiif.core.config import ConfigError
+
 from tilediiif.server.config import FileTransmissionType, ServerConfig
 
 DATA_DIR = Path(__file__).parent / "data"
