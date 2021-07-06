@@ -34,7 +34,7 @@ def test_16_bit_rgb_images_loaded_from_files_use_rgb16_interpretation():
     assert VIPS_META_ICC_PROFILE not in img.get_fields()
 
 
-def test_16_bit_rgb_with_colour_profiles_images_loaded_from_files_use_rgb16_interpretation():
+def test_16_bit_rgb_with_colour_profiles_images_loaded_from_files_use_rgb16_interpretation():  # noqa: B950
     img = pyvips.Image.new_from_file(
         str(ROOT / "integration_tests/data/images/test-16_with-colour-profile.png")
     )
