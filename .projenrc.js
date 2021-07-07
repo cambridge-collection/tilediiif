@@ -8,6 +8,9 @@ const { JobPermission } = require('projen/lib/github/workflows-model');
 const { Component } = require('projen/lib/component');
 const { PythonProject } = require('projen/lib/python');
 const assert = require('assert');
+const { GithubWorkflow } = require('projen/lib/github');
+
+const DEV_ENVIRONMENT_IMAGE = 'ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.2-tools'
 
 const DEFAULT_POETRY_OPTIONS = {
   authors: [
@@ -510,7 +513,50 @@ ${buildCommands} \\
     this.pushTask = project.addTask(`push-docker-image:${nickName}`, {
     });
     this.pushTask.prependSpawn(this.buildTask);
-    fullImageNames.forEach(image => this.pushTask.exec(`docker image push ${image}`))
+    fullImageNames.forEach(image => this.pushTask.exec(`docker image push ${image}`));
+
+    this.releaseWorkflow = DockerImage.createReleaseWorkflow({
+      github: project.github,
+      nickName,
+    });
+  }
+
+  static createReleaseWorkflow({github, nickName}) {
+    const workflow = new GithubWorkflow(github, `release-docker-image-${nickName}`);
+    workflow.on({
+      push: {
+        tags: [`docker/${nickName}-v*`],
+      },
+    });
+
+    workflow.addJobs({
+      release: {
+        permissions: {
+          contents: JobPermission.READ,
+          packages: JobPermission.WRITE,
+        },
+        runsOn: 'ubuntu-latest',
+        container: {
+          image: DEV_ENVIRONMENT_IMAGE,
+          credentials: {
+            username: '${{ github.actor }}',
+            password: '${{ secrets.GITHUB_TOKEN }}',
+          },
+        },
+        defaults: {
+          run: {
+            shell: 'bash',
+          },
+        },
+        steps: [
+          { uses: 'actions/checkout@v2', },
+          { run: `npx projen build-docker-image:${nickName}`, },
+          { run: `npx projen push-docker-image:${nickName}`, },
+        ],
+      },
+    });
+
+    return workflow;
   }
 }
 
