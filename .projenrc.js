@@ -553,7 +553,12 @@ ${buildCommands} \\
             name: 'Login to GitHub Container registry',
             run: 'echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin',
           },
-          { uses: 'actions/checkout@v2', },
+          {
+            uses: 'actions/checkout@v2',
+            with: {
+              'fetch-depth': 0 // fetch all tags
+            },
+          },
           { run: `npx projen build-docker-image:${nickName}`, },
           { run: `npx projen push-docker-image:${nickName}`, },
         ],
