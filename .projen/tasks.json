@@ -349,10 +349,10 @@
       },
       "steps": [
         {
-          "exec": "git worktree add --detach \"$VERSION_CHECKOUT\" \"docker/tilediiif-dev-v0.1.4\" \\\n&& cd \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/dev/Dockerfile\" \\\n  --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.4-tools\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools\" \\\n   \\\n  --label \"org.opencontainers.image.version=0.1.4\" --label \"org.opencontainers.image.revision=$(git rev-parse --verify HEAD)\" --label \"org.opencontainers.image.title=tilediiif development environment.\" \\\n  --target \"tools-dev\" \\\n  \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/dev/Dockerfile\" \\\n  --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.4-tools-without-mozjpeg\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-without-mozjpeg\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-without-mozjpeg\" \\\n  --build-arg \"VIPS_USE_MOZJPEG=\" \\\n  --label \"org.opencontainers.image.version=0.1.4\" --label \"org.opencontainers.image.revision=$(git rev-parse --verify HEAD)\" --label \"org.opencontainers.image.title=tilediiif development environment (without mozjpeg installed).\" \\\n  --target \"tools-dev\" \\\n  \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/dev/Dockerfile\" \\\n  --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.4-tools-with-broken-mozjpeg\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-with-broken-mozjpeg\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-with-broken-mozjpeg\" \\\n   \\\n  --label \"org.opencontainers.image.version=0.1.4\" --label \"org.opencontainers.image.revision=$(git rev-parse --verify HEAD)\" --label \"org.opencontainers.image.title=tilediiif-dev-env (broken mozjpeg)\" --label \"org.opencontainers.image.description=tilediiif development environment (with vips built for mozjpeg, but mozjpeg unavailable).\" \\\n  --target \"tools-dev-with-broken-mozjpeg\" \\\n  \"$VERSION_CHECKOUT\" \\\n&& cd - \\\n&& git worktree remove \"$VERSION_CHECKOUT\""
+          "exec": "git worktree add --detach \"$VERSION_CHECKOUT\" \"docker/tilediiif-dev-v0.1.5\" \\\n&& cd \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/dev/Dockerfile\" \\\n  --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.5-tools\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools\" \\\n   \\\n  --label \"org.opencontainers.image.version=0.1.5\" --label \"org.opencontainers.image.revision=$(git rev-parse --verify HEAD)\" --label \"org.opencontainers.image.title=tilediiif development environment.\" \\\n  --target \"tools-dev\" \\\n  \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/dev/Dockerfile\" \\\n  --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.5-tools-without-mozjpeg\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-without-mozjpeg\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-without-mozjpeg\" \\\n  --build-arg \"VIPS_USE_MOZJPEG=\" \\\n  --label \"org.opencontainers.image.version=0.1.5\" --label \"org.opencontainers.image.revision=$(git rev-parse --verify HEAD)\" --label \"org.opencontainers.image.title=tilediiif development environment (without mozjpeg installed).\" \\\n  --target \"tools-dev\" \\\n  \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/dev/Dockerfile\" \\\n  --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.5-tools-with-broken-mozjpeg\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-with-broken-mozjpeg\" --tag \"ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-with-broken-mozjpeg\" \\\n   \\\n  --label \"org.opencontainers.image.version=0.1.5\" --label \"org.opencontainers.image.revision=$(git rev-parse --verify HEAD)\" --label \"org.opencontainers.image.title=tilediiif-dev-env (broken mozjpeg)\" --label \"org.opencontainers.image.description=tilediiif development environment (with vips built for mozjpeg, but mozjpeg unavailable).\" \\\n  --target \"tools-dev-with-broken-mozjpeg\" \\\n  \"$VERSION_CHECKOUT\" \\\n&& cd - \\\n&& git worktree remove \"$VERSION_CHECKOUT\""
         }
       ],
-      "condition": "! docker image inspect ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.4-tools ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.4-tools-without-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-without-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-without-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.4-tools-with-broken-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-with-broken-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-with-broken-mozjpeg > /dev/null 2>&1"
+      "condition": "! docker image inspect ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.5-tools ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.5-tools-without-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-without-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-without-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.5-tools-with-broken-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-with-broken-mozjpeg ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-with-broken-mozjpeg > /dev/null 2>&1"
     },
     "push-docker-image:tilediiif-dev": {
       "name": "push-docker-image:tilediiif-dev",
@@ -361,7 +361,7 @@
           "spawn": "build-docker-image:tilediiif-dev"
         },
         {
-          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.4-tools"
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.5-tools"
         },
         {
           "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools"
@@ -370,7 +370,7 @@
           "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools"
         },
         {
-          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.4-tools-without-mozjpeg"
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.5-tools-without-mozjpeg"
         },
         {
           "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-without-mozjpeg"
@@ -379,7 +379,7 @@
           "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0-tools-without-mozjpeg"
         },
         {
-          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.4-tools-with-broken-mozjpeg"
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.5-tools-with-broken-mozjpeg"
         },
         {
           "exec": "docker image push ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1-tools-with-broken-mozjpeg"
