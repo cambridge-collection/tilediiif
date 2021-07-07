@@ -19,7 +19,7 @@ jobs:
       - run: npx projen build-docker-image:tilediiif.tools-slim
       - run: npx projen push-docker-image:tilediiif.tools-slim
     container:
-      image: ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.2-tools
+      image: ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.4-tools
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

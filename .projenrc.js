@@ -10,7 +10,7 @@ const { PythonProject } = require('projen/lib/python');
 const assert = require('assert');
 const { GithubWorkflow } = require('projen/lib/github');
 
-const DEV_ENVIRONMENT_IMAGE = 'ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.2-tools'
+const DEV_ENVIRONMENT_IMAGE = 'ghcr.io/cambridge-collection/tilediiif/dev-environment:v0.1.4-tools'
 
 const DEFAULT_POETRY_OPTIONS = {
   authors: [
