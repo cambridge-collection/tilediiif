@@ -482,6 +482,7 @@ class DockerImage extends Component {
         .map(([n, v]) => `--build-arg "${n}=${v}"`).join(' ');
       const labelArguments = Object.entries(labels)
         .map(([n, v]) => `--label "${n}=${v}"`).join(' ');
+      const cacheFromArguments = tag.map(t => `--cache-from "${imageName}:${t}"`).join(' ');
 
         return `\
 && docker image build \\
@@ -490,6 +491,8 @@ class DockerImage extends Component {
   ${buildArgArguments} \\
   ${labelArguments} \\
   ${target ? `--target "${target}"` : ''} \\
+  ${cacheFromArguments} \\
+  --build-arg BUILDKIT_INLINE_CACHE=1 \\
   "${contextPath ?? '$VERSION_CHECKOUT'}"`;
     }).join(' \\\n');
 
@@ -499,6 +502,7 @@ class DockerImage extends Component {
     this.buildTask = project.addTask(`build-docker-image:${nickName}`, {
       condition: notAllTagsExist,
       env: {
+        DOCKER_BUILDKIT: '1',
         GIT_DIR: '$(git rev-parse --git-common-dir)',
         VERSION_CHECKOUT: '$(mktemp -d)',
       },
