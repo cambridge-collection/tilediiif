@@ -503,7 +503,7 @@ class DockerImage extends Component {
       condition: notAllTagsExist,
       env: {
         DOCKER_BUILDKIT: '1',
-        GIT_DIR: '$(git rev-parse --git-common-dir)',
+        GIT_DIR: '$(realpath "$(git rev-parse --git-common-dir)")',
         VERSION_CHECKOUT: '$(mktemp -d)',
       },
       exec: `\

@@ -245,7 +245,7 @@
       "name": "build-docker-image:tilediiif.tools-slim",
       "env": {
         "DOCKER_BUILDKIT": "1",
-        "GIT_DIR": "$(git rev-parse --git-common-dir)",
+        "GIT_DIR": "$(realpath \"$(git rev-parse --git-common-dir)\")",
         "VERSION_CHECKOUT": "$(mktemp -d)"
       },
       "steps": [
@@ -296,7 +296,7 @@
       "name": "build-docker-image:tilediiif.tools-parallel",
       "env": {
         "DOCKER_BUILDKIT": "1",
-        "GIT_DIR": "$(git rev-parse --git-common-dir)",
+        "GIT_DIR": "$(realpath \"$(git rev-parse --git-common-dir)\")",
         "VERSION_CHECKOUT": "$(mktemp -d)"
       },
       "steps": [
@@ -347,7 +347,7 @@
       "name": "build-docker-image:tilediiif-dev",
       "env": {
         "DOCKER_BUILDKIT": "1",
-        "GIT_DIR": "$(git rev-parse --git-common-dir)",
+        "GIT_DIR": "$(realpath \"$(git rev-parse --git-common-dir)\")",
         "VERSION_CHECKOUT": "$(mktemp -d)"
       },
       "steps": [
