@@ -1,0 +1,26 @@
+{
+    "devDependencies": {
+        "@babel/core": "^7.19.6",
+        "@babel/preset-env": "^7.19.4",
+        "@rollup/plugin-typescript": "^9.0.2",
+        "@tsconfig/recommended": "^1.0.1",
+        "@types/aws-cloudfront-function": "^1.0.2",
+        "prettier": "^2.7.1",
+        "rollup": "^3.2.5",
+        "terser": "^5.15.1",
+        "ts-loader": "^9.4.1",
+        "ts-node": "^10.9.1",
+        "tslib": "^2.4.1",
+        "typescript": "^4.8.4"
+    },
+    "version": "1.0.0",
+    "name": "my-webpack-project",
+    "scripts": {
+        "clean": "rm -rf ./output",
+        "typescript": "tsc",
+        "rollup": "rollup --config",
+        "babel": "babel --out-dir output/babel output/rollup/index.js",
+        "terser": "mkdir -p output/terser && terser --compress --mangle -- output/babel/index.js > output/terser/index.js",
+        "build": "npm run typescript && npm run clean && npm run rollup && npm run babel && npm run terser"
+    }
+}
