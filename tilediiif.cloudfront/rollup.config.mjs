@@ -11,5 +11,12 @@ export default {
         // CloudFront Functions are in strict mode by default
         strict: false,
     },
-    plugins: [typescript()],
+    plugins: [
+        typescript({
+            tsconfig: "src/tsconfig.json",
+            compilerOptions: {
+                outDir: "output/rollup/typescript",
+            },
+        }),
+    ],
 };

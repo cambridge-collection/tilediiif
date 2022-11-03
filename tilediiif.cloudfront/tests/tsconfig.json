@@ -1,0 +1,9 @@
+{
+    "extends": "@tsconfig/node18",
+    "compilerOptions": {
+        "types": ["@types/jest", "@types/node"]
+        // Nothing actually gets written here, but jest complains if we don't
+        // set outDir to something...
+        // "outDir": "../output/tsc/test"
+    }
+}

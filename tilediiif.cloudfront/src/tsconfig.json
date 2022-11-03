@@ -1,0 +1,15 @@
+{
+    "extends": "@tsconfig/node18",
+    "compilerOptions": {
+        // "target": "es2018",
+        // "module": "esnext",
+        // "allowSyntheticDefaultImports": true,
+        // "moduleResolution": "node",
+        "noEmitOnError": true,
+        // "lib": ["es2017"],
+        // "strict": true,
+        // "esModuleInterop": true,
+        "noEmit": true
+    }
+    // "include": ["./**/*.ts"]
+}
