@@ -147,7 +147,8 @@ export function parseRequest(
         region,
         size,
         rotation,
-        ...name,
+        quality: name.quality,
+        format: name.format,
     };
 }
 export function formatRequest(req: ImageInfoRequest | ImageRequest): string[] {
@@ -271,10 +272,10 @@ export function formatRotation(rotation: ImageRotation): string {
     )}`;
 }
 
-const qualities = new Set(Object.values(ImageQuality));
+const qualities = Object.values(ImageQuality);
 
 export function parseQuality(quality: string): ImageQuality | null {
-    return qualities.has(quality as ImageQuality)
+    return qualities.includes(quality as ImageQuality)
         ? (quality as ImageQuality)
         : null;
 }
@@ -292,12 +293,11 @@ export function parseFormat(format: string): string | null {
 export function parseName(
     name: string
 ): { quality: ImageQuality; format: string } | null {
-    const [rawQuality, rawFormat, ...rest] = name.split(".") as Array<
-        string | undefined
-    >;
-    const quality = parseQuality(rawQuality || "");
-    const format = parseFormat(rawFormat || "");
-    if (quality === null || format === null || rest.length) return null;
+    const parts = name.split(".");
+    if (parts.length !== 2) return null;
+    const quality = parseQuality(parts[0]);
+    const format = parseFormat(parts[1]);
+    if (quality === null || format === null) return null;
     return { quality, format };
 }
 
@@ -323,7 +323,13 @@ export function canonicaliseRequestWithoutDimensions<
     if (req.type === ImageRequestType.IMAGE) {
         return _canonicaliseImageRequestWithoutDimensions(req) as T;
     }
-    return req.name === "info.json" ? req : { ...req, name: "info.json" };
+    return req.name === "info.json"
+        ? req
+        : ({
+              type: ImageRequestType.IMAGE_INFO,
+              identifier: req.identifier,
+              name: "info.json",
+          } as T);
 }
 
 function _canonicaliseImageRequestWithoutDimensions(
@@ -335,9 +341,13 @@ function _canonicaliseImageRequestWithoutDimensions(
     if (canonicalisedSize === null && canonicalisedRotation === null)
         return req;
     return {
-        ...req,
+        type: req.type,
+        identifier: req.identifier,
+        region: req.region,
         size: canonicalisedSize || req.size,
         rotation: canonicalisedRotation || req.rotation,
+        quality: req.quality,
+        format: req.format,
     };
 }
 
