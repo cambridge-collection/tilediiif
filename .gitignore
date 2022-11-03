@@ -16,3 +16,4 @@ node_modules/
 !/tilediiif.core/package.json
 !/tilediiif.server/package.json
 !/tilediiif.tools/package.json
+.DS_Store

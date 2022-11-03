@@ -1,0 +1,20 @@
+{
+  "@context": "http://iiif.io/api/image/2/context.json",
+  "@id": "https://iiif.example.com/image/pears.dzi",
+  "protocol": "http://iiif.io/api/image",
+  "profile": [
+    "http://iiif.io/api/image/2/level0.json"
+  ],
+  "width": 1000,
+  "height": 750,
+  "tiles": [
+    {
+      "scaleFactors": [
+        1,
+        2,
+        4
+      ],
+      "width": 254
+    }
+  ]
+}
