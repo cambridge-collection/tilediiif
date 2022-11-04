@@ -686,6 +686,22 @@ async function constructProject() {
   const tilediiifServerPyprojectToml = tilediiifServer.tryFindObjectFile('pyproject.toml');
   tilediiifServerPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.core', {path: '../tilediiif.core',  develop: true});
 
+
+  const tilediiifAwsLambda = new TilediiifProject(rootProject, 'tilediiif.awslambda', {
+    testPackages: ['tests'],
+    deps: [
+      "python@^3.9",
+      `tilediiif.tools@=${tilediiifTools.version}`,
+    ],
+    devDeps: [
+      "pytest@^6.2.4",
+    ],
+  });
+  const tilediiifAwsLambdaPyprojectToml = tilediiifAwsLambda.tryFindObjectFile('pyproject.toml');
+  tilediiifAwsLambdaPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.core', {path: '../tilediiif.core',  develop: true});
+  tilediiifAwsLambdaPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.tools', {path: '../tilediiif.tools',  develop: true});
+  tilediiifAwsLambdaPyprojectToml.addOverride('tool.poetry.dev-dependencies.aws-lambda-powertools', {version: '^2.1.0',  extras: ['aws-sdk']});
+
   const dockerfileFragments = Object.fromEntries(Object.entries({
     base: 'base',
     buildMozjpeg: 'build-mozjpeg',

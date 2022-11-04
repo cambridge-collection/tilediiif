@@ -17,6 +17,7 @@
 /docker/images/tilediiif.tools-slim/package.json                    	linguist-generated
 /mypy.ini                                                           	linguist-generated
 /pyproject.toml                                                     	linguist-generated
+/tilediiif.awslambda/package.json                                   	linguist-generated
 /tilediiif.core/package.json                                        	linguist-generated
 /tilediiif.server/package.json                                      	linguist-generated
 /tilediiif.tools/package.json                                       	linguist-generated
