@@ -611,7 +611,7 @@ async function constructProject() {
       "docopt@^0.6.2",
       "jsonpath-rw@^1.4",
       "jsonschema@^3.0",
-      "python@^3.7",
+      "python@^3.9",
       "toml@^0.10.0",
     ],
     devDeps: [
@@ -639,7 +639,7 @@ async function constructProject() {
 
     deps: [
       "docopt@^0.6.2",
-      "python@^3.7",
+      "python@^3.9",
       "pyvips@^2.1",
       "rfc3986@^1.3",
       `tilediiif.core@=${tilediiifCore.version}`,
@@ -676,7 +676,7 @@ async function constructProject() {
     testPackages: ['tests'],
     deps: [
       "falcon@^2.0",
-      "python@^3.7",
+      "python@^3.9",
       `tilediiif.core@=${tilediiifCore.version}`,
     ],
     devDeps: [
@@ -685,6 +685,22 @@ async function constructProject() {
   });
   const tilediiifServerPyprojectToml = tilediiifServer.tryFindObjectFile('pyproject.toml');
   tilediiifServerPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.core', {path: '../tilediiif.core',  develop: true});
+
+
+  const tilediiifAwsLambda = new TilediiifProject(rootProject, 'tilediiif.awslambda', {
+    testPackages: ['tests'],
+    deps: [
+      "python@^3.9",
+      `tilediiif.tools@=${tilediiifTools.version}`,
+    ],
+    devDeps: [
+      "pytest@^6.2.4",
+    ],
+  });
+  const tilediiifAwsLambdaPyprojectToml = tilediiifAwsLambda.tryFindObjectFile('pyproject.toml');
+  tilediiifAwsLambdaPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.core', {path: '../tilediiif.core',  develop: true});
+  tilediiifAwsLambdaPyprojectToml.addOverride('tool.poetry.dependencies.tilediiif\\.tools', {path: '../tilediiif.tools',  develop: true});
+  tilediiifAwsLambdaPyprojectToml.addOverride('tool.poetry.dev-dependencies.aws-lambda-powertools', {version: '^2.1.0',  extras: ['aws-sdk']});
 
   const dockerfileFragments = Object.fromEntries(Object.entries({
     base: 'base',
