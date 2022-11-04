@@ -2,6 +2,7 @@
   "tasks": {
     "clobber": {
       "name": "clobber",
+      "category": "30.maintain",
       "description": "hard resets to HEAD of origin and cleans the local repo",
       "env": {
         "BRANCH": "$(git branch --show-current)"
