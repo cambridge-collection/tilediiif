@@ -13,7 +13,7 @@ node_modules/
 !/docker/images/dev/package.json
 !/docker/images/tilediiif.tools-parallel/package.json
 !/docker/images/tilediiif.tools-slim/package.json
+!/tilediiif.awslambda/package.json
 !/tilediiif.core/package.json
 !/tilediiif.server/package.json
 !/tilediiif.tools/package.json
-.DS_Store

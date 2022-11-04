@@ -26,17 +26,12 @@
       "type": "devenv"
     },
     {
-      "name": "falcon",
-      "version": "^2.0",
-      "type": "runtime"
-    },
-    {
       "name": "python",
       "version": "^3.9",
       "type": "runtime"
     },
     {
-      "name": "tilediiif.core",
+      "name": "tilediiif.tools",
       "version": "=0.1.0",
       "type": "runtime"
     }

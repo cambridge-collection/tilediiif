@@ -45,6 +45,9 @@
         },
         {
           "spawn": "test:tilediiif.server"
+        },
+        {
+          "spawn": "test:tilediiif.awslambda"
         }
       ]
     },
@@ -60,6 +63,9 @@
         },
         {
           "spawn": "typecheck-python:tilediiif.server"
+        },
+        {
+          "spawn": "typecheck-python:tilediiif.awslambda"
         }
       ]
     },
@@ -75,6 +81,9 @@
         },
         {
           "spawn": "format-python-code:tilediiif.server"
+        },
+        {
+          "spawn": "format-python-code:tilediiif.awslambda"
         }
       ]
     },
@@ -90,6 +99,9 @@
         },
         {
           "exec": "cd \"tilediiif.server\" \\\n&& poetry install"
+        },
+        {
+          "exec": "cd \"tilediiif.awslambda\" \\\n&& poetry install"
         }
       ]
     },
@@ -228,6 +240,52 @@
       "steps": [
         {
           "exec": "cd \"tilediiif.server\" && poetry run pytest"
+        }
+      ]
+    },
+    "create-release:tilediiif.awslambda": {
+      "name": "create-release:tilediiif.awslambda",
+      "description": "Generate a tagged release commit for tilediiif.awslambda using standard-version",
+      "steps": [
+        {
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"tilediiif.awslambda-v\" \\\n  --releaseCommitMessageFormat \"chore(release): tilediiif.awslambda-v{{currentTag}}\""
+        }
+      ],
+      "condition": "test \"$(git status --porcelain)\" == \"\"",
+      "cwd": "tilediiif.awslambda"
+    },
+    "ensure-checkout-is-releaseable:tilediiif.awslambda": {
+      "name": "ensure-checkout-is-releaseable:tilediiif.awslambda",
+      "description": "Fail with an error if the working copy is not a clean checkout of a tilediiif.awslambda release tag.",
+      "steps": [
+        {
+          "exec": "        test \"$(git rev-parse HEAD)\" == \"$(git rev-parse tags/tilediiif.awslambda-v0.1.0^{commit})\" \\\n          && test \"$(git status --porcelain)\" == \"\" \\\n          || (echo \"Error: the git checkout must be clean and tagged as tilediiif.awslambda-v0.1.0\" 1>&2; exit 1)\n      "
+        }
+      ]
+    },
+    "typecheck-python:tilediiif.awslambda": {
+      "name": "typecheck-python:tilediiif.awslambda",
+      "description": "Typecheck tilediiif.awslambda with mypy",
+      "steps": [
+        {
+          "exec": "\\\n        cd \"tilediiif.awslambda\" \\\n        && poetry run mypy --namespace-packages \\\n          -p tilediiif.awslambda \\\n          -p tests"
+        }
+      ]
+    },
+    "format-python-code:tilediiif.awslambda": {
+      "name": "format-python-code:tilediiif.awslambda",
+      "description": "Format Python code of tilediiif.awslambda.",
+      "steps": [
+        {
+          "exec": "cd \"tilediiif.awslambda\" && poetry run isort . ; poetry run black . ; poetry run flake8"
+        }
+      ]
+    },
+    "test:tilediiif.awslambda": {
+      "name": "test:tilediiif.awslambda",
+      "steps": [
+        {
+          "exec": "cd \"tilediiif.awslambda\" && poetry run pytest"
         }
       ]
     },

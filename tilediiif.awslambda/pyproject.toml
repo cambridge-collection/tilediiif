@@ -5,7 +5,7 @@ requires = [ "poetry_core>=1.0.0" ]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "tilediiif.server"
+name = "tilediiif.awslambda"
 version = "0.1.0"
 description = ""
 authors = [ "Hal Blackburn <hwtb2@cam.ac.uk>" ]
@@ -15,8 +15,11 @@ readme = "README.md"
   include = "tilediiif"
 
   [tool.poetry.dependencies]
-  falcon = "^2.0"
   python = "^3.9"
+
+    [tool.poetry.dependencies."tilediiif.tools"]
+    path = "../tilediiif.tools"
+    develop = true
 
     [tool.poetry.dependencies."tilediiif.core"]
     path = "../tilediiif.core"
@@ -28,6 +31,10 @@ readme = "README.md"
   isort = "^5.8.0"
   mypy = "^0.901"
   pytest = "^6.2.4"
+
+    [tool.poetry.dev-dependencies.aws-lambda-powertools]
+    version = "^2.1.0"
+    extras = [ "aws-sdk" ]
 
 [tool.black]
 experimental-string-processing = true
