@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "projen": "^0.24.18"
+  }
+}
