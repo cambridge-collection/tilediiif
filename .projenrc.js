@@ -278,7 +278,7 @@ cd "${this.relativeOutdir}" \\
       lines: `\
     ; ${PROJEN_MARKER}. To modify, edit .projenrc.js and run "npx projen".
     [flake8]
-    max-line-length = 80
+    max-line-length = 88
     select = C,E,F,W,B,B950
     ignore =
       # the default "line too long" warning. Disabled because flake8-bugbear has its
