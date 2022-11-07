@@ -6,8 +6,18 @@
       "type": "devenv"
     },
     {
+      "name": "flake8-bugbear",
+      "version": "^19.8",
+      "type": "devenv"
+    },
+    {
       "name": "flake8",
       "version": "^3.9.2",
+      "type": "devenv"
+    },
+    {
+      "name": "ipython",
+      "version": "^7.8",
       "type": "devenv"
     },
     {
@@ -24,6 +34,11 @@
       "name": "pytest",
       "version": "^6.2.4",
       "type": "devenv"
+    },
+    {
+      "name": "pydantic",
+      "version": "^1.10.2",
+      "type": "runtime"
     },
     {
       "name": "python",

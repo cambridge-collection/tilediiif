@@ -4,6 +4,7 @@
 .python-version
 .vscode
 node_modules/
+!/.flake8
 !/.gitattributes
 !/.github/workflows/release-docker-image-tilediiif-dev.yml
 !/.github/workflows/release-docker-image-tilediiif.tools-parallel.yml

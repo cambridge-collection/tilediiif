@@ -23,8 +23,10 @@ readme = "README.md"
 
   [tool.poetry.dev-dependencies]
   black = "^21.6b0"
+  flake8-bugbear = "^19.8"
   flake8 = "^3.9.2"
   hypothesis = "^4.36"
+  ipython = "^7.8"
   isort = "^5.8.0"
   mypy = "^0.901"
   pytest = "^6.2.4"
