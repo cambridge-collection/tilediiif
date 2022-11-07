@@ -6,6 +6,11 @@
       "type": "devenv"
     },
     {
+      "name": "flake8-bugbear",
+      "version": "^19.8",
+      "type": "devenv"
+    },
+    {
       "name": "flake8",
       "version": "^3.9.2",
       "type": "devenv"
@@ -13,6 +18,11 @@
     {
       "name": "hypothesis",
       "version": "^4.36",
+      "type": "devenv"
+    },
+    {
+      "name": "ipython",
+      "version": "^7.8",
       "type": "devenv"
     },
     {

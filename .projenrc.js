@@ -62,6 +62,30 @@ class RootProject extends Project {
       description:
         "Prepare the checked out project for running CI tasks without running a projen synth, e.g. install dependencies",
     });
+
+    new TextFile(this, ".flake8", {
+      lines: `\
+; ${PROJEN_MARKER}. To modify, edit .projenrc.js and run "npx projen".
+[flake8]
+max-line-length = 80
+select = C,E,F,W,B,B950
+
+ignore =
+    # the default "line too long" warning. Disabled because flake8-bugbear has its
+    # own more permissive version.
+    E501,
+    # "line break before binary operator", black violates this
+    W503,
+
+    # "whitespace before ':'", black violates this when formatting slices
+    E203,
+
+    # flake8-bugbear warning about using the result of function calls for arg defaults.
+    # Hypothesis uses this a lot, it's only a problem if the returned value is mutable.
+    B008
+exclude = .*,__*,dist
+`.split("\n"),
+    });
   }
 }
 
@@ -301,29 +325,6 @@ cd "${this.relativeOutdir}" \\
     );
     pyprojectToml.addOverride("tool.isort.profile", "black");
     pyprojectToml.addOverride("tool.isort.multi_line_output", 3);
-    new TextFile(this, ".flake8", {
-      lines: `\
-    ; ${PROJEN_MARKER}. To modify, edit .projenrc.js and run "npx projen".
-    [flake8]
-    max-line-length = 88
-    select = C,E,F,W,B,B950
-    ignore =
-      # the default "line too long" warning. Disabled because flake8-bugbear has its
-      # own more permissive version.
-      E501,
-
-      # "line break before binary operator", black violates this
-      W503,
-
-      # "whitespace before ':'", black violates this when formatting slices
-      E203,
-
-      # flake8-bugbear warning about using the result of function calls for arg defaults.
-      # Hypothesis uses this a lot, it's only a problem if the returned value is mutable.
-      B008
-    exclude = .*,__*,dist
-    `.split("\n"),
-    });
 
     rootProject.testTask.spawn(
       rootProject.addTask(`test:${name}`, {
@@ -659,6 +660,12 @@ async function constructProject() {
     devDeps: [],
   });
 
+  const defaultDevDeps = [
+    "flake8-bugbear@^19.8",
+    "pytest@^6.2.4",
+    "ipython@^7.8",
+  ];
+
   const tilediiifCore = new TilediiifProject(rootProject, "tilediiif.core", {
     testPackages: ["tests"],
     deps: [
@@ -669,8 +676,8 @@ async function constructProject() {
       "toml@^0.10.0",
     ],
     devDeps: [
+      ...defaultDevDeps,
       "hypothesis@^4.36",
-      "pytest@^6.2.4",
       "types-pkg_resources@^0.1.2",
       "types-pytz@^0.1.0",
       "types-toml@^0.1.1",
@@ -702,14 +709,12 @@ async function constructProject() {
       `tilediiif.core@=${tilediiifCore.version}`,
     ],
     devDeps: [
-      "flake8-bugbear@^19.8",
+      ...defaultDevDeps,
       "httpie@^1.0",
       "hypothesis@^4.36",
-      "ipython@^7.8",
       "numpy@^1.17",
       "pytest-lazy-fixture@^0.6.1",
       "pytest-subtesthack@0.1.1",
-      "pytest@^6.2.4",
       "toml@^0.10.0",
       "tox@^3.14",
       "yappi@^1.0",
@@ -761,8 +766,12 @@ async function constructProject() {
     "tilediiif.awslambda",
     {
       testPackages: ["tests"],
-      deps: ["python@^3.9", `tilediiif.tools@=${tilediiifTools.version}`],
-      devDeps: ["pytest@^6.2.4"],
+      deps: [
+        "python@^3.9",
+        "pydantic@^1.10.2",
+        `tilediiif.tools@=${tilediiifTools.version}`,
+      ],
+      devDeps: [...defaultDevDeps],
     }
   );
   const tilediiifAwsLambdaPyprojectToml =
@@ -778,6 +787,10 @@ async function constructProject() {
   tilediiifAwsLambdaPyprojectToml.addOverride(
     "tool.poetry.dev-dependencies.aws-lambda-powertools",
     { version: "^2.1.0", extras: ["aws-sdk"] }
+  );
+  tilediiifAwsLambdaPyprojectToml.addOverride(
+    "tool.poetry.dev-dependencies.boto3-stubs",
+    { version: "^1.26.3", extras: ["essential", "s3"] }
   );
 
   const dockerfileFragments = Object.fromEntries(

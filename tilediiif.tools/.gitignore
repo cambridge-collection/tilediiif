@@ -77,7 +77,6 @@ var/
 venv.bak/
 venv/
 wheels/
-!/.flake8
 !/.gitattributes
 !/.projen/deps.json
 !/.projen/tasks.json
