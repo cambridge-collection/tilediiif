@@ -34,10 +34,19 @@ readme = "README.md"
   isort = "^5.8.0"
   mypy = "^0.901"
   pytest = "^6.2.4"
+  syrupy = "^3.0.4"
 
     [tool.poetry.dev-dependencies.aws-lambda-powertools]
     version = "^2.1.0"
     extras = [ "aws-sdk" ]
+
+    [tool.poetry.dev-dependencies.boto3-stubs]
+    version = "^1.26.3"
+    extras = [ "essential", "s3" ]
+
+    [tool.poetry.dev-dependencies.moto]
+    version = "^4.0.9"
+    extras = [ "s3" ]
 
 [tool.black]
 experimental-string-processing = true

@@ -261,7 +261,7 @@ def create_tile_layout(
 
 
 def create_dzi_tile_layout(
-    *, dzi_path, dzi_meta, get_dest_path, create_file, target_directory
+    *, dzi_path: Path, dzi_meta, get_dest_path, create_file, target_directory
 ):
     width = dzi_meta["width"]
     height = dzi_meta["height"]
@@ -365,6 +365,9 @@ def run(args):
         raise CommandError(
             f"Unable to create <dest-directory> {dest_dir} because: {e}"
         ) from e
+
+    def create_file(src: Path, dest: Path):
+        create_file_via_hardlink(src, dest)
 
     create_dzi_tile_layout(
         dzi_path=dzi_path,
