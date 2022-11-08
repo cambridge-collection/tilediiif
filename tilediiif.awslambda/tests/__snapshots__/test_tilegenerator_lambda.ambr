@@ -1,0 +1,66 @@
+# name: test_handle_direct__default_options
+  list([
+    dict({
+      'identifier': 'A123-Thing_42',
+      'keys': list([
+        'ExcellentImages/A123-Thing_42/0,0,1000,750-250,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/0,0,254,254-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/0,0,508,508-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/0,254,254,254-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/0,508,254,242-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/0,508,508,242-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/254,0,254,254-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/254,254,254,254-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/254,508,254,242-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/508,0,254,254-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/508,0,492,508-246,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/508,254,254,254-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/508,508,254,242-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/508,508,492,242-246,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/762,0,238,254-238,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/762,254,238,254-238,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/762,508,238,242-238,-0-default.jpg',
+        'ExcellentImages/A123-Thing_42/info.json',
+      ]),
+    }),
+    dict({
+      'identifier': 'A123-Thing_55',
+      'keys': list([
+        'ExcellentImages/A123-Thing_55/0,0,254,254-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_55/0,0,397,508-199,-0-default.jpg',
+        'ExcellentImages/A123-Thing_55/0,0,397,600-100,-0-default.jpg',
+        'ExcellentImages/A123-Thing_55/0,254,254,254-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_55/0,508,254,92-254,-0-default.jpg',
+        'ExcellentImages/A123-Thing_55/0,508,397,92-199,-0-default.jpg',
+        'ExcellentImages/A123-Thing_55/254,0,143,254-143,-0-default.jpg',
+        'ExcellentImages/A123-Thing_55/254,254,143,254-143,-0-default.jpg',
+        'ExcellentImages/A123-Thing_55/254,508,143,92-143,-0-default.jpg',
+        'ExcellentImages/A123-Thing_55/info.json',
+      ]),
+    }),
+  ])
+# ---
+# name: test_handle_direct__non_default_options
+  list([
+    dict({
+      'identifier': 'A123-Thing_42',
+      'keys': list([
+        'MyPrefix/Stuff/A123-Thing_42/0,0,1000,750-500,-0-default.jpg',
+        'MyPrefix/Stuff/A123-Thing_42/0,0,510,510-510,-0-default.jpg',
+        'MyPrefix/Stuff/A123-Thing_42/0,510,510,240-510,-0-default.jpg',
+        'MyPrefix/Stuff/A123-Thing_42/510,0,490,510-490,-0-default.jpg',
+        'MyPrefix/Stuff/A123-Thing_42/510,510,490,240-490,-0-default.jpg',
+        'MyPrefix/Stuff/A123-Thing_42/info.json',
+      ]),
+    }),
+    dict({
+      'identifier': 'A123-Thing_55',
+      'keys': list([
+        'MyPrefix/Stuff/A123-Thing_55/0,0,397,510-397,-0-default.jpg',
+        'MyPrefix/Stuff/A123-Thing_55/0,0,397,600-199,-0-default.jpg',
+        'MyPrefix/Stuff/A123-Thing_55/0,510,397,90-397,-0-default.jpg',
+        'MyPrefix/Stuff/A123-Thing_55/info.json',
+      ]),
+    }),
+  ])
+# ---
