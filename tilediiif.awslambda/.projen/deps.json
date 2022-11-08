@@ -36,6 +36,11 @@
       "type": "devenv"
     },
     {
+      "name": "syrupy",
+      "version": "^3.0.4",
+      "type": "devenv"
+    },
+    {
       "name": "pydantic",
       "version": "^1.10.2",
       "type": "runtime"

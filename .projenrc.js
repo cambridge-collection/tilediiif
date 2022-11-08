@@ -771,7 +771,7 @@ async function constructProject() {
         "pydantic@^1.10.2",
         `tilediiif.tools@=${tilediiifTools.version}`,
       ],
-      devDeps: [...defaultDevDeps],
+      devDeps: [...defaultDevDeps, "syrupy@^3.0.4"],
     }
   );
   const tilediiifAwsLambdaPyprojectToml =
@@ -791,6 +791,10 @@ async function constructProject() {
   tilediiifAwsLambdaPyprojectToml.addOverride(
     "tool.poetry.dev-dependencies.boto3-stubs",
     { version: "^1.26.3", extras: ["essential", "s3"] }
+  );
+  tilediiifAwsLambdaPyprojectToml.addOverride(
+    "tool.poetry.dev-dependencies.moto",
+    { version: "^4.0.9", extras: ["s3"] }
   );
 
   const dockerfileFragments = Object.fromEntries(

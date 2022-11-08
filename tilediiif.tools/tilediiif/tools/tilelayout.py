@@ -261,7 +261,7 @@ def create_tile_layout(
 
 
 def create_dzi_tile_layout(
-    *, dzi_path, dzi_meta, get_dest_path, create_file, target_directory
+    *, dzi_path: Path, dzi_meta, get_dest_path, create_file, target_directory
 ):
     width = dzi_meta["width"]
     height = dzi_meta["height"]
