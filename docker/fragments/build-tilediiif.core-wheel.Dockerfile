@@ -4,4 +4,4 @@ RUN git fetch --tags origin && git reset --hard "${TILEDIIIF_CORE_SHA}"
 RUN cd tilediiif.core \
     && poetry build \
     && mkdir /tmp/wheels \
-    && cp dist/tilediiif.core-*.whl /tmp/wheels/
+    && cp dist/tilediiif?core-*.whl /tmp/wheels/

@@ -147,7 +147,7 @@ RUN git fetch --tags origin && git reset --hard "${TILEDIIIF_CORE_SHA}"
 RUN cd tilediiif.core \
     && poetry build \
     && mkdir /tmp/wheels \
-    && cp dist/tilediiif.core-*.whl /tmp/wheels/
+    && cp dist/tilediiif?core-*.whl /tmp/wheels/
 
 # body: docker/fragments/build-tilediiif.tools-wheel.Dockerfile
 FROM build-tilediiif-wheel-base AS build-tilediiif.tools-wheel
@@ -156,7 +156,7 @@ RUN git fetch --tags origin && git reset --hard "${TILEDIIIF_TOOLS_SHA}"
 RUN cd tilediiif.tools \
     && poetry build \
     && mkdir /tmp/wheels \
-    && cp dist/tilediiif.tools-*.whl /tmp/wheels/
+    && cp dist/tilediiif?tools-*.whl /tmp/wheels/
 
 # body: docker/fragments/tilediiif.tools.Dockerfile
 FROM base AS tilediiif.tools
@@ -170,6 +170,6 @@ COPY --from=build-tilediiif.core-wheel \
     /tmp/wheels/* \
     /tmp/wheels/
 RUN pip install \
-    /tmp/wheels/tilediiif.core-*.whl \
-    /tmp/wheels/tilediiif.tools-*.whl \
+    /tmp/wheels/tilediiif?core-*.whl \
+    /tmp/wheels/tilediiif?tools-*.whl \
     && rm -rf /tmp/wheels

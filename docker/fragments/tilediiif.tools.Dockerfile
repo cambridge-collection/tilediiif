@@ -9,6 +9,6 @@ COPY --from=build-tilediiif.core-wheel \
     /tmp/wheels/* \
     /tmp/wheels/
 RUN pip install \
-    /tmp/wheels/tilediiif.core-*.whl \
-    /tmp/wheels/tilediiif.tools-*.whl \
+    /tmp/wheels/tilediiif?core-*.whl \
+    /tmp/wheels/tilediiif?tools-*.whl \
     && rm -rf /tmp/wheels
