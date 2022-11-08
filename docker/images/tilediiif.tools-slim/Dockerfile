@@ -26,7 +26,7 @@ RUN ((fgrep -q '(WITH_ARITH_DEC = 1)' cmake.log && fgrep -q '(WITH_ARITH_ENC = 1
 RUN make \
     && make deb
 RUN printf "%s\n" /opt/mozjpeg/lib64 > /etc/ld.so.conf.d/00.mozjpeg.conf
-RUN apt install /tmp/mozjpeg-${MOZJPEG_VERSION}/mozjpeg_${MOZJPEG_VERSION}_amd64.deb
+RUN apt install /tmp/mozjpeg-${MOZJPEG_VERSION}/mozjpeg_${MOZJPEG_VERSION}_*.deb
 
 # body: docker/fragments/build-vips.Dockerfile
 FROM debian:buster-slim AS build-vips-base-with-mozjpeg
