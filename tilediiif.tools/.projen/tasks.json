@@ -52,7 +52,8 @@
         {
           "exec": "poetry install"
         }
-      ]
+      ],
+      "condition": "test \"$(git status --porcelain pyproject.toml)\" != \"\" || ! env --unset=VIRTUAL_ENV poetry env info -p"
     },
     "package": {
       "name": "package",

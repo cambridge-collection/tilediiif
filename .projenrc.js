@@ -113,6 +113,11 @@ class PoetryInstallAction extends Component {
     }
 
     installTask.exec("poetry install");
+    // Poetry installs are super-slow, especially compared to the rest of projen
+    // synth, which is quite fast. So to speed synth up, only install if there
+    // are changes to pyproject.toml, or the venv doesn't exist.
+    installTask.condition =
+      'test "$(git status --porcelain pyproject.toml)" != "" || ! env --unset=VIRTUAL_ENV poetry env info -p';
   }
 }
 
