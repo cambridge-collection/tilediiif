@@ -10,6 +10,7 @@ node_modules/
 !/.github/workflows/release-docker-image-tilediiif.awslambda.yml
 !/.github/workflows/release-docker-image-tilediiif.tools-parallel.yml
 !/.github/workflows/release-docker-image-tilediiif.tools-slim.yml
+!/.prettierrc.json
 !/.projen/deps.json
 !/.projen/tasks.json
 !/docker/images/dev/package.json

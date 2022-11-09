@@ -86,6 +86,12 @@ ignore =
 exclude = .*,__*,dist
 `.split("\n"),
     });
+
+    new JsonFile(this, ".prettierrc.json", {
+      obj: {
+        proseWrap: "always",
+      },
+    });
   }
 }
 

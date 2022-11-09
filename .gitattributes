@@ -7,6 +7,7 @@
 /.github/workflows/release-docker-image-tilediiif.tools-parallel.yml	linguist-generated
 /.github/workflows/release-docker-image-tilediiif.tools-slim.yml    	linguist-generated
 /.gitignore                                                         	linguist-generated
+/.prettierrc.json                                                   	linguist-generated
 /.projen/**                                                         	linguist-generated
 /.projen/deps.json                                                  	linguist-generated
 /.projen/tasks.json                                                 	linguist-generated
