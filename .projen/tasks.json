@@ -391,6 +391,57 @@
         }
       ]
     },
+    "create-release:docker:tilediiif.awslambda": {
+      "name": "create-release:docker:tilediiif.awslambda",
+      "description": "Generate a tagged release commit for docker:tilediiif.awslambda using standard-version",
+      "steps": [
+        {
+          "exec": "npx standard-version --commit-all --path . --tag-prefix \"docker/tilediiif.awslambda-v\" \\\n  --releaseCommitMessageFormat \"chore(release): docker/tilediiif.awslambda-v{{currentTag}}\""
+        }
+      ],
+      "condition": "test \"$(git status --porcelain)\" == \"\"",
+      "cwd": "docker/images/tilediiif.awslambda"
+    },
+    "build-docker-image:tilediiif.awslambda": {
+      "name": "build-docker-image:tilediiif.awslambda",
+      "env": {
+        "DOCKER_BUILDKIT": "1",
+        "GIT_DIR": "$(realpath \"$(git rev-parse --git-common-dir)\")",
+        "VERSION_CHECKOUT": "$(mktemp -d)"
+      },
+      "steps": [
+        {
+          "exec": "git worktree add --detach \"$VERSION_CHECKOUT\" \"docker/tilediiif.awslambda-v0.1.1\" \\\n&& cd \"$VERSION_CHECKOUT\" \\\n&& docker image build \\\n  --file \"docker/images/tilediiif.awslambda/Dockerfile\" \\\n  --tag \"ghcr.io/cambridge-collection/tilediiif.awslambda:v0.1.0\" --tag \"ghcr.io/cambridge-collection/tilediiif.awslambda:v0.1\" --tag \"ghcr.io/cambridge-collection/tilediiif.awslambda:v0\" --tag \"ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0.1.1-slim\" --tag \"ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0.1-slim\" --tag \"ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0-slim\" \\\n  --build-arg \"TILEDIIIF_AWSLAMBDA_SHA=tags/tilediiif.awslambda-v0.1.0\" --build-arg \"TILEDIIIF_TOOLS_SHA=tags/tilediiif.tools-v0.1.0\" --build-arg \"TILEDIIIF_CORE_SHA=tags/tilediiif.core-v0.1.0\" \\\n  --label \"org.opencontainers.image.version=0.1.1 (tilediiif.awslambda=0.1.0, tilediiif.tools=0.1.0, tilediiif.core=0.1.0)\" --label \"org.opencontainers.image.revision=$(git rev-parse --verify HEAD)\" --label \"org.opencontainers.image.title=tilediiif.awslambda\" --label \"org.opencontainers.image.description=An AWS Lambda function that uses tilediiif.tools Python package to generate image tiles for a IIIF Image server.\" \\\n   \\\n  --cache-from \"ghcr.io/cambridge-collection/tilediiif.awslambda:v0.1.0\" --cache-from \"ghcr.io/cambridge-collection/tilediiif.awslambda:v0.1\" --cache-from \"ghcr.io/cambridge-collection/tilediiif.awslambda:v0\" --cache-from \"ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0.1.1-slim\" --cache-from \"ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0.1-slim\" --cache-from \"ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0-slim\" \\\n  --build-arg BUILDKIT_INLINE_CACHE=1 \\\n  \"$GIT_DIR\" \\\n&& cd - \\\n&& git worktree remove \"$VERSION_CHECKOUT\""
+        }
+      ],
+      "condition": "! docker image inspect ghcr.io/cambridge-collection/tilediiif.awslambda:v0.1.0 ghcr.io/cambridge-collection/tilediiif.awslambda:v0.1 ghcr.io/cambridge-collection/tilediiif.awslambda:v0 ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0.1.1-slim ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0.1-slim ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0-slim > /dev/null 2>&1"
+    },
+    "push-docker-image:tilediiif.awslambda": {
+      "name": "push-docker-image:tilediiif.awslambda",
+      "steps": [
+        {
+          "spawn": "build-docker-image:tilediiif.awslambda"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.awslambda:v0.1.0"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.awslambda:v0.1"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.awslambda:v0"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0.1.1-slim"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0.1-slim"
+        },
+        {
+          "exec": "docker image push ghcr.io/cambridge-collection/tilediiif.awslambda:image-v0-slim"
+        }
+      ]
+    },
     "create-release:docker:tilediiif-dev": {
       "name": "create-release:docker:tilediiif-dev",
       "description": "Generate a tagged release commit for docker:tilediiif-dev using standard-version",

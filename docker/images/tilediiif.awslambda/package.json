@@ -1,0 +1,13 @@
+{
+  "version": "0.1.1",
+  "tilediiif": {
+    "awsLambdaVersion": "0.1.0",
+    "toolsVersion": "0.1.0",
+    "coreVersion": "0.1.0"
+  },
+  "standard-version": {
+    "scripts": {
+      "postchangelog": "(cd ../../.. && npx projen && git add .)"
+    }
+  }
+}

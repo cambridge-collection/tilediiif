@@ -7,11 +7,13 @@ node_modules/
 !/.flake8
 !/.gitattributes
 !/.github/workflows/release-docker-image-tilediiif-dev.yml
+!/.github/workflows/release-docker-image-tilediiif.awslambda.yml
 !/.github/workflows/release-docker-image-tilediiif.tools-parallel.yml
 !/.github/workflows/release-docker-image-tilediiif.tools-slim.yml
 !/.projen/deps.json
 !/.projen/tasks.json
 !/docker/images/dev/package.json
+!/docker/images/tilediiif.awslambda/package.json
 !/docker/images/tilediiif.tools-parallel/package.json
 !/docker/images/tilediiif.tools-slim/package.json
 !/tilediiif.awslambda/package.json

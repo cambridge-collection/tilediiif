@@ -804,11 +804,13 @@ async function constructProject() {
       buildTilediiifWheelBase: "build-tilediiif-wheel-base",
       buildTilediiifCoreWheel: "build-tilediiif.core-wheel",
       buildTilediiifToolsWheel: "build-tilediiif.tools-wheel",
+      buildTilediiifAwsLambdaWheel: "build-tilediiif.awslambda-wheel",
       buildVips: "build-vips",
       dev: "dev",
       pythonBase: "python-base",
       tilediiifToolsParallel: "tilediiif.tools-parallel",
       tilediiifTools: "tilediiif.tools",
+      tilediiifAwsLambda: "tilediiif.awslambda",
     }).map(([key, name]) => [
       key,
       path.join("docker/fragments", `${name}.Dockerfile`),
@@ -854,6 +856,21 @@ async function constructProject() {
         dockerfileFragments.buildTilediiifToolsWheel,
         dockerfileFragments.tilediiifTools,
         dockerfileFragments.tilediiifToolsParallel,
+      ]
+    ),
+    tilediiifAwsLambda: await dockerfileFromFragments(
+      rootProject,
+      "docker/images/tilediiif.awslambda/Dockerfile",
+      [
+        dockerfileFragments.buildMozjpeg,
+        dockerfileFragments.buildVips,
+        dockerfileFragments.pythonBase,
+        dockerfileFragments.base,
+        dockerfileFragments.buildTilediiifWheelBase,
+        dockerfileFragments.buildTilediiifCoreWheel,
+        dockerfileFragments.buildTilediiifToolsWheel,
+        dockerfileFragments.buildTilediiifAwsLambdaWheel,
+        dockerfileFragments.tilediiifAwsLambda,
       ]
     ),
   };
@@ -952,6 +969,58 @@ async function constructProject() {
             "org.opencontainers.image.description":
               "The tilediiif.tools Python package, plus GNU parallel.",
             "org.opencontainers.image.version": `${version} (tilediiif.tools=${toolsParallelImagePkgJson.tilediiif.toolsVersion}, tilediiif.core=${toolsParallelImagePkgJson.tilediiif.coreVersion})`,
+          },
+        },
+      ],
+    })
+  );
+
+  const { content: toolsAwsLambdaImagePkgJson } = getOrCreateJsonFile(
+    rootProject,
+    {
+      filePath: "docker/images/tilediiif.awslambda/package.json",
+      jsonFileOptions: {
+        marker: false,
+        readonly: false,
+      },
+    }
+  );
+  assert((toolsAwsLambdaImagePkgJson.tilediiif ?? {}).awsLambdaVersion);
+  assert((toolsAwsLambdaImagePkgJson.tilediiif ?? {}).toolsVersion);
+  assert((toolsAwsLambdaImagePkgJson.tilediiif ?? {}).coreVersion);
+  DockerImage.createWithVersion(
+    rootProject,
+    {
+      directoryPath: "docker/images/tilediiif.awslambda",
+    },
+    ({ version, ...options }) => ({
+      ...options,
+      contextPath: "$GIT_DIR",
+      version,
+      nickName: "tilediiif.awslambda",
+      imageName: "ghcr.io/cambridge-collection/tilediiif.awslambda",
+      targets: [
+        {
+          tag: [
+            // Tag separately for awslambda version and image version
+            ...splitSemverComponents(tilediiifAwsLambda.version).map(
+              (ver) => `v${ver}`
+            ),
+            ...splitSemverComponents(version).map(
+              (ver) => `image-v${ver}-slim`
+            ),
+          ],
+          buildArgs: {
+            // FIXME: need to pull the version from the docker/images/* dir so that changes are noticed by standard-version
+            TILEDIIIF_AWSLAMBDA_SHA: `tags/tilediiif.awslambda-v${toolsAwsLambdaImagePkgJson.tilediiif.awsLambdaVersion}`,
+            TILEDIIIF_TOOLS_SHA: `tags/tilediiif.tools-v${toolsAwsLambdaImagePkgJson.tilediiif.toolsVersion}`,
+            TILEDIIIF_CORE_SHA: `tags/tilediiif.core-v${toolsAwsLambdaImagePkgJson.tilediiif.coreVersion}`,
+          },
+          labels: {
+            "org.opencontainers.image.title": "tilediiif.awslambda",
+            "org.opencontainers.image.description":
+              "An AWS Lambda function that uses tilediiif.tools Python package to generate image tiles for a IIIF Image server.",
+            "org.opencontainers.image.version": `${version} (tilediiif.awslambda=${toolsAwsLambdaImagePkgJson.tilediiif.awsLambdaVersion}, tilediiif.tools=${toolsAwsLambdaImagePkgJson.tilediiif.toolsVersion}, tilediiif.core=${toolsAwsLambdaImagePkgJson.tilediiif.coreVersion})`,
           },
         },
       ],
