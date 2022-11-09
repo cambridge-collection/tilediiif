@@ -51,6 +51,11 @@
       "type": "runtime"
     },
     {
+      "name": "tilediiif.core",
+      "version": "=0.1.0",
+      "type": "runtime"
+    },
+    {
       "name": "tilediiif.tools",
       "version": "=0.1.0",
       "type": "runtime"

@@ -17,14 +17,16 @@ readme = "README.md"
   [tool.poetry.dependencies]
   pydantic = "^1.10.2"
   python = "^3.9"
+  "tilediiif.core" = "=0.1.0"
+  "tilediiif.tools" = "=0.1.0"
 
-    [tool.poetry.dependencies."tilediiif.tools"]
-    path = "../tilediiif.tools"
-    develop = true
+    [tool.poetry.dependencies.boto3]
+    version = "^1.26.5"
+    optional = true
 
-    [tool.poetry.dependencies."tilediiif.core"]
-    path = "../tilediiif.core"
-    develop = true
+    [tool.poetry.dependencies.awslambdaric]
+    version = "^2.0.4"
+    optional = true
 
   [tool.poetry.dev-dependencies]
   black = "^21.6b0"
@@ -35,6 +37,14 @@ readme = "README.md"
   mypy = "^0.901"
   pytest = "^6.2.4"
   syrupy = "^3.0.4"
+
+    [tool.poetry.dev-dependencies."tilediiif.core"]
+    path = "../tilediiif.core"
+    develop = true
+
+    [tool.poetry.dev-dependencies."tilediiif.tools"]
+    path = "../tilediiif.tools"
+    develop = true
 
     [tool.poetry.dev-dependencies.aws-lambda-powertools]
     version = "^2.1.0"
@@ -47,6 +57,9 @@ readme = "README.md"
     [tool.poetry.dev-dependencies.moto]
     version = "^4.0.9"
     extras = [ "s3" ]
+
+  [tool.poetry.extras]
+  lambda-runtime = [ "boto3", "awslambdaric" ]
 
 [tool.black]
 experimental-string-processing = true

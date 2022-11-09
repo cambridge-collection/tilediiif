@@ -769,6 +769,7 @@ async function constructProject() {
       deps: [
         "python@^3.9",
         "pydantic@^1.10.2",
+        `tilediiif.core@=${tilediiifCore.version}`,
         `tilediiif.tools@=${tilediiifTools.version}`,
       ],
       devDeps: [...defaultDevDeps, "syrupy@^3.0.4"],
@@ -777,11 +778,11 @@ async function constructProject() {
   const tilediiifAwsLambdaPyprojectToml =
     tilediiifAwsLambda.tryFindObjectFile("pyproject.toml");
   tilediiifAwsLambdaPyprojectToml.addOverride(
-    "tool.poetry.dependencies.tilediiif\\.core",
+    "tool.poetry.dev-dependencies.tilediiif\\.core",
     { path: "../tilediiif.core", develop: true }
   );
   tilediiifAwsLambdaPyprojectToml.addOverride(
-    "tool.poetry.dependencies.tilediiif\\.tools",
+    "tool.poetry.dev-dependencies.tilediiif\\.tools",
     { path: "../tilediiif.tools", develop: true }
   );
   tilediiifAwsLambdaPyprojectToml.addOverride(
@@ -796,6 +797,21 @@ async function constructProject() {
     "tool.poetry.dev-dependencies.moto",
     { version: "^4.0.9", extras: ["s3"] }
   );
+  tilediiifAwsLambdaPyprojectToml.addOverride(
+    "tool.poetry.dependencies.boto3",
+    { version: "^1.26.5", optional: true }
+  );
+  tilediiifAwsLambdaPyprojectToml.addOverride(
+    "tool.poetry.dependencies.awslambdaric",
+    { version: "^2.0.4", optional: true }
+  );
+
+  tilediiifAwsLambdaPyprojectToml.addOverride("tool.poetry.extras", {
+    // Packages needed in a Lambda function Docker image that is not based on
+    // the Lambda-specific base images.
+    // https://docs.aws.amazon.com/lambda/latest/dg/python-image.html#python-image-create-alt
+    "lambda-runtime": ["boto3", "awslambdaric"],
+  });
 
   const dockerfileFragments = Object.fromEntries(
     Object.entries({
