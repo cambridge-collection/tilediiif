@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Optional, Sequence, TypedDict
 
 import boto3
 from boto3.s3.transfer import S3Transfer
+from botocore.config import Config
 from pydantic import BaseModel
 from tilediiif.core.templates import Template, parse_template
 from tilediiif.tools.dzi import parse_dzi_file
@@ -91,7 +92,11 @@ def handle_direct(
     except ValueError as e:
         raise ValueError(f"invalid TILE_PATH_TEMPLATE: {e}") from e
 
-    s3client: s3.Client = boto3.client("s3")
+    # TODO: validate this value. I think 20 should be OK for our use, as we use
+    # s3transfer via download_file() upload_file(), and they use 10
+    # threads/connections max each.
+    boto_config = Config(max_pool_connections=30)
+    s3client: s3.Client = boto3.client("s3", config=boto_config)
     s3_download = S3Transfer(client=s3client)
     s3_upload = S3Transfer(client=s3client)
     event = HandleDirectEvent.parse_obj(raw_event)
