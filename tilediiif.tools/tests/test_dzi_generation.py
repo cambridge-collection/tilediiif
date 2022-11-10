@@ -1126,12 +1126,17 @@ def mock_dzsave():
 
 
 @pytest.fixture
-def mock_dzsave_with_vips_warning():
+def vips_warning() -> str:
+    return "something went slightly wrong"
+
+
+@pytest.fixture
+def mock_dzsave_with_vips_warning(vips_warning):
     def dzsave(dzi_path, **_):
         Path(f"{dzi_path}.dzi").touch()
         Path(f"{dzi_path}_files").mkdir()
         # This should result in an error
-        logging.getLogger("pyvips").warning("something went slightly wrong")
+        logging.getLogger("pyvips").warning(vips_warning)
 
     return MagicMock(side_effect=dzsave)
 
@@ -1219,7 +1224,7 @@ def test_save_dzi_cleans_up_if_dzsave_fails(
         for msg in [
             (
                 "pyvips unexpectedly emitted a log message at WARNING level: something "
-                "went slightly wrong, aborting DZI generation"
+                "went slightly wrong"
             ),
             "dzsave() failed: something went very wrong",
         ]
@@ -1300,13 +1305,12 @@ def test_capture_vips_log_messages_intercepts_warnings_from_vips_native_code():
     assert len(capture.records) == 1
     assert TRIGGERED_VIPS_WARNING_MSG.match(capture.records[0].message)
 
-    with pytest.raises(UnexpectedVIPSLogDZIGenerationError) as exc_info:
-        capture.raise_if_records_seen()
-        assert re.match(
-            r"^pyvips unexpectedly emitted a log message at "
-            r"WARNING level: VIPS: ignoring optimize_scans.*, aborting DZI generation$",
-            str(exc_info),
-        )
+    with pytest.warns(
+        UnexpectedVIPSLogDZIGenerationError,
+        match=r"^pyvips unexpectedly emitted a log message at WARNING level: "
+        "VIPS: ignoring optimize_scans$",
+    ):
+        capture.warn_if_records_seen()
 
 
 @contextlib.contextmanager
@@ -1376,3 +1380,41 @@ def trigger_vips_warning():
     #  - "ignoring optimize_scans" if MozJPEG is not present
     #  - "ignoring optimize_scans for baseline" if MozJPEG is present
     img.jpegsave_buffer(interlace=False, optimize_scans=True)
+
+
+@pytest.mark.parametrize(
+    "mock_dzsave",
+    [pytest.lazy_fixture("mock_dzsave_with_vips_warning")],
+)
+@pytest.mark.parametrize(
+    "vips_warning, is_error",
+    [
+        ("Unknown warning", True),
+        ('VIPS: Incorrect value for "Photoshop"; tag ignored', False),
+        ('VIPS: Incompatible type for "RichTIFFIPTC"; tag ignored', False),
+    ],
+)
+@pytest.mark.usefixtures(
+    "mock_colour_managed_image_loader", "mock_colour_loader", "mock_output_image"
+)
+def test_known_minor_vips_warnings_are_not_errors(
+    image_with_srgb_icc_profile, is_error: bool, dest_dzi, vips_warning, mock_dzsave
+):
+    try:
+        save_dzi(src_image=image_with_srgb_icc_profile, dest_dzi=dest_dzi)
+        dzi_generation_error = None
+    except DZIGenerationError as e:
+        dzi_generation_error = e
+
+    if is_error:
+        assert (
+            str(dzi_generation_error)
+            == "pyvips unexpectedly emitted a log message at WARNING level: Unknown"
+            " warning"
+        )
+        assert not Path(f"{dest_dzi}.dzi").exists()
+        assert not Path(f"{dest_dzi}_files").exists()
+    else:
+        assert dzi_generation_error is None
+        assert Path(f"{dest_dzi}.dzi").exists()
+        assert Path(f"{dest_dzi}_files").exists()

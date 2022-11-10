@@ -1,5 +1,7 @@
 import enum
 import logging
+import sys
+import warnings
 from abc import ABC
 from contextlib import contextmanager
 from ctypes import CDLL
@@ -45,6 +47,8 @@ from tilediiif.core.config.validation import (
 from tilediiif.tools.exceptions import CommandError
 
 from .version import __version__
+
+LOG = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -601,15 +605,21 @@ def pyvips_supports_params():
 class InterceptedLogRecords:
     records: List[LogRecord] = field(default_factory=list)
 
-    def raise_if_records_seen(self):
+    def warn_if_records_seen(self):
         """
-        Raises a UnexpectedVIPSLogDZIGenerationError any log messages were captured.
+        Emit a UnexpectedVIPSLogDZIGenerationError warning for any log messages
+        that were captured.
+
+        The default `warnings` filters cause this warning to raise an exception,
+        except for certain known-benign warnings.
         """
         for record in self.records:
-            raise UnexpectedVIPSLogDZIGenerationError(
-                f"pyvips unexpectedly emitted a log message at {record.levelname} "
-                f"level: {record.msg}, aborting DZI generation",
-                log_record=record,
+            warnings.warn(
+                UnexpectedVIPSLogDZIGenerationError(
+                    f"pyvips unexpectedly emitted a log message at {record.levelname} "
+                    f"level: {record.msg}",
+                    log_record=record,
+                )
             )
 
 
@@ -619,6 +629,8 @@ class InterceptingHandler(logging.Handler):
         self.intercepted_records = InterceptedLogRecords()
 
     def filter(self, record: LogRecord):
+        if not super().filter(record):
+            return
         self.intercepted_records.records.append(record)
         return True
 
@@ -733,13 +745,39 @@ class DZIGenerationError(Exception):
     pass
 
 
+class DZIGenerationWarning(Warning):
+    pass
+
+
 @dataclass()
-class UnexpectedVIPSLogDZIGenerationError(DZIGenerationError):
+class UnexpectedVIPSLogDZIGenerationError(DZIGenerationWarning, DZIGenerationError):
     message: str
     log_record: LogRecord
 
     def __str__(self):
         return self.message
+
+
+def register_default_warnings_filters():
+    warnings.filterwarnings("error", category=DZIGenerationWarning)
+    warnings.filterwarnings(
+        "ignore",
+        category=DZIGenerationWarning,
+        message=(
+            "^pyvips unexpectedly emitted a log message at WARNING level: VIPS:"
+            ' (?:Incompatible type|Incorrect value) for ".*"; tag ignored$'
+        ),
+    )
+
+
+if not sys.warnoptions:
+    register_default_warnings_filters()
+    LOG.debug("registered default warnings filters: %s", warnings.filters)
+else:
+    LOG.debug(
+        "not registering default warnings filters because sys.warnoptions is set: %s",
+        sys.warnoptions,
+    )
 
 
 class ColourSourceNotAvailable(LookupError):
@@ -1129,7 +1167,7 @@ def save_dzi(
         try:
             with capture_vips_log_messages() as capture:
                 src_image = pyvips.Image.new_from_file(src_image)
-            capture.raise_if_records_seen()
+            capture.warn_if_records_seen()
         except pyvips.Error as e:
             if not Path(src_image).exists():
                 raise FileNotFoundError(src_image) from e
@@ -1151,7 +1189,7 @@ def save_dzi(
         # Transform input image to output colour profile
         colour_loader = ColourManagedImageLoader.from_colour_config(colour_config)
         output_image = colour_loader(src_image)
-    capture.raise_if_records_seen()
+    capture.warn_if_records_seen()
 
     try:
         # We need to generate the output in a temporary location, as we must not leave
@@ -1174,7 +1212,7 @@ def save_dzi(
                     tile_size=dzi_config.tile_size,
                     suffix=tile_suffix,
                 )
-            capture.raise_if_records_seen()
+            capture.warn_if_records_seen()
 
             Path(f"{tmp_dest_dzi}.dzi").replace(f"{dest_dzi}.dzi")
             Path(f"{tmp_dest_dzi}_files").replace(f"{dest_dzi}_files")
