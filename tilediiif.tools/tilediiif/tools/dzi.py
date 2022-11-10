@@ -84,7 +84,7 @@ def get_dzi_tile_path(tile, *, dzi_files_path, dzi_meta):
         )
 
     power = int(math.log2(scale_factor))
-    if 2 ** power != scale_factor:
+    if 2**power != scale_factor:
         raise ValueError(
             f"tile['scale_factor'] must be a power of 2, got: {scale_factor}"
         )

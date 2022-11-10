@@ -60,8 +60,10 @@ def test_ensure_sub_directories_exist(
             "abc/../foo",
             AssertionError,
             "get_foo() returned a path which",
-            'get_foo() returned a path which contains a ".." (parent) segment: '
-            "abc/../foo",
+            (
+                'get_foo() returned a path which contains a ".." (parent) segment: '
+                "abc/../foo"
+            ),
         ],
         ["/abc", None, None, "path is not relative: /abc"],
         [

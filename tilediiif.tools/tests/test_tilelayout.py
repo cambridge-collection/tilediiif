@@ -62,7 +62,7 @@ def test_get_layer_tiles_argument_validation(width, height, tile_size, scale_fac
     width=image_dimensions,
     height=image_dimensions,
     tile_size=ints_over_zero,
-    scale_factor=integers(min_value=1, max_value=2 ** 18),
+    scale_factor=integers(min_value=1, max_value=2**18),
 )
 def test_get_layer_tiles(width, height, tile_size, scale_factor):
     src_tile_size = tile_size * scale_factor
@@ -322,8 +322,10 @@ def test_create_tile_layout(tiles, mock_ensure_sub_directories_exist):
     [
         [
             "abc/../foo",
-            'get_dest_path returned a path which contains a ".." (parent) segment: '
-            "abc/../foo",
+            (
+                'get_dest_path returned a path which contains a ".." (parent) segment: '
+                "abc/../foo"
+            ),
         ],
         ["/abc", "get_dest_path returned a path which is not relative: /abc"],
         ["", "get_dest_path returned a path which is empty"],

@@ -82,14 +82,18 @@ def test_config_from_toml_file_rejects_invalid_config_files(path, msg):
         [
             {"foo": 123},
             "/some/file",
-            "Configuration data from /some/file is invalid: "
-            "'tilediiif' is a required property",
+            (
+                "Configuration data from /some/file is invalid: "
+                "'tilediiif' is a required property"
+            ),
         ],
         [
             {"tilediiif": {"server": {"unknown": "foo"}}},
             None,
-            "Configuration data is invalid: Additional properties are not allowed "
-            "('unknown' was unexpected)",
+            (
+                "Configuration data is invalid: Additional properties are not allowed "
+                "('unknown' was unexpected)"
+            ),
         ],
         [
             {
@@ -98,8 +102,10 @@ def test_config_from_toml_file_rejects_invalid_config_files(path, msg):
                 }
             },
             None,
-            "Configuration data is invalid: Additional properties are not allowed "
-            "('unknown' was unexpected)",
+            (
+                "Configuration data is invalid: Additional properties are not allowed "
+                "('unknown' was unexpected)"
+            ),
         ],
     ],
 )

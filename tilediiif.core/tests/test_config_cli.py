@@ -234,8 +234,10 @@ def test_cli_flag_must_have_at_least_one_name(enable_names, disable_names):
         [
             ["abc", "--squash", "--no-squash"],
             InvalidCLIUsageConfigError,
-            "conflicting arguments: --squash and its disabled form --no-squash cannot "
-            "be specified together",
+            (
+                "conflicting arguments: --squash and its disabled form --no-squash"
+                " cannot be specified together"
+            ),
         ]
     ],
 )

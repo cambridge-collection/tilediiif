@@ -276,10 +276,10 @@ class TilediiifProject extends python.PythonProject {
     // a slightly more specific version of 3.6, which fails unless we replace
     // the default Python@^3.6 dep.
     this._overrideDependencies({ deps, devDeps });
-    this.addDevDependency("black@^21.6b0");
-    this.addDevDependency("flake8@^3.9.2");
-    this.addDevDependency("isort@^5.8.0");
-    this.addDevDependency("mypy@^0.901");
+    this.addDevDependency("black@^22.10.0");
+    this.addDevDependency("flake8@^5.0.4");
+    this.addDevDependency("isort@^5.10.1");
+    this.addDevDependency("mypy@^0.990");
 
     this.testPackages = [...(testPackages || [])];
 

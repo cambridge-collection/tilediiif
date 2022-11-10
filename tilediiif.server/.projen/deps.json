@@ -2,22 +2,22 @@
   "dependencies": [
     {
       "name": "black",
-      "version": "^21.6b0",
+      "version": "^22.10.0",
       "type": "devenv"
     },
     {
       "name": "flake8",
-      "version": "^3.9.2",
+      "version": "^5.0.4",
       "type": "devenv"
     },
     {
       "name": "isort",
-      "version": "^5.8.0",
+      "version": "^5.10.1",
       "type": "devenv"
     },
     {
       "name": "mypy",
-      "version": "^0.901",
+      "version": "^0.990",
       "type": "devenv"
     },
     {

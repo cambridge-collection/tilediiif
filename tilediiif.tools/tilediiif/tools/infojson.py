@@ -17,7 +17,7 @@ from tilediiif.tools.version import __version__
 # math.log2(2**49) == math.log2(2**49 + 1) so anything above 2**49 won't work
 # with the current implementation. Could use decimals instead of float, but I
 # don't think this limit is going to constrain anyone any time soon. :)
-MAX_IMAGE_DIMENSION = 2 ** 49
+MAX_IMAGE_DIMENSION = 2**49
 MAX_IMAGE_DIMENSION_DESC = "2**49"
 
 DEFAULT_DATA_PATH = "."
@@ -186,7 +186,7 @@ def power2_image_pyramid_scale_factors(*, width, height, tile_size):
     # then 4 would be the scale factor of the smallest layer.
     smallest_layer_power = math.ceil(math.log2(ideal_smallest_scale_factor))
 
-    return [2 ** power for power in range(smallest_layer_power + 1)]
+    return [2**power for power in range(smallest_layer_power + 1)]
 
 
 id_validator = (

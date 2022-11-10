@@ -107,13 +107,17 @@ def test_get_api_throws_config_error_with_invalid_config(monkeypatch):
     [
         [
             ServerConfig(info_json_path_template="{unsupported-placeholder}/info.json"),
-            "info-json-path-template is invalid: template contains unexpected "
-            "placeholders: 'unsupported-placeholder'",
+            (
+                "info-json-path-template is invalid: template contains unexpected "
+                "placeholders: 'unsupported-placeholder'"
+            ),
         ],
         [
             ServerConfig(info_json_path_template="foo/../../{identifier}/info.json"),
-            'info-json-path-template is invalid: template contains a ".." (parent) '
-            "segment",
+            (
+                'info-json-path-template is invalid: template contains a ".." (parent) '
+                "segment"
+            ),
         ],
         [
             ServerConfig(info_json_path_template="foo/{identifier/info.json"),

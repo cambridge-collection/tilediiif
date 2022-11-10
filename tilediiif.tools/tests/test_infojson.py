@@ -104,8 +104,10 @@ def test_power2_image_pyramid_scale_factors(width, height, tile_size):
         [
             "foo://example.com/",
             "abc",
-            "invalid @id URL 'foo://example.com/abc': scheme was required to be one "
-            "of ['http', 'https'] but was 'foo'",
+            (
+                "invalid @id URL 'foo://example.com/abc': scheme was required to be one"
+                " of ['http', 'https'] but was 'foo'"
+            ),
         ],
         [
             "https:/abc/",
@@ -115,9 +117,11 @@ def test_power2_image_pyramid_scale_factors(width, height, tile_size):
         [
             "https://user:pass@foo.example/",
             "abc",
-            "invalid @id URL 'https://user:pass@foo.example/abc': "
-            '"https://user:pass@foo.example/abc" contained a password when '
-            "validation forbade it",
+            (
+                "invalid @id URL 'https://user:pass@foo.example/abc': "
+                '"https://user:pass@foo.example/abc" contained a password when '
+                "validation forbade it"
+            ),
         ],
     ],
 )

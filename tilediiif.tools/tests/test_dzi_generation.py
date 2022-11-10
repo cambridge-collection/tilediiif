@@ -844,8 +844,10 @@ def test_apply_colour_profile_image_operation_raises_error_on_failed_conversion(
                 optimize_scans=True,
                 quant_table=JPEGQuantTable.IMAGEMAGICK,
             ),
-            "Q=50,optimize_coding,interlace,no_subsample,trellis_quant,"
-            "overshoot_deringing,optimize_scans,quant_table=3",
+            (
+                "Q=50,optimize_coding,interlace,no_subsample,trellis_quant,"
+                "overshoot_deringing,optimize_scans,quant_table=3"
+            ),
         ],
     ],
 )
@@ -1209,8 +1211,10 @@ def test_save_dzi_cleans_up_if_dzsave_fails(
     assert any(
         str(exc_info.value) == msg
         for msg in [
-            "pyvips unexpectedly emitted a log message at WARNING level: something "
-            "went slightly wrong, aborting DZI generation",
+            (
+                "pyvips unexpectedly emitted a log message at WARNING level: something "
+                "went slightly wrong, aborting DZI generation"
+            ),
             "dzsave() failed: something went very wrong",
         ]
     )
@@ -1299,7 +1303,9 @@ def test_capture_vips_log_messages_intercepts_warnings_from_vips_native_code():
         )
 
 
-@pytest.mark.xfail(reason='Exceptions in CFFI callbacks no longer seem to get swallowed')
+@pytest.mark.xfail(
+    reason="Exceptions in CFFI callbacks no longer seem to get swallowed"
+)
 def test_exceptions_in_cffi_callbacks_are_swallowed(capsys):
     class TestHandler(logging.NullHandler):
         def handle(self, record):

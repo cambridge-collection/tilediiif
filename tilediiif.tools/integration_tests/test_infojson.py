@@ -31,8 +31,10 @@ def info_json(info_json_path):
         [[], "Usage:\n    infojson from-dzi "],
         [
             ["from-dzi", "-"],
-            "Error: no --id is specified so --id is derived from <dzi-file>, but DZI "
-            "is read from stdin; nothing to generate @id attribute from",
+            (
+                "Error: no --id is specified so --id is derived from <dzi-file>, but"
+                " DZI is read from stdin; nothing to generate @id attribute from"
+            ),
         ],
         [
             ["from-dzi", "/tmp/img?a=1.dzi"],

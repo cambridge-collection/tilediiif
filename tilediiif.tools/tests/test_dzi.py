@@ -85,12 +85,12 @@ def test_get_dzi_tile_path(dzi_path, dzi_metadata, layer, tile_num):
     assume(dzi_level >= 0)
     # Don't waste time testing cases with huge numbers of tiles
     assume(
-        (width / (2 ** layer) / tile_size) * (height / (2 ** layer) / tile_size) < 2000
+        (width / (2**layer) / tile_size) * (height / (2**layer) / tile_size) < 2000
     )
 
     tiles = list(
         get_layer_tiles(
-            width=width, height=height, tile_size=tile_size, scale_factor=2 ** layer
+            width=width, height=height, tile_size=tile_size, scale_factor=2**layer
         )
     )
     tile = tiles[tile_num % len(tiles)]

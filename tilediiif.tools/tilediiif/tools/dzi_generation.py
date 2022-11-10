@@ -255,8 +255,10 @@ class JPEGQuantTable(DescribedEnumMixin, enum.Enum):
     )
     PAPER_8 = (
         "8",
-        "Table from "
-        "An Improved Detection Model for DCT Coefficient Quantization (1993)",
+        (
+            "Table from "
+            "An Improved Detection Model for DCT Coefficient Quantization (1993)"
+        ),
     )
 
     @classmethod
@@ -348,7 +350,7 @@ class DZIConfig(Config):
         IntConfigProperty(
             "tile_size",
             default=254,
-            validator=in_validator(range(1, 2 ** 13 + 1)),
+            validator=in_validator(range(1, 2**13 + 1)),
             cli_arg="--dzi-tile-size=",
             envar_name=f"{ENVAR_PREFIX}_DZI_TILE_SIZE",
             json_path="dzi-tiles.dzi.tile-size",
@@ -356,7 +358,7 @@ class DZIConfig(Config):
         IntConfigProperty(
             "overlap",
             default=1,
-            validator=in_validator(range(0, 2 ** 13 + 1)),
+            validator=in_validator(range(0, 2**13 + 1)),
             cli_arg="--dzi-overlap=",
             envar_name=f"{ENVAR_PREFIX}_DZI_OVERLAP",
             json_path="dzi-tiles.dzi.overlap",
