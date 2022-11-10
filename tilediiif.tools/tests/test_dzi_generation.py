@@ -1,7 +1,13 @@
+from __future__ import annotations
+
+import contextlib
 import logging
 import re
+import sys
+import traceback
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
+from typing import Generator, Sequence
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -1303,10 +1309,45 @@ def test_capture_vips_log_messages_intercepts_warnings_from_vips_native_code():
         )
 
 
-@pytest.mark.xfail(
-    reason="Exceptions in CFFI callbacks no longer seem to get swallowed"
-)
-def test_exceptions_in_cffi_callbacks_are_swallowed(capsys):
+@contextlib.contextmanager
+def capture_unraisable() -> Generator[
+    Sequence[traceback.TracebackException], None, None
+]:
+    """A context manager that captures an un-raisable exception passed to
+    sys.unraisablehook in the context block.
+    """
+    existing_handler = sys.unraisablehook
+
+    caught: list[traceback.TracebackException] = []
+
+    def on_unraisable(unraisable: sys.UnraisableHookArgs):
+        if unraisable.exc_value:
+            caught.append(
+                traceback.TracebackException.from_exception(unraisable.exc_value)
+            )
+
+    try:
+        sys.unraisablehook = on_unraisable
+        yield caught
+    finally:
+        sys.unraisablehook = existing_handler
+
+
+def test_exceptions_in_cffi_callbacks_are_swallowed():
+    """Exceptions raised in callbacks from VIPS native code to not terminate the
+    main thread. In Python 3.8+ they get passed to sys.unraisablehook.
+
+    This matters to us because we raise an error/warning in response to VIPS
+    logging warnings, and those warnings are logged from a a VIPS native code
+    callback, so if we raise from the log handler directly, the exception is
+    lost.
+
+    We handle this situation, see:
+        test_capture_vips_log_messages_intercepts_warnings_from_vips_native_code
+
+    This test exists to document/demonstrate this behaviour of libvips.
+    """
+
     class TestHandler(logging.NullHandler):
         def handle(self, record):
             raise RuntimeError("something went wrong")
@@ -1315,16 +1356,11 @@ def test_exceptions_in_cffi_callbacks_are_swallowed(capsys):
     logger = logging.getLogger("pyvips")
     try:
         logger.addHandler(handler)
-        trigger_vips_warning()
-        # nothing raised, exception is printed on stderr
-        captured = capsys.readouterr()
-        assert re.search(
-            r"^From cffi callback <function _log_handler_callback at \w+>:$\s*"
-            r"^Traceback \(most recent call last\):$.*"
-            r"^RuntimeError: something went wrong$",
-            captured.err,
-            re.MULTILINE | re.DOTALL,
-        )
+        with capture_unraisable() as captured:
+            trigger_vips_warning()
+
+        assert len(captured) == 1
+        assert "RuntimeError: something went wrong" in "".join(captured[0].format())
     finally:
         logger.removeHandler(handler)
 
