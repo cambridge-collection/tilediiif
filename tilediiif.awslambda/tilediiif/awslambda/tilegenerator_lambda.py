@@ -15,12 +15,19 @@ from concurrent.futures import Executor, ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
 from threading import BoundedSemaphore, Semaphore
-from typing import TYPE_CHECKING, Optional, Sequence, TypedDict
+from typing import TYPE_CHECKING, Mapping, Optional, Sequence, TypedDict
 
 import boto3
 from boto3.s3.transfer import S3Transfer
 from botocore.config import Config
+from mypy_boto3_s3 import S3Client
 from pydantic import BaseModel
+from tilediiif.core.config.core import Config as TilediiifConfig
+from tilediiif.core.config.core import ConfigProperty
+from tilediiif.core.config.exceptions import ConfigValidationError
+from tilediiif.core.config.parsing import simple_parser
+from tilediiif.core.config.properties import IntConfigProperty
+from tilediiif.core.config.validation import in_validator
 from tilediiif.core.templates import Template, parse_template
 from tilediiif.tools.dzi import parse_dzi_file
 from tilediiif.tools.dzi_generation import ColourConfig, DZIConfig, JPEGConfig, save_dzi
@@ -34,10 +41,64 @@ from tilediiif.tools.tilelayout import (
     normalise_output_format,
 )
 
+from tilediiif.awslambda.capacitylock import CapacityLock
+
 if TYPE_CHECKING:
     import mypy_boto3_s3 as s3
 
-MAX_CONCURRENT_SOURCES = 10
+ENVAR_PREFIX = "TILEDIIIF_LAMBDA"
+# As well as limiting access by disk capacity, we impose an overall concurrency
+# limit, so that we can manage TCP connection pool size, and not consume
+# excessive resources if individual requests use small amounts of disk capacity.
+DEFAULT_CONCURRENT_SOURCES = 10
+# A multiplier used to estimate disk capacity needed to process a source image.
+# The size of the source image is multiplied by this to give an upper bound on
+# space required.
+DEFAULT_SOURCE_SIZE_DISK_CAPACITY_RATIO = 1.8
+# Lambdas have 512MB of space in /tmp by default
+DEFAULT_DISK_CAPACITY = 512 * 1024 * 1024
+
+
+def in_interval_validator(lower: Optional[float] = None, upper: Optional[float] = None):
+    if lower is None and upper is None:
+        raise ValueError("at least one of lower and upper must be specified")
+
+    def validate_in_interval(value: float) -> None:
+        if lower is not None and lower > value:
+            raise ConfigValidationError(f"value out of range: {value=} be >= {lower}")
+        if upper is not None and upper >= value:
+            raise ConfigValidationError(f"value out of range: {value=} be <= {upper}")
+
+    return validate_in_interval
+
+
+class LambdaConfig(TilediiifConfig):
+    max_concurrent_sources: int
+    source_size_disk_capacity_ratio: float
+    max_capacity: int
+
+    json_schema: Mapping[str, object] = {}
+    property_definitions = [
+        IntConfigProperty(
+            "max_concurrent_sources",
+            default=DEFAULT_CONCURRENT_SOURCES,
+            validate=in_validator(range(1, 101)),
+            envar_name=f"{ENVAR_PREFIX}_MAX_CONCURRENT_SOURCES",
+        ),
+        ConfigProperty(
+            "source_size_disk_capacity_ratio",
+            default=DEFAULT_SOURCE_SIZE_DISK_CAPACITY_RATIO,
+            validate=in_interval_validator(lower=1.0, upper=10.0),
+            parse=simple_parser(float),
+            envar_name=f"{ENVAR_PREFIX}_SOURCE_SIZE_DISK_CAPACITY_RATIO",
+        ),
+        IntConfigProperty(
+            "max_capacity",
+            default=DEFAULT_DISK_CAPACITY,
+            validate=in_validator(range(1, 101)),
+            envar_name=f"{ENVAR_PREFIX}_MAX_CONCURRENT_SOURCES",
+        ),
+    ]
 
 
 class SourceImageReference(BaseModel):
@@ -88,6 +149,7 @@ def handle_direct(
     has control over the arguments. For example, from a Step Function workflow,
     or manually from the AWS Console.
     """
+    lambda_config = LambdaConfig.from_environ()
     dzi_config = DZIConfig.from_environ()
     tile_encoding_config = JPEGConfig.from_environ()
     colour_config = ColourConfig.from_environ()
@@ -100,17 +162,18 @@ def handle_direct(
     except ValueError as e:
         raise ValueError(f"invalid TILE_PATH_TEMPLATE: {e}") from e
 
-    # TODO: validate this value. I think 20 should be OK for our use, as we use
-    # s3transfer via download_file() upload_file(), and they use 10
-    # threads/connections max each.
+    # TODO: validate this value. I think 20 should be the lower bound for our
+    # use, as we use s3transfer via download_file() upload_file(), and they use
+    # 10 threads/connections max each.
     boto_config = Config(max_pool_connections=30)
-    s3client: s3.Client = boto3.client("s3", config=boto_config)
-    s3_download = S3Transfer(client=s3client)
-    s3_upload = S3Transfer(client=s3client)
+    s3_client: s3.Client = boto3.client("s3", config=boto_config)
+    s3_download = S3Transfer(client=s3_client)
+    s3_upload = S3Transfer(client=s3_client)
     event = HandleDirectEvent.parse_obj(raw_event)
     source_executor = ThreadPoolExecutor()
     tile_executor = ThreadPoolExecutor()
-    concurrent_source_limit = BoundedSemaphore(MAX_CONCURRENT_SOURCES)
+    concurrent_source_limit = BoundedSemaphore(lambda_config.max_concurrent_sources)
+    disk_capacity_limit = CapacityLock(lambda_config.max_capacity)
 
     return [
         {"identifier": src.identifier, "keys": keys}
@@ -127,9 +190,12 @@ def handle_direct(
                         tile_path_template=tile_path_template,
                         destination_bucket=event.destination_bucket,
                         destination_key_prefix=event.destination_key_prefix,
+                        s3_client=s3_client,
                         s3_download=s3_download,
                         s3_upload=s3_upload,
                         concurrent_source_limit=concurrent_source_limit,
+                        disk_capacity_limit=disk_capacity_limit,
+                        source_size_disk_capacity_ratio=lambda_config.source_size_disk_capacity_ratio,  # noqa: B950
                         tile_executor=tile_executor,
                     ),
                 )
@@ -149,40 +215,56 @@ def fetch_generate_and_upload(
     tile_path_template: Template,
     destination_bucket: str,
     destination_key_prefix: Optional[str],
+    s3_client: S3Client,
     s3_download: S3Transfer,
     s3_upload: S3Transfer,
     concurrent_source_limit: Semaphore,
+    disk_capacity_limit: CapacityLock,
+    source_size_disk_capacity_ratio: float,
     tile_executor: Executor,
 ) -> Sequence[str]:
     with concurrent_source_limit, tempfile.TemporaryDirectory() as dir_string:
         working_dir = Path(dir_string)
         source_image = working_dir / "source_image"
-        s3_download.download_file(
-            bucket=source_config.bucket_name,
-            key=source_config.key,
-            filename=str(source_image),
+        source_meta = s3_client.head_object(
+            Bucket=source_config.bucket_name,
+            Key=source_config.key,
         )
-        iiif_tiles_dir = generate_tiles(
-            source_config=source_config,
-            source_image=source_image,
-            id_base_url=id_base_url,
-            dzi_config=dzi_config,
-            tile_encoding_config=tile_encoding_config,
-            colour_config=colour_config,
-            tile_path_template=tile_path_template,
-            working_dir=working_dir,
-        )
-
-        def upload(file: Path) -> str:
-            relative_file = file.relative_to(iiif_tiles_dir)
-            keyParts = [destination_key_prefix, source_config.identifier, relative_file]
-            destination_key = str(Path(*[x for x in keyParts if x is not None]))
-            s3_upload.upload_file(
-                bucket=destination_bucket, key=destination_key, filename=str(file)
+        source_size = max(1, source_meta.get("ContentLength"))
+        capacity_required = int(source_size * source_size_disk_capacity_ratio)
+        assert capacity_required > 0
+        with disk_capacity_limit.acquire(capacity_required):
+            s3_download.download_file(
+                bucket=source_config.bucket_name,
+                key=source_config.key,
+                filename=str(source_image),
             )
-            return destination_key
 
-        return list(tile_executor.map(upload, sorted(iiif_tiles_dir.glob("**/*"))))
+            iiif_tiles_dir = generate_tiles(
+                source_config=source_config,
+                source_image=source_image,
+                id_base_url=id_base_url,
+                dzi_config=dzi_config,
+                tile_encoding_config=tile_encoding_config,
+                colour_config=colour_config,
+                tile_path_template=tile_path_template,
+                working_dir=working_dir,
+            )
+
+            def upload(file: Path) -> str:
+                relative_file = file.relative_to(iiif_tiles_dir)
+                keyParts = [
+                    destination_key_prefix,
+                    source_config.identifier,
+                    relative_file,
+                ]
+                destination_key = str(Path(*[x for x in keyParts if x is not None]))
+                s3_upload.upload_file(
+                    bucket=destination_bucket, key=destination_key, filename=str(file)
+                )
+                return destination_key
+
+            return list(tile_executor.map(upload, sorted(iiif_tiles_dir.glob("**/*"))))
 
 
 def generate_tiles(
