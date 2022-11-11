@@ -611,7 +611,7 @@ async function constructProject() {
       "docopt@^0.6.2",
       "jsonpath-rw@^1.4",
       "jsonschema@^3.0",
-      "python@^3.7",
+      "python@^3.9",
       "toml@^0.10.0",
     ],
     devDeps: [
@@ -639,7 +639,7 @@ async function constructProject() {
 
     deps: [
       "docopt@^0.6.2",
-      "python@^3.7",
+      "python@^3.9",
       "pyvips@^2.1",
       "rfc3986@^1.3",
       `tilediiif.core@=${tilediiifCore.version}`,
@@ -676,7 +676,7 @@ async function constructProject() {
     testPackages: ['tests'],
     deps: [
       "falcon@^2.0",
-      "python@^3.7",
+      "python@^3.9",
       `tilediiif.core@=${tilediiifCore.version}`,
     ],
     devDeps: [
