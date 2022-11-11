@@ -1,7 +1,15 @@
 from __future__ import annotations
 
-import json
+import logging
 import os
+
+if os.environ.get("LOGLEVEL"):
+    logging.getLogger().setLevel(level=os.environ["LOGLEVEL"])
+    logging.getLogger(__name__).debug(
+        "configured root logger to level %s", os.environ["LOGLEVEL"]
+    )
+
+import json
 import tempfile
 from concurrent.futures import Executor, ThreadPoolExecutor
 from functools import partial
